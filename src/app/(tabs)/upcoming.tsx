@@ -1,6 +1,8 @@
 import { QuickAdd } from '@/components/QuickAdd';
 import { TaskGroup } from '@/components/TaskRow';
-import { Screen } from '@/components/ui';
+import { ScrollView, View } from 'react-native';
+
+import { Screen, useWide } from '@/components/ui';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
@@ -15,19 +17,23 @@ export default function Upcoming() {
     day,
   );
   const [projects] = useRows<Project>('projects');
+  const wide = useWide();
+  const groups = days.map((d, i) => (
+    <View key={d} style={wide ? { width: 260 } : undefined}>
+      <TaskGroup
+        title={`${i === 0 ? 'Ngày mai' : DAYS[fromIso(d).getDay()]} · ${fmtDay(d)}`}
+        tasks={open.filter((t) => t.due_date === d)}
+        projects={projects}
+        hideDate
+        empty="Trống"
+      />
+    </View>
+  ));
 
   return (
-    <Screen title="Sắp tới" sub="7 ngày tới" footer={<QuickAdd placeholder="Thêm vào Hộp thư…" />}>
-      {days.map((d, i) => (
-        <TaskGroup
-          key={d}
-          title={`${i === 0 ? 'Ngày mai' : DAYS[fromIso(d).getDay()]} · ${fmtDay(d)}`}
-          tasks={open.filter((t) => t.due_date === d)}
-          projects={projects}
-          hideDate
-          empty="Trống"
-        />
-      ))}
+    <Screen title="Sắp tới" sub="7 ngày tới" maxWidth={100000} footer={<QuickAdd placeholder="Thêm vào Hộp thư…" />}>
+      {/* Wide screens: one column per day, side by side. */}
+      {wide ? <ScrollView horizontal contentContainerStyle={{ gap: 12, alignItems: 'flex-start' }}>{groups}</ScrollView> : groups}
     </Screen>
   );
 }

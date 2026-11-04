@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card, ListRow, Meta, Tick } from '@/components/ui';
 import { color, type Priority, text } from '@/constants/theme';
 import { addDays, fmtDay, localDay, nextDue, today } from '@/lib/dates';
+import { Selection } from '@/lib/selection';
 import { ok, type Project, supabase, type Task } from '@/lib/supabase';
 
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -47,6 +48,7 @@ function dueMeta(t: Task) {
 
 export function TaskRow({ task, project, hideDate }: { task: Task; project?: string; hideDate?: boolean }) {
   const [busy, setBusy] = useState(false);
+  const sel = useContext(Selection);
   const done = !!task.completed_at;
   const parts = [
     !done && !hideDate && dueMeta(task),
@@ -65,7 +67,8 @@ export function TaskRow({ task, project, hideDate }: { task: Task; project?: str
   return (
     <ListRow
       title={task.title}
-      onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })}
+      selected={sel?.id === task.id}
+      onPress={() => (sel ? sel.select(task.id) : router.push({ pathname: '/task/[id]', params: { id: task.id } }))}
       left={
         <Tick
           priority={task.priority as Priority}

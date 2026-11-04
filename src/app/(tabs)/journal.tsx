@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar';
 import { QuickAdd } from '@/components/QuickAdd';
 import { TaskGroup } from '@/components/TaskRow';
-import { Badge, Card, Empty, Screen } from '@/components/ui';
+import { Badge, Card, Empty, Screen, useWide } from '@/components/ui';
 import { color, text } from '@/constants/theme';
 import { fromIso, toIso, today } from '@/lib/dates';
 import { dayCounts, groupByProject, monthCounts } from '@/lib/journal';
@@ -37,23 +37,23 @@ export default function Journal() {
     return { completed_at: at.toISOString(), completed_day: day };
   };
 
-  return (
-    <Screen
-      title="Nhật ký"
-      footer={<QuickAdd defaults={logDefaults} placeholder={isToday ? 'Ghi việc đã làm hôm nay…' : `Ghi việc đã làm ngày ${label}…`} />}
-    >
-      <Card>
-        <MonthCalendar
-          year={year}
-          month={month}
-          selected={day}
-          counts={counts}
-          missed={missed}
-          onSelect={setDay}
-          onMonth={(delta) => setDay(dayForMonth(year, month + delta))}
-        />
-      </Card>
-
+  const wide = useWide();
+  const log = <QuickAdd defaults={logDefaults} placeholder={isToday ? 'Ghi việc đã làm hôm nay…' : `Ghi việc đã làm ngày ${label}…`} />;
+  const calendar = (
+    <Card>
+      <MonthCalendar
+        year={year}
+        month={month}
+        selected={day}
+        counts={counts}
+        missed={missed}
+        onSelect={setDay}
+        onMonth={(delta) => setDay(dayForMonth(year, month + delta))}
+      />
+    </Card>
+  );
+  const dayList = (
+    <>
       <View style={s.dayHead}>
         <Text style={s.dayTitle}>{isToday ? 'Hôm nay' : WEEKDAY[fromIso(day).getDay()]}, {label}</Text>
         <View style={s.badges}>
@@ -61,23 +61,43 @@ export default function Journal() {
           {m > 0 && <Badge tone="warning" label={`Trễ ${m}`} />}
         </View>
       </View>
-
+      {wide && log}
       {loaded && !groups.length && (
         <Card>
           <View style={s.empty}>
             <Text style={s.emptyTitle}>Chưa ghi việc nào ngày này</Text>
-            <Empty>{m ? `Có ${m} việc đến hạn mà không xong. ` : ''}Ghi lại việc đã làm ở ô bên dưới.</Empty>
+            <Empty>{m ? `Có ${m} việc đến hạn mà không xong. ` : ''}Ghi lại việc đã làm ở ô {wide ? 'phía trên' : 'bên dưới'}.</Empty>
           </View>
         </Card>
       )}
       {groups.map((g) => (
         <TaskGroup key={g.id ?? 'inbox'} title={g.name} tasks={g.items} projects={[]} />
       ))}
+    </>
+  );
+
+  return (
+    <Screen title="Nhật ký" maxWidth={1040} footer={wide ? undefined : log}>
+      {/* Wide screens: calendar on the left, the selected day on the right. */}
+      {wide ? (
+        <View style={s.cols}>
+          <View style={s.calCol}>{calendar}</View>
+          <View style={s.dayCol}>{dayList}</View>
+        </View>
+      ) : (
+        <>
+          {calendar}
+          {dayList}
+        </>
+      )}
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
+  cols: { flexDirection: 'row', gap: 20, alignItems: 'flex-start' },
+  calCol: { width: 360 },
+  dayCol: { flex: 1, minWidth: 0, gap: 12 },
   dayHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingHorizontal: 4 },
   dayTitle: { ...text.base, color: color.foreground },
   badges: { flexDirection: 'row', gap: 6 },

@@ -121,11 +121,14 @@ export function Card({ title, action, flush, children }: { title?: ReactNode; ac
 }
 
 /* List row: tick or anything on the left, title and meta on the right */
-export function ListRow({ title, meta, left, done, onPress }: {
-  title: string; meta?: ReactNode; left?: ReactNode; done?: boolean; onPress?: () => void;
+export function ListRow({ title, meta, left, done, selected, onPress }: {
+  title: string; meta?: ReactNode; left?: ReactNode; done?: boolean; selected?: boolean; onPress?: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={(s) => [st.row, active(s) && { backgroundColor: color.itemHover }]}>
+    <Pressable
+      onPress={onPress}
+      style={(s) => [st.row, active(s) && { backgroundColor: color.itemHover }, selected && { backgroundColor: active(s) ? color.secondaryHover : color.secondary }]}
+    >
       {left}
       <View style={st.rowBody}>
         <Text style={[st.rowTitle, done && st.rowDone]}>{title}</Text>
@@ -160,19 +163,23 @@ export function ConfirmModal({ visible, title, message, confirmText = 'Xoá', on
   );
 }
 
-/* Screen: title, scrolling body, optional footer pinned above the tab bar */
-export function Screen({ title, sub, back, right, footer, children }: {
-  title: string; sub?: string; back?: boolean; right?: ReactNode; footer?: ReactNode; children: ReactNode;
+/** Wide screens (web on a computer) use the sidebar layout instead of the bottom tabs. */
+export const useWide = () => useWindowDimensions().width >= 1024;
+
+/* Screen: title, scrolling body, optional footer pinned above the tab bar (inline at the end on wide screens) */
+export function Screen({ title, sub, back, right, footer, children, maxWidth = 760 }: {
+  title: string; sub?: string; back?: boolean; right?: ReactNode; footer?: ReactNode; children: ReactNode; maxWidth?: number;
 }) {
+  const wide = useWide();
   return (
     <SafeAreaView edges={['top']} style={st.screen}>
       <KeyboardAvoidingView style={st.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={st.screenBody} keyboardShouldPersistTaps="handled">
-          {back && (
+        <ScrollView contentContainerStyle={[st.screenBody, wide && { padding: 40, paddingTop: 32, maxWidth }]} keyboardShouldPersistTaps="handled">
+          {back && !wide && (
             <Button
               title="‹ Quay lại"
               variant="ghost"
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/index'))}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
               style={st.back}
             />
           )}
@@ -184,8 +191,9 @@ export function Screen({ title, sub, back, right, footer, children }: {
             {right}
           </View>
           {children}
+          {wide && footer}
         </ScrollView>
-        {footer && <View style={st.footer}>{footer}</View>}
+        {!wide && footer && <View style={st.footer}>{footer}</View>}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
