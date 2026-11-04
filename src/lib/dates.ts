@@ -1,0 +1,80 @@
+// Dates travel as "YYYY-MM-DD" strings (Postgres `date`), always in device-local time.
+const pad = (n: number) => String(n).padStart(2, '0');
+
+export const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export function fromIso(s: string) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Local calendar day of a moment (R16). */
+export const localDay = (at: Date = new Date()) => toIso(at);
+export const today = () => localDay();
+
+export function addDays(iso: string, n: number) {
+  const d = fromIso(iso);
+  d.setDate(d.getDate() + n);
+  return toIso(d);
+}
+
+/** "DD/MM" for display; adds the year when it isn't the current one. */
+export function fmtDay(iso: string) {
+  const [y, m, d] = iso.split('-');
+  return y === String(new Date().getFullYear()) ? `${d}/${m}` : `${d}/${m}/${y}`;
+}
+
+const lastDayOf = (y: number, m: number) => new Date(y, m + 1, 0).getDate(); // m is 0-based
+
+/**
+ * Next due date of a recurring task: the first occurrence after max(due, today) (KTD6).
+ * repeat: daily | weekly:<0..6,...> (0 = Sunday) | monthly:<day> | every:<N>
+ */
+export function nextDue(repeat: string, due: string, todayIso = today()) {
+  const base = due > todayIso ? due : todayIso;
+  const [kind, arg] = repeat.split(':');
+
+  if (kind === 'daily' || kind === 'every') {
+    const n = kind === 'daily' ? 1 : Number(arg);
+    let d = due;
+    while (d <= base) d = addDays(d, n);
+    return d;
+  }
+  if (kind === 'weekly') {
+    const days = arg.split(',').map(Number);
+    let d = addDays(base, 1);
+    while (!days.includes(fromIso(d).getDay())) d = addDays(d, 1);
+    return d;
+  }
+  if (kind === 'monthly') {
+    const day = Number(arg);
+    const b = fromIso(base);
+    for (let i = 0; ; i++) {
+      const y = b.getFullYear(), m = b.getMonth() + i;
+      const d = toIso(new Date(y, m, Math.min(day, lastDayOf(y, m))));
+      if (d > base) return d;
+    }
+  }
+  throw new Error(`Unknown repeat: ${repeat}`);
+}
+
+/** "DD/MM" or "DD/MM/YYYY" -> ISO date, or null when invalid. Without a year, the next such date from today. */
+export function parseDate(s: string, todayIso = today()) {
+  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
+  if (!m) return null;
+  const day = +m[1], month = +m[2];
+  const valid = (y: number) => {
+    const d = new Date(y, month - 1, day);
+    return d.getMonth() === month - 1 && d.getDate() === day ? toIso(d) : null;
+  };
+  if (m[3]) return valid(+m[3]);
+  const y = fromIso(todayIso).getFullYear();
+  const thisYear = valid(y);
+  return thisYear && thisYear >= todayIso ? thisYear : valid(y + 1);
+}
+
+/** "HH:MM" -> "HH:MM" (zero-padded), or null when invalid. */
+export function parseTime(s: string) {
+  const m = s.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m || +m[1] > 23 || +m[2] > 59) return null;
+  return `${pad(+m[1])}:${m[2]}`;
+}
