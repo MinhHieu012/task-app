@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import { Text } from 'react-native';
 
 import { color } from '@/constants/theme';
+import { useReminders } from '@/lib/reminders';
 
 type Icon = ComponentProps<typeof Ionicons>['name'];
 const tab = (title: string, icon: Icon) => ({
@@ -16,6 +17,7 @@ const tab = (title: string, icon: Icon) => ({
 });
 
 export default function TabLayout() {
+  useReminders();
   return (
     <Tabs
       screenOptions={{
