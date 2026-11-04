@@ -51,10 +51,12 @@ export function TaskRow({ task, project, hideDate }: { task: Task; project?: str
   const parts = [
     !done && !hideDate && dueMeta(task),
     hideDate && task.due_time && <Meta>{task.due_time.slice(0, 5)}</Meta>,
-    !done && task.repeat && (
+    // Journal entries: local time of completion; a recurring copy shows just the repeat icon.
+    done && <Meta>{new Date(task.completed_at!).toTimeString().slice(0, 5)}</Meta>,
+    (task.repeat || task.recurring_copy) && (
       <View style={s.rep}>
         <Ionicons name="repeat" size={12} color={color.muted} />
-        <Meta>{repeatLabel(task.repeat)}</Meta>
+        {!done && task.repeat && <Meta>{repeatLabel(task.repeat)}</Meta>}
       </View>
     ),
     project && <Meta>{project}</Meta>,
@@ -63,7 +65,6 @@ export function TaskRow({ task, project, hideDate }: { task: Task; project?: str
   return (
     <ListRow
       title={task.title}
-      done={done}
       onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })}
       left={
         <Tick
