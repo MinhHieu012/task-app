@@ -1,8 +1,12 @@
+import { router } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   type PressableStateCallbackType,
   StyleSheet,
   Text,
@@ -12,6 +16,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { color, priority as pColor, type Priority, radius, shadowModal, text } from '@/constants/theme';
 
@@ -101,12 +106,12 @@ export function Field({ label, hint, error, editable = true, right, ...props }: 
 }
 
 /* Card */
-export function Card({ title, action, flush, children }: { title?: string; action?: ReactNode; flush?: boolean; children: ReactNode }) {
+export function Card({ title, action, flush, children }: { title?: ReactNode; action?: ReactNode; flush?: boolean; children: ReactNode }) {
   return (
     <View style={[st.card, flush && st.cardFlush]}>
       {(title || action) && (
         <View style={[st.cardHead, flush && st.cardHeadFlush]}>
-          {title && <Text style={st.cardTitle}>{title}</Text>}
+          {typeof title === 'string' ? <Text style={st.cardTitle}>{title}</Text> : title}
           {action}
         </View>
       )}
@@ -152,6 +157,37 @@ export function ConfirmModal({ visible, title, message, confirmText = 'Xoá', on
         </View>
       </View>
     </Modal>
+  );
+}
+
+/* Screen: title, scrolling body, optional footer pinned above the tab bar */
+export function Screen({ title, sub, back, right, footer, children }: {
+  title: string; sub?: string; back?: boolean; right?: ReactNode; footer?: ReactNode; children: ReactNode;
+}) {
+  return (
+    <SafeAreaView edges={['top']} style={st.screen}>
+      <KeyboardAvoidingView style={st.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={st.screenBody} keyboardShouldPersistTaps="handled">
+          {back && (
+            <Button
+              title="‹ Quay lại"
+              variant="ghost"
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/index'))}
+              style={st.back}
+            />
+          )}
+          <View style={st.head}>
+            <View style={st.rowBody}>
+              <Text style={st.h1}>{title}</Text>
+              {sub && <Text style={st.sub}>{sub}</Text>}
+            </View>
+            {right}
+          </View>
+          {children}
+        </ScrollView>
+        {footer && <View style={st.footer}>{footer}</View>}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -264,6 +300,14 @@ export const st = StyleSheet.create({
   modal: { width: '100%', maxWidth: 400, backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: color.border, padding: 24, gap: 24, boxShadow: shadowModal },
   modalText: { ...text.sm, lineHeight: 24, color: color.muted, marginTop: 8 },
   modalFoot: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 },
+
+  screen: { flex: 1, backgroundColor: color.background },
+  screenBody: { padding: 16, gap: 16, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  back: { alignSelf: 'flex-start', marginLeft: -12, marginBottom: -12 },
+  head: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, paddingTop: 4 },
+  h1: { ...text.xl, color: color.foreground },
+  sub: { ...text.sm, color: color.muted },
+  footer: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
 
   empty: { ...text.sm, color: color.muted, textAlign: 'center', paddingVertical: 24 },
 

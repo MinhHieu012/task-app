@@ -61,12 +61,12 @@ type Query = PostgrestFilterBuilder<any, any, any, any[], string, unknown, 'GET'
  * `filter` narrows/orders the select; `key` must change whenever `filter` does.
  */
 export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q, key = '') {
-  const [rows, setRows] = useState<T[]>([]);
+  const [rows, setRows] = useState<T[]>();
   const load = useCallback(
     () =>
       filter(supabase.from(table).select('*') as Query)
         .then((res) => {
-          if (ok(res)) setRows(res.data as T[]);
+          setRows((prev) => (ok(res) ? (res.data as T[]) : (prev ?? [])));
         }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [table, key],
@@ -84,5 +84,5 @@ export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q
     };
   }, [load, table]);
 
-  return [rows, load] as const;
+  return [rows ?? [], load, rows !== undefined] as const; // [rows, reload, loaded]
 }
