@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Design system · Việc & Nhật ký</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Token: chép từ evon tokens.css (chỉ sáng). Sẽ chuyển 1:1 sang src/constants/theme.ts. */
+:root {
+  color-scheme: light;
+  --app-font: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* MÀU NHẤN: đổi ở đây (nhóm gợi ý ở đầu trang đổi ba dòng này) */
+  --primary: #181818;
+  --primary-hover: #2e2e2e;
+  --primary-foreground: #ffffff;
+  --ring-focus: rgba(24, 24, 24, 0.1);
+
+  --background: #f4f4f6;
+  --surface: #ffffff;
+  --foreground: #2c2c2c;
+  --muted: #707070;
+  --border: #f7f7f8;
+  --border-strong: #eaeaea;
+  --item-hover: #f4f4f6;
+  --secondary: #e7e8ec;
+  --secondary-hover: #dbdce2;
+  --button-hover: #f1f1f3;
+  --border-focus: var(--primary);
+  --elevation-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --danger: #c70036; --danger-bg: rgb(255 32 86 / 0.1); --danger-bg-hover: rgb(255 32 86 / 0.15);
+  --error: #fb2c36; --error-ring: rgb(251 44 54 / 0.1); --error-text: #e7000b;
+  --error-bg: #fef2f2; --error-strong: #c10007;
+  --success-bg: #ecfdf5; --success: #007a55;
+  --warning-bg: #fffbeb; --warning: #bb4d00;
+  --neutral-bg: #f4f4f5; --neutral: #52525c;
+
+  /* Mức ưu tiên: thang phân loại riêng (M8), không dùng lại tên trạng thái */
+  --p1: #ec003f; --p2: #e17100; --p3: #155dfc; --p4: #707070;
+
+  --radius-sm: 8px; --radius: 12px; --radius-lg: 16px; --radius-full: 9999px;
+}
+* { box-sizing: border-box; margin: 0; }
+* { --scrollbar-thumb: transparent; }
+*:hover { --scrollbar-thumb: color-mix(in srgb, var(--foreground) 16%, transparent); }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+body {
+  font-family: var(--app-font); font-size: 14px; line-height: 20px; color: var(--foreground);
+  background: var(--background); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+button { font: inherit; color: inherit; }
+
+/* Khung trang: một cột giữa, như app */
+.page { max-width: 720px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 24px; }
+@media (min-width: 640px) { .page { padding: 24px; } }
+h1 { font-size: 20px; line-height: 28px; font-weight: 700; }
+h2 { font-size: 18px; line-height: 28px; font-weight: 600; margin-bottom: 12px; }
+h3 { font-size: 16px; line-height: 24px; font-weight: 600; }
+.lead { color: var(--muted); margin-top: 4px; }
+.state { display: block; font-size: 12px; line-height: 16px; color: var(--muted); margin-bottom: 6px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); align-items: end; justify-items: start; }
+.stack { display: flex; flex-direction: column; gap: 20px; }
+
+/* Card */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+@media (min-width: 640px) { .card { padding: 20px; } }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+
+/* Bảng màu */
+.swatch { display: flex; flex-direction: column; gap: 6px; }
+.chip-color { height: 40px; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06); }
+.swatch b { font-weight: 500; font-size: 12px; line-height: 16px; }
+.swatch code, td code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; }
+td, th { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border-strong); vertical-align: middle; }
+th { font-size: 12px; font-weight: 500; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.table-wrap { overflow-x: auto; }
+.accent-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Chữ */
+.type-row { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.type-row:last-child { border-bottom: 0; }
+
+/* Nút: bốn dạng (I1) */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  padding: 8px 16px; border-radius: var(--radius); font-size: 14px; line-height: 18px; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer; outline: none; transition: background-color .15s, color .15s;
+  max-width: 100%; text-align: center; overflow-wrap: anywhere; position: relative;
+}
+@media (min-width: 768px) { .btn { min-height: 40px; } }
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.btn-outline { border-color: var(--border-strong); background: var(--surface); color: var(--foreground); }
+.btn-outline:hover, [data-demo-state="hover"] .btn-outline { background: var(--button-hover); }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-primary:hover, [data-demo-state="hover"] .btn-primary { background: var(--primary-hover); }
+.btn-secondary { background: var(--secondary); color: var(--foreground); }
+.btn-secondary:hover, [data-demo-state="hover"] .btn-secondary { background: var(--secondary-hover); }
+.btn-ghost { background: transparent; color: var(--muted); }
+.btn-ghost:hover, [data-demo-state="hover"] .btn-ghost { background: color-mix(in srgb, var(--foreground) 5%, transparent); color: var(--foreground); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); }
+.btn-danger:hover, [data-demo-state="hover"] .btn-danger { background: var(--danger-bg-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn[aria-busy="true"] { cursor: progress; }
+.btn[aria-busy="true"] .label { visibility: hidden; }
+.spin { position: absolute; inset: 0; margin: auto; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+.icon-btn { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: var(--radius-sm); border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); color: var(--foreground); }
+.icon-btn svg { width: 16px; height: 16px; }
+
+/* Badge (M7) */
+.badge { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; border-radius: var(--radius-full); padding: 4px 10px; font-size: 12px; line-height: 16px; font-weight: 500; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.05); }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+.b-neutral { background: var(--neutral-bg); color: var(--neutral); }
+.b-success { background: var(--success-bg); color: var(--success); }
+.b-warning { background: var(--warning-bg); color: var(--warning); }
+.b-error { background: var(--error-bg); color: var(--error-strong); }
+
+/* Ô nhập */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { width: fit-content; font-weight: 500; cursor: pointer; }
+.input {
+  width: 100%; height: 44px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--foreground); font: inherit; font-size: 16px; outline: none; transition: border-color .15s, box-shadow .15s;
+}
+@media (min-width: 768px) { .input { height: 40px; font-size: 14px; } }
+.input::placeholder { color: var(--muted); }
+.input:focus, [data-demo-state="focus"] .input { border-color: var(--border-focus); box-shadow: 0 0 0 2px var(--ring-focus); }
+.input[aria-invalid="true"] { border-color: var(--error); }
+.input[aria-invalid="true"]:focus { box-shadow: 0 0 0 2px var(--error-ring); }
+.input:disabled { opacity: .5; cursor: not-allowed; background: var(--background); }
+.hint { min-height: 16px; font-size: 12px; line-height: 16px; color: var(--muted); }
+.hint.err { color: var(--error-text); }
+.field-row { display: flex; gap: 8px; }
+.field-row .input { flex: 1; min-width: 0; }
+
+/* Ô tick tròn theo mức ưu tiên */
+/* Nút là vùng bấm 44px, vòng tròn 20px nằm giữa */
+.tick {
+  --c: var(--p4);
+  flex-shrink: 0; width: 44px; height: 44px; margin: -12px; border: 0; background: transparent; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; outline: none;
+}
+.tick .c {
+  width: 20px; height: 20px; border-radius: 9999px; border: 1.5px solid var(--c); color: var(--c);
+  background: color-mix(in srgb, var(--c) 8%, var(--surface)); display: inline-flex; align-items: center; justify-content: center; transition: background-color .15s;
+}
+.tick svg { width: 12px; height: 12px; opacity: 0; }
+.tick:hover svg, [data-demo-state="hover"] .tick svg { opacity: 1; }
+.tick[aria-checked="true"] .c { background: var(--c); color: #fff; }
+.tick[aria-checked="true"] svg { opacity: 1; }
+.tick:disabled { opacity: .5; cursor: not-allowed; }
+.tick.p1 { --c: var(--p1); } .tick.p2 { --c: var(--p2); } .tick.p3 { --c: var(--p3); }
+.tick-slot { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; }
+
+/* Nhóm nút chọn (chip) */
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--radius-full);
+  border: 0; cursor: pointer; font-size: 14px; font-weight: 500; outline: none;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent); color: color-mix(in srgb, var(--foreground) 70%, transparent);
+  transition: background-color .15s, color .15s;
+}
+.choice:hover, [data-demo-state="hover"] .choice { background: color-mix(in srgb, var(--foreground) 10%, transparent); color: var(--foreground); }
+.choice[aria-checked="true"], .choice[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); }
+.choice:disabled { opacity: .5; cursor: not-allowed; }
+.choice .dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--c, var(--p4)); }
+.choice[aria-checked="true"] .dot { box-shadow: 0 0 0 1.5px var(--primary-foreground); }
+.choices.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.choice.day { padding: 0; justify-content: center; }
+.choices.cols { display: grid; grid-template-columns: repeat(var(--n), 1fr); }
+.choices.cols { gap: 6px; }
+.choices.cols .choice { justify-content: center; padding: 0 4px; gap: 4px; white-space: nowrap; min-width: 0; }
+@media (max-width: 639px) { .choices.stack-sm { flex-direction: column; align-items: stretch; } }
+.choices[aria-invalid="true"] + .hint { color: var(--error-text); }
+
+/* Dòng việc */
+.list { display: flex; flex-direction: column; gap: 4px; padding: 0; list-style: none; }
+.task { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: var(--radius); cursor: pointer; }
+.task:hover, [data-demo-state="hover"] .task { background: var(--item-hover); }
+.task .tick { margin-top: 0; }
+.task-body { min-width: 0; flex: 1; }
+.task-title { overflow-wrap: anywhere; }
+.task-meta { margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0 4px; align-items: center; }
+.task-meta svg { width: 12px; height: 12px; }
+.task-meta .over { color: var(--warning); }
+.task-meta .today { color: var(--foreground); font-weight: 500; }
+.task.done .task-title { color: var(--muted); text-decoration: line-through; }
+.card.flush { padding: 20px 0; }
+.card.flush .card-head { padding: 0 20px; margin-bottom: 6px; }
+.card.flush .list { padding: 0 8px; }
+@media (max-width: 639px) { .card.flush { padding: 16px 0; } .card.flush .card-head { padding: 0 16px; } .card.flush .list { padding: 0 4px; } }
+
+/* Modal */
+.backdrop { background: rgb(0 0 0 / 0.4); border-radius: var(--radius-lg); padding: 24px 16px; display: flex; justify-content: center; }
+.modal { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--elevation-modal); padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+.modal p { margin-top: 8px; color: var(--muted); line-height: 24px; text-wrap: pretty; }
+.modal-foot { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Trạng thái rỗng */
+.empty { padding: 24px 0; text-align: center; color: var(--muted); }
+
+.tokens-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.tk { display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 16px; }
+.tk .box { height: 48px; background: var(--surface); border: 1px solid var(--border-strong); }
+</style>
+</head>
+<body>
+<main class="page">
+
+<header>
+  <h1>Design system</h1>
+  <p class="lead">App việc cá nhân kèm nhật ký. Nền sáng, flat, một font Inter, tiếng Việt. Token trên trang này chuyển 1:1 sang <code>src/constants/theme.ts</code>.</p>
+</header>
+
+<!-- ===== MÀU ===== -->
+<section class="card">
+  <h2>Màu nhấn</h2>
+  <p class="state">Chưa có màu brand: chọn một trong ba, mọi nút và ô đang chọn đổi theo.</p>
+  <div class="choices cols" style="--n:3" role="radiogroup" aria-label="Màu nhấn">
+    <button class="choice" role="radio" aria-checked="true" data-accent="#181818,#2e2e2e,rgba(24,24,24,0.1)"><span class="dot" style="--c:#181818"></span>Đen</button>
+    <button class="choice" role="radio" aria-checked="false" data-accent="#155dfc,#1447e6,rgba(21,93,252,0.12)"><span class="dot" style="--c:#155dfc"></span>Xanh</button>
+    <button class="choice" role="radio" aria-checked="false" data-accent="#0f766e,#115e59,rgba(15,118,110,0.12)"><span class="dot" style="--c:#0f766e"></span>Ngọc</button>
+    <button class="choice" role="radio" aria-checked="false" data-accent="#7c3aed,#6d28d9,rgba(124,58,237,0.12)"><span class="dot" style="--c:#7c3aed"></span>Tím</button>
+    <button class="choice" role="radio" aria-checked="false" data-accent="#4f46e5,#4338ca,rgba(79,70,229,0.12)"><span class="dot" style="--c:#4f46e5"></span>Chàm</button>
+    <button class="choice" role="radio" aria-checked="false" data-accent="#15803d,#166534,rgba(21,128,61,0.12)"><span class="dot" style="--c:#15803d"></span>Lá</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Màu</h2>
+  <div class="grid">
+    <div class="swatch"><div class="chip-color" style="background:var(--primary)"></div><b>primary</b><code id="primary-hex">#181818</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--background)"></div><b>background</b><code>#f4f4f6</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--surface)"></div><b>surface</b><code>#ffffff</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--foreground)"></div><b>foreground</b><code>#2c2c2c</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--muted)"></div><b>muted</b><code>#707070</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--secondary)"></div><b>secondary</b><code>#e7e8ec</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--border-strong)"></div><b>border-strong</b><code>#eaeaea</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--danger)"></div><b>danger</b><code>#c70036</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--warning)"></div><b>warning</b><code>#bb4d00</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--success)"></div><b>success</b><code>#007a55</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--error-text)"></div><b>error-text</b><code>#e7000b</code></div>
+  </div>
+
+  <h3 style="margin-top:24px">Mức ưu tiên</h3>
+  <p class="state">Thang phân loại riêng, chỉ dùng cho viền và nền ô tick, chấm trong nút chọn.</p>
+  <div class="grid">
+    <div class="swatch"><div class="chip-color" style="background:var(--p1)"></div><b>Ưu tiên 1</b><code>#ec003f</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--p2)"></div><b>Ưu tiên 2</b><code>#e17100</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--p3)"></div><b>Ưu tiên 3</b><code>#155dfc</code></div>
+    <div class="swatch"><div class="chip-color" style="background:var(--p4)"></div><b>Ưu tiên 4 (mặc định)</b><code>#707070</code></div>
+  </div>
+
+  <h3 style="margin-top:24px">Tương phản</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Chữ</th><th>Nền</th><th>Tỉ lệ</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><code>foreground</code></td><td><code>surface</code></td><td>13.97</td><td></td></tr>
+        <tr><td><code>foreground</code></td><td><code>background</code></td><td>12.71</td><td></td></tr>
+        <tr><td><code>muted</code></td><td><code>surface</code></td><td>4.95</td><td></td></tr>
+        <tr><td><code>muted</code></td><td><code>background</code></td><td>4.51</td><td></td></tr>
+        <tr><td><code>primary-foreground</code></td><td><code>primary</code></td><td id="primary-ratio">17.76</td><td></td></tr>
+        <tr><td><code>warning</code></td><td><code>surface</code></td><td>5.03</td><td></td></tr>
+        <tr><td><code>error-text</code></td><td><code>surface</code></td><td>4.77</td><td></td></tr>
+        <tr><td><code>danger</code></td><td><code>danger-bg</code></td><td>5.28</td><td></td></tr>
+        <tr><td>Viền ưu tiên 2</td><td><code>surface</code></td><td>3.20</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== CHỮ ===== -->
+<section class="card">
+  <h2>Chữ</h2>
+  <div class="type-row"><span class="state">xl · 20 · 700 · tên màn</span><span style="font-size:20px;line-height:28px;font-weight:700">Hôm nay</span></div>
+  <div class="type-row"><span class="state">lg · 18 · 600 · tiêu đề nhóm</span><span style="font-size:18px;line-height:28px;font-weight:600">Quá hạn</span></div>
+  <div class="type-row"><span class="state">base · 16 · 600 · tiêu đề card</span><span style="font-size:16px;line-height:24px;font-weight:600">Thứ Năm, 05/11</span></div>
+  <div class="type-row"><span class="state">sm · 14 · 400 · nội dung, dòng việc</span><span>Gọi điện đặt lịch khám răng cho cả nhà trước cuối tuần</span></div>
+  <div class="type-row"><span class="state">sm · 14 · 500 · nút, nhãn ô nhập</span><span style="font-weight:500">Thêm việc</span></div>
+  <div class="type-row"><span class="state">xs · 12 · 400 · dòng phụ, giờ</span><span style="font-size:12px;line-height:16px;color:var(--muted)">14:30 · Công việc · Lặp hằng tuần</span></div>
+</section>
+
+<!-- ===== KHOẢNG CÁCH, BO GÓC, VIỀN, BÓNG ===== -->
+<section class="card">
+  <h2>Khoảng cách, bo góc, viền, bóng</h2>
+  <p class="state">Khoảng cách: 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 (trong control được 2 · 6 · 10)</p>
+  <div class="row" style="align-items:flex-end;margin-bottom:20px">
+    <div style="width:4px;height:24px;background:var(--secondary)"></div><div style="width:8px;height:24px;background:var(--secondary)"></div><div style="width:12px;height:24px;background:var(--secondary)"></div><div style="width:16px;height:24px;background:var(--secondary)"></div><div style="width:20px;height:24px;background:var(--secondary)"></div><div style="width:24px;height:24px;background:var(--secondary)"></div><div style="width:32px;height:24px;background:var(--secondary)"></div><div style="width:40px;height:24px;background:var(--secondary)"></div>
+  </div>
+  <div class="tokens-grid">
+    <div class="tk"><div class="box" style="border-radius:8px"></div>8 · control dưới 40px</div>
+    <div class="tk"><div class="box" style="border-radius:12px"></div>12 · nút, ô nhập, dòng</div>
+    <div class="tk"><div class="box" style="border-radius:16px"></div>16 · card, modal</div>
+    <div class="tk"><div class="box" style="border-radius:9999px"></div>tròn · chip, badge, ô tick</div>
+    <div class="tk"><div class="box" style="border-radius:12px;border-color:var(--border)"></div>border · viền card, đường chia</div>
+    <div class="tk"><div class="box" style="border-radius:12px"></div>border-strong · ô nhập, nút viền</div>
+    <div class="tk"><div class="box" style="border-radius:12px;border-color:var(--border);box-shadow:var(--elevation-modal)"></div>bóng · chỉ modal</div>
+  </div>
+</section>
+
+<!-- ===== NÚT ===== -->
+<section class="card">
+  <h2>Nút</h2>
+  <div class="stack">
+    <div class="row">
+      <div><span class="state">Viền · thường</span><button class="btn btn-outline">Huỷ</button></div>
+      <div inert data-demo-state="hover"><span class="state">Rê</span><button class="btn btn-outline">Huỷ</button></div>
+      <div><span class="state">Khoá</span><button class="btn btn-outline" disabled>Huỷ</button></div>
+    </div>
+    <div class="row">
+      <div><span class="state">Chính · thường</span><button class="btn btn-primary">Lưu</button></div>
+      <div inert data-demo-state="hover"><span class="state">Rê</span><button class="btn btn-primary">Lưu</button></div>
+      <div><span class="state">Khoá</span><button class="btn btn-primary" disabled>Lưu</button></div>
+      <div inert data-demo-state="loading"><span class="state">Đang lưu</span><button class="btn btn-primary" aria-busy="true" aria-disabled="true"><span class="label">Lưu</span><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></button></div>
+    </div>
+    <div class="row">
+      <div><span class="state">Phụ · thường</span><button class="btn btn-secondary">Để sau</button></div>
+      <div inert data-demo-state="hover"><span class="state">Rê</span><button class="btn btn-secondary">Để sau</button></div>
+      <div><span class="state">Mờ · thường</span><button class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Thêm project</button></div>
+      <div inert data-demo-state="hover"><span class="state">Rê</span><button class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Thêm project</button></div>
+    </div>
+    <div class="row">
+      <div><span class="state">Nguy hiểm · thường</span><button class="btn btn-danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Xoá việc</button></div>
+      <div inert data-demo-state="hover"><span class="state">Rê</span><button class="btn btn-danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Xoá việc</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BADGE ===== -->
+<section class="card">
+  <h2>Badge trạng thái</h2>
+  <div class="row">
+    <div><span class="state">Xám · trung lập</span><span class="badge b-neutral">Hộp thư</span></div>
+    <div><span class="state">Xanh · xong</span><span class="badge b-success">12 việc xong</span></div>
+    <div><span class="state">Hổ phách · cần chú ý</span><span class="badge b-warning">3 việc trễ</span></div>
+    <div><span class="state">Đỏ · lỗi</span><span class="badge b-error">Chưa lưu</span></div>
+  </div>
+</section>
+
+<!-- ===== Ô NHẬP ===== -->
+<section class="card">
+  <h2>Ô nhập</h2>
+  <div class="stack">
+    <div class="field"><span class="state">Thường</span><label for="f1">Tiêu đề</label><input id="f1" class="input" value="Mua sữa" /><p class="hint"></p></div>
+    <div class="field" inert data-demo-state="focus"><span class="state">Đang gõ</span><label for="f2">Hạn chót</label><input id="f2" class="input" value="05/12" placeholder="DD/MM" /><p class="hint">Gõ ngày dạng DD/MM hoặc DD/MM/YYYY</p></div>
+    <div class="field"><span class="state">Lỗi</span><label for="f3">Giờ</label><input id="f3" class="input" value="25:00" aria-invalid="true" aria-describedby="f3e" /><p id="f3e" class="hint err">Giờ phải từ 00:00 đến 23:59</p></div>
+    <div class="field"><span class="state">Khoá</span><label for="f4">Ghi chú</label><input id="f4" class="input" value="Đang lưu…" disabled /><p class="hint"></p></div>
+    <div class="field"><span class="state">Thêm nhanh, có nút xoá trường</span><label for="f5">Hạn chót</label>
+      <div class="field-row"><input id="f5" class="input" value="05/12/2026" /><button class="btn btn-outline">Bỏ hạn</button></div><p class="hint"></p></div>
+  </div>
+</section>
+
+<!-- ===== Ô TICK TRÒN ===== -->
+<section class="card">
+  <h2>Ô tick tròn</h2>
+  <p class="state">Viền và nền theo mức ưu tiên; vùng bấm 44px.</p>
+  <div class="stack">
+    <div class="row">
+      <div><span class="state">Ưu tiên 1</span><span class="tick-slot"><button class="tick p1" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+      <div><span class="state">Ưu tiên 2</span><span class="tick-slot"><button class="tick p2" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+      <div><span class="state">Ưu tiên 3</span><span class="tick-slot"><button class="tick p3" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+      <div><span class="state">Ưu tiên 4</span><span class="tick-slot"><button class="tick" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+    </div>
+    <div class="row">
+      <div inert data-demo-state="hover"><span class="state">Rê / nhấn</span><span class="tick-slot"><button class="tick p1" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+      <div><span class="state">Đã xong</span><span class="tick-slot"><button class="tick p1" role="checkbox" aria-checked="true" aria-label="Bỏ tick"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+      <div><span class="state">Đã xong · ưu tiên 4</span><span class="tick-slot"><button class="tick" role="checkbox" aria-checked="true" aria-label="Bỏ tick"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+      <div><span class="state">Khoá (đang lưu)</span><span class="tick-slot"><button class="tick p3" role="checkbox" aria-checked="false" aria-label="Xong" disabled><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== NHÓM NÚT CHỌN ===== -->
+<section class="card">
+  <h2>Nhóm nút chọn</h2>
+  <div class="stack">
+    <div><span class="state">Chọn một · mức ưu tiên</span>
+      <div class="choices cols" style="--n:4" role="radiogroup" aria-label="Mức ưu tiên">
+        <button class="choice" role="radio" aria-checked="false"><span class="dot" style="--c:var(--p1)"></span>Mức 1</button>
+        <button class="choice" role="radio" aria-checked="true"><span class="dot" style="--c:var(--p2)"></span>Mức 2</button>
+        <button class="choice" role="radio" aria-checked="false"><span class="dot" style="--c:var(--p3)"></span>Mức 3</button>
+        <button class="choice" role="radio" aria-checked="false"><span class="dot" style="--c:var(--p4)"></span>Mức 4</button>
+      </div></div>
+    <div><span class="state">Chọn một · kiểu lặp</span>
+      <div class="choices stack-sm" role="radiogroup" aria-label="Kiểu lặp">
+        <button class="choice" role="radio" aria-checked="false">Không lặp</button>
+        <button class="choice" role="radio" aria-checked="false">Hằng ngày</button>
+        <button class="choice" role="radio" aria-checked="true">Hằng tuần</button>
+        <button class="choice" role="radio" aria-checked="false">Hằng tháng</button>
+        <button class="choice" role="radio" aria-checked="false">Mỗi N ngày</button>
+      </div></div>
+    <div><span class="state">Chọn nhiều · các thứ trong tuần</span>
+      <div class="choices days" aria-label="Các thứ">
+        <button class="choice day" aria-pressed="true">T2</button><button class="choice day" aria-pressed="false">T3</button><button class="choice day" aria-pressed="true">T4</button><button class="choice day" aria-pressed="false">T5</button><button class="choice day" aria-pressed="false">T6</button><button class="choice day" aria-pressed="false">T7</button><button class="choice day" aria-pressed="false">CN</button>
+      </div></div>
+    <div inert data-demo-state="hover"><span class="state">Rê</span>
+      <div class="choices"><button class="choice">Công việc</button></div></div>
+    <div><span class="state">Lỗi</span>
+      <div class="choices days" aria-invalid="true">
+        <button class="choice day" aria-pressed="false">T2</button><button class="choice day" aria-pressed="false">T3</button><button class="choice day" aria-pressed="false">T4</button><button class="choice day" aria-pressed="false">T5</button><button class="choice day" aria-pressed="false">T6</button><button class="choice day" aria-pressed="false">T7</button><button class="choice day" aria-pressed="false">CN</button>
+      </div><p class="hint" style="margin-top:6px">Chọn ít nhất một thứ</p></div>
+    <div><span class="state">Khoá</span>
+      <div class="choices"><button class="choice" disabled>Hộp thư</button><button class="choice" aria-checked="true" role="radio" disabled>Công việc</button></div></div>
+  </div>
+</section>
+
+<!-- ===== CARD + DÒNG ===== -->
+<section class="card flush">
+  <div class="card-head"><h3>Card chứa dòng việc</h3></div>
+  <ul class="list">
+    <li class="task"><span class="tick-slot"><button class="tick p1" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span>
+      <div class="task-body"><p class="task-title">Nộp báo cáo thuế quý 3</p><p class="task-meta"><span class="over">Quá hạn 2 ngày</span><span>·</span><span>Công việc</span></p></div></li>
+    <li class="task"><span class="tick-slot"><button class="tick p3" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span>
+      <div class="task-body"><p class="task-title">Tập thể dục</p><p class="task-meta"><span class="today">Hôm nay 06:30</span><span>·</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Lặp lại"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg><span>Hằng ngày</span></p></div></li>
+    <li class="task"><span class="tick-slot"><button class="tick" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span>
+      <div class="task-body"><p class="task-title">Gọi điện cho phòng khám nha khoa đặt lịch kiểm tra định kỳ cho cả nhà trước cuối tháng mười một</p></div></li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Dòng việc</h2>
+  <div class="stack">
+    <div><span class="state">Thường</span><ul class="list"><li class="task"><span class="tick-slot"><button class="tick p2" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span><div class="task-body"><p class="task-title">Mua sữa</p><p class="task-meta"><span>Thứ Sáu</span><span>·</span><span>Nhà</span></p></div></li></ul></div>
+    <div inert data-demo-state="hover"><span class="state">Rê / nhấn</span><ul class="list"><li class="task"><span class="tick-slot"><button class="tick p2" role="checkbox" aria-checked="false" aria-label="Xong"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span><div class="task-body"><p class="task-title">Mua sữa</p><p class="task-meta"><span>Thứ Sáu</span><span>·</span><span>Nhà</span></p></div></li></ul></div>
+    <div><span class="state">Đã xong (trong nhật ký)</span><ul class="list"><li class="task done"><span class="tick-slot"><button class="tick p2" role="checkbox" aria-checked="true" aria-label="Bỏ tick"><span class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></button></span><div class="task-body"><p class="task-title">Mua sữa</p><p class="task-meta"><span>Xong lúc 18:20</span></p></div></li></ul></div>
+  </div>
+</section>
+
+<!-- ===== MODAL ===== -->
+<section class="card">
+  <h2>Hộp xác nhận</h2>
+  <span class="state">Mở sẵn · xoá project</span>
+  <div class="backdrop" inert data-demo-state="open">
+    <div class="modal" role="dialog" aria-labelledby="m1">
+      <div><h3 id="m1">Xoá project “Công việc”?</h3><p>7 việc trong project này sẽ chuyển về Hộp thư. Việc đã xong vẫn còn trong nhật ký.</p></div>
+      <div class="modal-foot"><button class="btn btn-secondary">Huỷ</button><button class="btn btn-danger">Xoá project</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RỖNG ===== -->
+<section class="card">
+  <h2>Trạng thái rỗng</h2>
+  <span class="state">Danh sách không có việc</span>
+  <p class="empty">Hôm nay chưa có việc nào</p>
+  <span class="state">Ngày trong nhật ký không có mục</span>
+  <p class="empty">Ngày 03/11 chưa ghi việc nào</p>
+</section>
+
+</main>
+<script>
+// Nhóm màu nhấn gợi ý: chỉ để duyệt, không thuộc app.
+const lum = (h) => [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16) / 255)
+  .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+  .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+document.querySelectorAll('[data-accent]').forEach((b) => b.addEventListener('click', () => {
+  const [p, h, r] = b.dataset.accent.split(',');
+  const s = document.documentElement.style;
+  s.setProperty('--primary', p); s.setProperty('--primary-hover', h); s.setProperty('--ring-focus', r);
+  document.querySelectorAll('[data-accent]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+  document.getElementById('primary-hex').textContent = p;
+  document.getElementById('primary-ratio').textContent = (1.05 / (lum(p) + 0.05)).toFixed(2);
+}));
+</script>
+</body>
+</html>

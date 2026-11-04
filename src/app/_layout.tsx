@@ -13,6 +13,7 @@ export default function RootLayout() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
       </Stack.Protected>
+      <Stack.Screen name="design-system" />
     </Stack>
   );
 }
