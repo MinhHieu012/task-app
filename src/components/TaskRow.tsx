@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { type ComponentProps, useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { active, Empty, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
+import { active, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
 import { color, type Priority, radius, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
@@ -185,14 +185,17 @@ export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeC
         {loading
           ? [0, 1, 2].map((i) => <SkeletonRow key={i} />)
           : tasks.map((t) => (
-              <TaskRow
-                key={t.id}
-                task={t}
-                project={names ? (t.project_id ? names.get(t.project_id) ?? '' : '') : undefined}
-                hideDate={hideDate}
-                timeCol={timeCol}
-                compact={compact}
-              />
+              // Rows are keyed by id, so only rows that are new here fade in: the first load after the
+              // skeleton, a task just added, or one that moved group after a tick. Refetches don't replay it.
+              <FadeIn key={t.id}>
+                <TaskRow
+                  task={t}
+                  project={names ? (t.project_id ? names.get(t.project_id) ?? '' : '') : undefined}
+                  hideDate={hideDate}
+                  timeCol={timeCol}
+                  compact={compact}
+                />
+              </FadeIn>
             ))}
         {!loading && !tasks.length && empty && (compact ? <View style={s.emptyBox}><Empty>{empty}</Empty></View> : <Empty>{empty}</Empty>)}
       </View>

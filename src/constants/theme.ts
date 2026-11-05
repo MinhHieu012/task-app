@@ -71,6 +71,10 @@ export const text = {
   xs: { fontFamily: font, fontSize: 12, lineHeight: 16 },
 } as const;
 
+// Motion: one set of durations (ms) for the whole app. Enter = ease-out, exit = ease-in (see `motion` in ui.tsx).
+export const duration = { press: 120, fast: 150, base: 200, modal: 220, panel: 260, toast: 300 } as const;
+export const easeCss = 'cubic-bezier(0.33, 1, 0.68, 1)'; // web CSS transitions, same curve as Easing.out(Easing.cubic)
+
 export const shadowModal = '0 20px 25px -5px rgba(35,35,96,0.1), 0 8px 10px -6px rgba(35,35,96,0.1)';
 export const shadowPrimary = '0 6px 16px rgba(80,81,249,0.28)';
 

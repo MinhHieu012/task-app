@@ -69,7 +69,8 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
   };
 
   const remove = async () => {
-    if (!(await confirmAction('Xoá việc này?', task.completed_at ? 'Mục này cũng mất khỏi nhật ký.' : ''))) return;
+    const msg = `“${task.title}” sẽ bị xoá vĩnh viễn, không thể khôi phục.${task.completed_at ? ' Mục này cũng mất khỏi nhật ký.' : ''}`;
+    if (!(await confirmAction('Xoá việc này?', msg))) return;
     if (ok(await supabase.from('tasks').delete().eq('id', id))) onDone();
   };
 

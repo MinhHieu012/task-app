@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 import { fromIso, localDay, nextDue, parseDate, parseTime } from './dates.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
+import { answer, confirmAction, notifyStore, toast } from './notify.ts';
 import type { Project, Task } from './supabase.ts';
 
 // 2026-11-02 is a Monday.
@@ -101,5 +102,15 @@ assert.equal(Object.keys(counts).length, 30);
 assert.equal(counts['2026-11-01'], 0);
 assert.equal(counts[TUE], 2);
 assert.equal(counts[WED], 1);
+
+// notify: only the newest three toasts stay; a confirm resolves with the answer, a replaced one with false.
+for (const n of [1, 2, 3, 4]) toast(`m${n}`, 't');
+assert.deepEqual(notifyStore.get().toasts.map((t) => t.message), ['m2', 'm3', 'm4']);
+const first = confirmAction('a');
+const second = confirmAction('b');
+answer(true);
+assert.equal(await first, false);
+assert.equal(await second, true);
+assert.equal(notifyStore.get().asking, false);
 
 console.log('logic.check: all assertions passed');

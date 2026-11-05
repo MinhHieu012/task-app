@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Field, IconButton, type IconName, useWide } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
-import { showError } from '@/lib/notify';
+import { toast } from '@/lib/notify';
 import { ok, supabase } from '@/lib/supabase';
 
 type Mode = 'in' | 'up';
@@ -57,7 +57,7 @@ export default function SignIn() {
       // ponytail: sign-up stays open for the owner and test accounts; hide this tab once sign-ups are disabled.
       const res = await supabase.auth.signUp(creds);
       if (ok(res) && !res.data.session) {
-        showError('Mở link xác nhận trong email rồi đăng nhập.', 'Kiểm tra email');
+        toast('Mở link xác nhận trong email rồi đăng nhập.', 'Kiểm tra email');
         switchMode('in');
       }
     }
