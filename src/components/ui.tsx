@@ -121,8 +121,8 @@ export function Card({ title, action, flush, children }: { title?: ReactNode; ac
 }
 
 /* List row: tick or anything on the left, title and meta on the right */
-export function ListRow({ title, meta, left, done, selected, onPress }: {
-  title: string; meta?: ReactNode; left?: ReactNode; done?: boolean; selected?: boolean; onPress?: () => void;
+export function ListRow({ title, note, meta, left, done, selected, onPress }: {
+  title: string; note?: string | null; meta?: ReactNode; left?: ReactNode; done?: boolean; selected?: boolean; onPress?: () => void;
 }) {
   return (
     <Pressable
@@ -132,6 +132,7 @@ export function ListRow({ title, meta, left, done, selected, onPress }: {
       {left}
       <View style={st.rowBody}>
         <Text style={[st.rowTitle, done && st.rowDone]}>{title}</Text>
+        {note ? <Text style={[st.meta, { marginTop: 2 }]} numberOfLines={2}>{note}</Text> : null}
         {meta && <View style={st.rowMeta}>{meta}</View>}
       </View>
     </Pressable>

@@ -51,6 +51,8 @@ const task = (t: Partial<Task>): Task => ({
   priority: 4,
   due_date: null,
   due_time: null,
+  end_date: null,
+  end_time: null,
   repeat: null,
   completed_at: null,
   completed_day: null,
@@ -68,6 +70,7 @@ const rows = [
 ];
 assert.deepEqual(dayCounts(rows, TUE), { done: 2, missed: 2 });
 assert.deepEqual(dayCounts(rows, WED), { done: 1, missed: 0 });
+assert.deepEqual(dayCounts(rows, TUE, TUE), { done: 2, missed: 0 }); // the day isn't over yet
 
 // Grouping: no-project entries go to "Hộp thư" first, then projects by name.
 const projects: Project[] = [

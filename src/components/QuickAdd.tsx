@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
 import { Field } from '@/components/ui';
 import { color, radius } from '@/constants/theme';
+import { today } from '@/lib/dates';
 import { supabase, type Task } from '@/lib/supabase';
 
 /** Pinned add box: Enter saves; the text is cleared only after a successful insert (KTD7, AE5). */
@@ -17,7 +18,11 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…' }: { d
     const t = title.trim();
     if (!t || busy) return;
     setBusy(true);
-    const { error: e } = await supabase.from('tasks').insert({ title: t, ...(typeof defaults === 'function' ? defaults() : defaults) });
+    const d = typeof defaults === 'function' ? defaults() : defaults;
+    // No time given: starts now, ends at the end of that day.
+    const day = d.due_date ?? today();
+    const now = new Date().toTimeString().slice(0, 5);
+    const { error: e } = await supabase.from('tasks').insert({ title: t, due_date: day, due_time: now, end_date: day, end_time: '23:59:59', ...d });
     setBusy(false);
     if (e) return setError('Chưa lưu được. Kiểm tra mạng rồi thử lại.');
     setTitle('');

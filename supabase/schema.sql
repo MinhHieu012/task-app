@@ -17,7 +17,9 @@ create table tasks (
   note text,
   priority int not null default 4 check (priority between 1 and 4),
   due_date date,
-  due_time time,
+  due_time time, -- start time
+  end_date date,
+  end_time time,
   repeat text check (repeat ~ '^(daily|weekly:[0-6](,[0-6])*|monthly:([1-9]|[12][0-9]|3[01])|every:[1-9][0-9]*)$'),
   completed_at timestamptz,
   -- Local day on the device at tick time, frozen so later time-zone changes don't move it.
@@ -27,6 +29,8 @@ create table tasks (
   created_at timestamptz not null default now(),
   check ((completed_at is null) = (completed_day is null)),
   check (due_time is null or due_date is not null),
+  check ((end_date is null) = (end_time is null)),
+  check (end_time is null or (due_time is not null and (end_date, end_time) > (due_date, due_time))),
   check (repeat is null or due_date is not null)
 );
 
@@ -51,10 +55,11 @@ begin
   if not found then raise exception 'task not found'; end if;
   if p_next_due is null or p_next_due <= t.due_date then raise exception 'invalid next due date'; end if;
 
-  insert into tasks (project_id, title, note, priority, due_date, due_time, completed_at, completed_day, recurring_copy)
-  values (t.project_id, t.title, t.note, t.priority, t.due_date, t.due_time, p_completed_at, p_completed_day, true);
+  insert into tasks (project_id, title, note, priority, due_date, due_time, end_date, end_time, completed_at, completed_day, recurring_copy)
+  values (t.project_id, t.title, t.note, t.priority, t.due_date, t.due_time, t.end_date, t.end_time, p_completed_at, p_completed_day, true);
 
-  update tasks set due_date = p_next_due where id = p_task_id;
+  -- The end moves with the start, keeping the same span.
+  update tasks set due_date = p_next_due, end_date = p_next_due + (end_date - due_date) where id = p_task_id;
 end $$;
 
 alter publication supabase_realtime add table projects, tasks;

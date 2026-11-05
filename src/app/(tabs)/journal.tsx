@@ -25,7 +25,7 @@ export default function Journal() {
 
   const rows = [...new Map([...done, ...due].map((t) => [t.id, t])).values()];
   const counts = monthCounts(rows, year, month);
-  const missed = new Set(Object.keys(counts).filter((d) => d < today() && dayCounts(rows, d).missed > 0));
+  const missed = new Set(Object.keys(counts).filter((d) => dayCounts(rows, d).missed > 0));
   const { done: n, missed: m } = dayCounts(rows, day);
   const groups = groupByProject(done.filter((t) => t.completed_day === day), projects);
 
@@ -34,7 +34,7 @@ export default function Journal() {
   const logDefaults = () => {
     // Today: now. Another day: 12:00 local of that day (U6).
     const at = isToday ? new Date() : new Date(fromIso(day).setHours(12));
-    return { completed_at: at.toISOString(), completed_day: day };
+    return { completed_at: at.toISOString(), completed_day: day, due_date: day, due_time: at.toTimeString().slice(0, 5) };
   };
 
   const wide = useWide();

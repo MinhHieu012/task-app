@@ -35,7 +35,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "node src/lib/logic.check.ts"
+    "test": "node src/lib/logic.check.ts",
+    "supabase": "node --env-file=.env.local scripts/supabase.mjs",
+    "db:push": "node --env-file=.env.local scripts/supabase.mjs db push"
   },
   "private": true
 }

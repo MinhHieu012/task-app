@@ -1,4 +1,4 @@
-import { toIso } from './dates.ts';
+import { today, toIso } from './dates.ts';
 import type { Project, Task } from './supabase.ts';
 
 export const INBOX = 'Hộp thư';
@@ -16,11 +16,11 @@ export function groupByProject(entries: Task[], projects: Project[]) {
     .sort((a, b) => (a.id === null ? -1 : b.id === null ? 1 : a.name.localeCompare(b.name, 'vi')));
 }
 
-/** R12: tasks done that day, and tasks due that day but not done by its end (by the stored due date). */
-export function dayCounts(rows: Task[], day: string) {
+/** R12: tasks done that day, and tasks due that day but not done by its end (by the stored due date). Today and later: nothing missed yet. */
+export function dayCounts(rows: Task[], day: string, todayIso = today()) {
   return {
     done: rows.filter((t) => t.completed_day === day).length,
-    missed: rows.filter((t) => t.due_date === day && (!t.completed_day || t.completed_day > day)).length,
+    missed: day >= todayIso ? 0 : rows.filter((t) => t.due_date === day && (!t.completed_day || t.completed_day > day)).length,
   };
 }
 
