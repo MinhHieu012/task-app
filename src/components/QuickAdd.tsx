@@ -1,18 +1,39 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, TextInput } from 'react-native';
 
 import { Field } from '@/components/ui';
-import { color, radius } from '@/constants/theme';
+import { color, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
 import { supabase, type Task } from '@/lib/supabase';
 
-/** Pinned add box: Enter saves; the text is cleared only after a successful insert (KTD7, AE5). */
+// The last mounted quick add box answers "Thêm việc" buttons and the N shortcut.
+let focusLatest: (() => void) | null = null;
+export const focusQuickAdd = () => focusLatest?.();
+
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  document.addEventListener('keydown', (e) => {
+    const el = e.target as HTMLElement | null;
+    if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || el?.closest('input, textarea, [contenteditable="true"]')) return;
+    e.preventDefault();
+    focusQuickAdd();
+  });
+}
+
+/** Add box: Enter saves; the text is cleared only after a successful insert (KTD7, AE5). */
 /** `defaults` may be a function so values like "now" are taken at submit time. */
-export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…' }: { defaults?: Partial<Task> | (() => Partial<Task>); placeholder?: string }) {
+export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…', flat }: { defaults?: Partial<Task> | (() => Partial<Task>); placeholder?: string; flat?: boolean }) {
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
+
+  useEffect(() => {
+    const focus = () => input.current?.focus();
+    focusLatest = focus;
+    return () => {
+      if (focusLatest === focus) focusLatest = null;
+    };
+  }, []);
 
   const add = async () => {
     const t = title.trim();
@@ -31,6 +52,8 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…' }: { d
 
   return (
     <Field
+      ref={input}
+      icon="add-circle-outline"
       value={title}
       onChangeText={(v) => {
         setTitle(v);
@@ -42,17 +65,14 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…' }: { d
       submitBehavior="submit"
       returnKeyType="done"
       error={error}
-      style={s.input}
-      right={
-        <Pressable onPress={add} disabled={busy} accessibilityRole="button" accessibilityLabel="Thêm" style={({ pressed }) => [s.send, pressed && { backgroundColor: color.primaryHover }]}>
-          {busy ? <ActivityIndicator color={color.primaryFg} /> : <Ionicons name="arrow-up" size={20} color={color.primaryFg} />}
-        </Pressable>
-      }
+      boxStyle={flat ? undefined : s.raised}
+      trailing={busy ? <ActivityIndicator color={color.primary} /> : Platform.OS === 'web' ? <Text style={s.kbd}>N</Text> : null}
     />
   );
 }
 
 const s = StyleSheet.create({
-  input: { height: 48, borderRadius: radius.full, paddingHorizontal: 20 },
-  send: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: color.primary, alignItems: 'center', justifyContent: 'center' },
+  // On the gray page the field color vanishes, so the box gets a white face and a border; `flat` is for the white top bar.
+  raised: { backgroundColor: color.surface, borderColor: color.borderStrong },
+  kbd: { ...text.xs, fontSize: 11, lineHeight: 18, color: color.muted, borderWidth: 1, borderColor: color.borderStrong, borderRadius: 6, paddingHorizontal: 6, backgroundColor: color.surface },
 });

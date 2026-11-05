@@ -1,29 +1,32 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
-import { type ComponentProps, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Sidebar } from '@/components/Sidebar';
+import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
 import { TaskForm } from '@/components/TaskForm';
-import { useWide } from '@/components/ui';
+import { type IconName, useWide } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
 import { useReminders } from '@/lib/reminders';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
-type Icon = ComponentProps<typeof Ionicons>['name'];
-const tab = (title: string, icon: Icon) => ({
+const tab = (title: string, icon: IconName, badge?: number) => ({
   title,
   tabBarIcon: ({ color: c }: { color: unknown }) => <Ionicons name={icon} size={22} color={c as string} />,
   // Own label: the default one clips Vietnamese diacritics on web.
   tabBarLabel: ({ color: c, focused }: { color: unknown; focused: boolean }) => (
-    <Text style={{ fontSize: 12, lineHeight: 16, fontWeight: focused ? '600' : '500', color: c as string }}>{title}</Text>
+    <Text style={{ ...text.xs, fontWeight: focused ? '600' : '500', color: c as string }}>{title}</Text>
   ),
+  tabBarBadge: badge || undefined,
+  tabBarBadgeStyle: { backgroundColor: color.danger, color: '#fff', fontFamily: text.xs.fontFamily, fontSize: 10, fontWeight: '600' as const },
 });
+const icon = (label: string) => NAV.find((n) => n.label === label)!.icon;
 
 export default function TabLayout() {
   useReminders();
   const wide = useWide();
+  const over = useOverdue();
   const [selected, select] = useState<string | null>(null);
 
   const tabs = (
@@ -35,14 +38,14 @@ export default function TabLayout() {
         tabBarActiveTintColor: color.primary,
         tabBarInactiveTintColor: color.muted,
         tabBarLabelPosition: 'below-icon',
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, height: 64, paddingTop: 6, paddingBottom: 8 },
+        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.border, height: 64, paddingTop: 6, paddingBottom: 8 },
       }}
     >
-      <Tabs.Screen name="index" options={tab('Hôm nay', 'sunny-outline')} />
-      <Tabs.Screen name="upcoming" options={tab('Sắp tới', 'calendar-outline')} />
-      <Tabs.Screen name="inbox" options={tab('Hộp thư', 'file-tray-outline')} />
-      <Tabs.Screen name="projects" options={tab('Project', 'folder-outline')} />
-      <Tabs.Screen name="journal" options={tab('Nhật ký', 'book-outline')} />
+      <Tabs.Screen name="index" options={tab('Hôm nay', icon('Hôm nay'), over)} />
+      <Tabs.Screen name="upcoming" options={tab('Sắp tới', icon('Sắp tới'))} />
+      <Tabs.Screen name="inbox" options={tab('Hộp thư', icon('Hộp thư'))} />
+      <Tabs.Screen name="projects" options={tab('Project', icon('Project'))} />
+      <Tabs.Screen name="journal" options={tab('Nhật ký', icon('Nhật ký'))} />
       {/* Hidden from the tab bar but still routable (href: null drops the URL). */}
       <Tabs.Screen name="project/[id]" options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
@@ -52,15 +55,20 @@ export default function TabLayout() {
   return (
     <Selection.Provider value={{ id: selected, select }}>
       <View style={s.row}>
-        <Sidebar />
-        <View style={s.main}>{tabs}</View>
-        {selected && <TaskPanel id={selected} onClose={() => select(null)} />}
+        <Rail />
+        <View style={s.main}>
+          <TopBar />
+          <View style={s.body}>
+            <View style={s.main}>{tabs}</View>
+            {selected && <TaskPanel id={selected} onClose={() => select(null)} />}
+          </View>
+        </View>
       </View>
     </Selection.Provider>
   );
 }
 
-/** Right-hand editor for the selected task on wide screens. */
+/** Right-hand editor for the selected task on wide screens; takes the place of a screen's aside. */
 function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [rows, , loaded] = useRows<Task>('tasks', (q) => q.eq('id', id), id);
   const [projects] = useRows<Project>('projects', (q) => q.order('name'));
@@ -71,12 +79,12 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
     <View style={s.panel}>
       <View style={s.head}>
         <Text style={s.crumb}>{task ? project : loaded ? 'Việc đã bị xoá' : ''}</Text>
-        <Pressable onPress={onClose} accessibilityLabel="Đóng" style={({ pressed }) => [s.close, pressed && { backgroundColor: color.itemHover }]}>
-          <Ionicons name="close" size={18} color={color.foreground} />
+        <Pressable onPress={onClose} accessibilityLabel="Đóng" style={(st) => [s.close, (st.pressed || (st as { hovered?: boolean }).hovered) && { backgroundColor: color.itemHover }]}>
+          <Ionicons name="close" size={18} color={color.muted} />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={s.body}>
-        {task && <TaskForm key={task.id} task={task} projects={projects} onDone={onClose} />}
+      <ScrollView contentContainerStyle={s.panelBody}>
+        {task && <TaskForm key={task.id} task={task} projects={projects} onDone={onClose} bare />}
       </ScrollView>
     </View>
   );
@@ -85,9 +93,11 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
 const s = StyleSheet.create({
   row: { flex: 1, flexDirection: 'row', backgroundColor: color.background },
   main: { flex: 1, minWidth: 0 },
-  panel: { width: 400, backgroundColor: color.background, borderLeftWidth: 1, borderLeftColor: color.borderStrong },
-  head: { flexDirection: 'row', alignItems: 'center', height: 56, paddingLeft: 20, paddingRight: 12, backgroundColor: color.surface, borderBottomWidth: 1, borderBottomColor: color.borderStrong },
-  crumb: { ...text.sm, color: color.muted, flex: 1 },
-  close: { width: 36, height: 36, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  body: { padding: 16, gap: 16 },
+  body: { flex: 1, flexDirection: 'row' },
+  // Same width as Today's aside, which steps aside while a task is open.
+  panel: { width: 360, backgroundColor: color.surface },
+  head: { flexDirection: 'row', alignItems: 'center', paddingTop: 20, paddingLeft: 28, paddingRight: 20 },
+  crumb: { ...text.meta, color: color.muted, flex: 1 },
+  close: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  panelBody: { paddingHorizontal: 28, paddingTop: 12, paddingBottom: 32, gap: 24 },
 });
