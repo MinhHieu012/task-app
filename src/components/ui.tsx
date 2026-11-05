@@ -1,8 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { type ComponentProps, type ComponentRef, type ReactNode, type Ref, useState } from 'react';
+import { type ComponentProps, type ComponentRef, type ReactNode, type Ref, useEffect, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -21,6 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   color,
+  duration,
+  easeCss,
   font,
   priority as pColor,
   priorityBg,
@@ -35,6 +40,41 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 // react-native-web also reports hover; native only has pressed.
 export const active = (s: PressableStateCallbackType) => s.pressed || !!(s as { hovered?: boolean }).hovered;
+
+/* Motion. The OS "reduce motion" setting (prefers-reduced-motion on web) is kept in one module flag
+   instead of a hook per component. Under it, fades still run (they don't move anything) but movement and
+   scale are dropped: components read the flag when they build their transforms. */
+let reduceMotion = false;
+export const reducedMotion = () => reduceMotion;
+AccessibilityInfo.isReduceMotionEnabled().then((v) => { reduceMotion = v; });
+AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => { reduceMotion = v; });
+
+// react-native-web has no native animated module and warns if asked for it.
+const nativeDriver = Platform.OS !== 'web';
+export const ease = { out: Easing.out(Easing.cubic), in: Easing.in(Easing.cubic), inOut: Easing.inOut(Easing.ease) };
+
+/** Timing animation on transform/opacity values. Enter with ease.out (default), exit with ease.in. */
+export const animate = (v: Animated.Value, toValue: number, ms: number, easing = ease.out) =>
+  Animated.timing(v, { toValue, duration: ms, easing, useNativeDriver: nativeDriver });
+
+// Web: eases colour changes on views that are not Pressables themselves (the global [tabindex] rule covers those).
+export const webEase = Platform.OS === 'web'
+  ? ({ transitionProperty: 'background-color, border-color, box-shadow', transitionDuration: `${duration.fast}ms`, transitionTimingFunction: easeCss } as ViewStyle)
+  : null;
+
+/** Fades its children in on mount, rising 6px (or sliding in from `x` px to the right). For content that appears. */
+export function FadeIn({ children, x, ms = duration.base, style }: { children: ReactNode; x?: number; ms?: number; style?: ViewStyle }) {
+  const [v] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const a = animate(v, 1, ms);
+    a.start();
+    return () => a.stop();
+  }, [v, ms]);
+  const shift = v.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : x ?? 6, 0] });
+  return <Animated.View style={[style, { opacity: v, transform: [x ? { translateX: shift } : { translateY: shift }] }]}>{children}</Animated.View>;
+}
+
+const pressed = (s: PressableStateCallbackType) => s.pressed && st.pressed;
 
 /* Button */
 type Variant = 'outline' | 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -59,6 +99,7 @@ export function Button({ title, icon, onPress, variant = 'outline', disabled, lo
       style={(s) => [
         st.btn,
         { backgroundColor: active(s) ? v.bgActive : v.bg, borderColor: v.border ?? 'transparent' },
+        pressed(s),
         disabled && !loading && st.disabled,
         style,
       ]}
@@ -77,7 +118,7 @@ export function IconButton({ icon, label, onPress, tint, surface, size = 32 }: {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={(s) => [st.iconBtn, { width: size, height: size }, surface && st.iconBtnSurface, tint && { backgroundColor: color.primaryLight }, !tint && active(s) && { backgroundColor: surface ? color.buttonHover : color.itemHover }]}
+      style={(s) => [st.iconBtn, { width: size, height: size }, surface && st.iconBtnSurface, tint && { backgroundColor: color.primaryLight }, !tint && active(s) && { backgroundColor: surface ? color.buttonHover : color.itemHover }, pressed(s)]}
     >
       <Ionicons name={icon} size={18} color={tint ? color.primary : color.muted} />
     </Pressable>
@@ -133,6 +174,7 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
         <View
           style={[
             st.inputBox,
+            webEase,
             boxStyle,
             focus && { borderColor: error ? color.error : color.primary, backgroundColor: color.surface, boxShadow: `0 0 0 4px ${error ? color.errorRing : color.ringFocus}` },
             !!error && !focus && { borderColor: color.error },
@@ -154,7 +196,7 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
         </View>
         {right}
       </View>
-      {(error || hint) && <Text style={[st.hint, !!error && { color: color.errorText }]}>{error || hint}</Text>}
+      {error ? <ErrorText key={error}>{error}</ErrorText> : hint ? <Text style={st.hint}>{hint}</Text> : null}
     </View>
   );
 }
@@ -200,20 +242,33 @@ export function Meta({ children, tone }: { children: ReactNode; tone?: 'over' | 
 export function ConfirmModal({ visible, title, message, confirmText = 'Xoá', onCancel, onConfirm, busy }: {
   visible: boolean; title: string; message?: string; confirmText?: string; onCancel: () => void; onConfirm: () => void; busy?: boolean;
 }) {
+  // Backdrop fades, card fades + scales from 0.96. The Modal stays mounted (`shown`) until the exit finishes.
+  const [shown, setShown] = useState(visible);
+  if (visible && !shown) setShown(true);
+  const [v] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const a = visible ? animate(v, 1, duration.modal) : animate(v, 0, duration.fast, ease.in);
+    a.start(({ finished }) => { if (finished && !visible) setShown(false); });
+    return () => a.stop();
+  }, [visible, v]);
+  const scale = v.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 1 : 0.96, 1] });
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={st.backdrop}>
-        <View style={st.modal}>
-          <View>
-            <Text style={st.cardTitle}>{title}</Text>
-            {message && <Text style={st.modalText}>{message}</Text>}
+    <Modal visible={shown} transparent animationType="none" onRequestClose={onCancel}>
+      <Animated.View style={[st.backdrop, { opacity: v }]}>
+        <Animated.View style={[st.modal, { transform: [{ scale }] }]}>
+          <View style={st.modalHead}>
+            <View style={st.modalIcon}><Ionicons name="trash-outline" size={22} color={color.danger} /></View>
+            <View style={st.modalBody}>
+              <Text style={st.cardTitle}>{title}</Text>
+              {message && <Text style={st.modalText}>{message}</Text>}
+            </View>
           </View>
           <View style={st.modalFoot}>
             <Button title="Huỷ" variant="secondary" onPress={onCancel} />
-            <Button title={confirmText} variant="danger" onPress={onConfirm} loading={busy} />
+            <Button title={confirmText} icon="trash-outline" variant="danger" onPress={onConfirm} loading={busy} />
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -292,6 +347,7 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 export function EmptyState({ icon, title, children, action }: { icon: IconName; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
+    <FadeIn>
     <Card>
       <View style={st.emptyBox}>
         <View style={st.emptyIcon}><Ionicons name={icon} size={26} color={color.primary} /></View>
@@ -300,12 +356,20 @@ export function EmptyState({ icon, title, children, action }: { icon: IconName; 
         {action && <View style={st.emptyAction}>{action}</View>}
       </View>
     </Card>
+    </FadeIn>
   );
 }
 
-/* Gray placeholder block while rows load */
+/* Gray placeholder block while rows load; a slow opacity pulse says "still loading". Static under reduce motion. */
 export function Skeleton({ width, height, round }: { width: ViewStyle['width']; height: number; round?: boolean }) {
-  return <View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: color.skeleton }} />;
+  const [v] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    if (reduceMotion) return;
+    const a = Animated.loop(Animated.sequence([animate(v, 0.5, 800, ease.inOut), animate(v, 1, 800, ease.inOut)]));
+    a.start();
+    return () => a.stop();
+  }, [v]);
+  return <Animated.View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: color.skeleton, opacity: v }} />;
 }
 
 /* Round tick in the priority color; done fills green */
@@ -313,9 +377,16 @@ export function Tick({ priority = 4, checked, onPress, disabled, size = 24 }: {
   priority?: Priority; checked?: boolean; onPress?: () => void; disabled?: boolean; size?: number;
 }) {
   const c = pColor[priority];
+  // Ticking is the app's main action: a short spring pop confirms the tap before the row moves.
+  const [scale] = useState(() => new Animated.Value(1));
+  const pop = () => {
+    if (reduceMotion) return;
+    scale.setValue(0.8);
+    Animated.spring(scale, { toValue: 1, friction: 6, tension: 180, useNativeDriver: nativeDriver }).start();
+  };
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { pop(); onPress?.(); }}
       disabled={disabled}
       accessibilityRole="checkbox"
       accessibilityLabel={checked ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'}
@@ -324,17 +395,19 @@ export function Tick({ priority = 4, checked, onPress, disabled, size = 24 }: {
       style={[disabled && st.disabled]}
     >
       {(s) => (
-        <View
+        <Animated.View
           style={[
             st.tick,
+            webEase,
             { width: size, height: size, borderRadius: size / 2, borderWidth: size >= 32 ? 2 : 1.5, borderColor: checked ? color.success : c },
             checked && { backgroundColor: color.success },
+            { transform: [{ scale }] },
           ]}
         >
           {(checked || active(s)) && (
             <Ionicons name="checkmark" size={size * 0.5} color={checked ? '#fff' : c} style={!checked && { opacity: 0.6 }} />
           )}
-        </View>
+        </Animated.View>
       )}
     </Pressable>
   );
@@ -379,13 +452,19 @@ export function Choices<T extends string | number>({ options, value, onChange, l
           );
         })}
       </View>
-      {error && <Text style={[st.hint, { color: color.errorText }]}>{error}</Text>}
+      {error && <ErrorText key={error}>{error}</ErrorText>}
     </View>
   );
 }
 
+/* Validation message: keyed by its text at the call site, so each new error fades in instead of popping. */
+function ErrorText({ children }: { children: string }) {
+  return <FadeIn ms={duration.fast}><Text style={[st.hint, { color: color.errorText }]}>{children}</Text></FadeIn>;
+}
+
 export const st = StyleSheet.create({
   disabled: { opacity: 0.5 },
+  pressed: { transform: [{ scale: 0.97 }] },
   hidden: { opacity: 0 },
 
   btn: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.ctl, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
@@ -425,7 +504,10 @@ export const st = StyleSheet.create({
 
   backdrop: { flex: 1, backgroundColor: color.backdrop, justifyContent: 'center', alignItems: 'center', padding: 16 },
   modal: { width: '100%', maxWidth: 400, backgroundColor: color.surface, borderRadius: radius.lg, padding: 24, gap: 24, boxShadow: shadowModal },
-  modalText: { ...text.sm, lineHeight: 22, color: color.muted, marginTop: 8 },
+  modalHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
+  modalIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: color.dangerBg, alignItems: 'center', justifyContent: 'center' },
+  modalBody: { flex: 1, minWidth: 0, paddingTop: 8 },
+  modalText: { ...text.sm, lineHeight: 22, color: color.muted, marginTop: 4 },
   modalFoot: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 },
 
   screen: { flex: 1, backgroundColor: color.background },

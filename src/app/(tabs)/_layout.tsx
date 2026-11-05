@@ -5,8 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
 import { TaskForm } from '@/components/TaskForm';
-import { type IconName, useWide } from '@/components/ui';
-import { color, radius, text } from '@/constants/theme';
+import { FadeIn, type IconName, useWide } from '@/components/ui';
+import { color, duration, radius, text } from '@/constants/theme';
 import { useReminders } from '@/lib/reminders';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -35,6 +35,8 @@ export default function TabLayout() {
       tabBar={wide ? () => null : undefined}
       screenOptions={{
         headerShown: false,
+        // Cross-fade between tabs (opacity only, no movement, so it stays fine for reduce-motion users).
+        animation: 'fade',
         tabBarActiveTintColor: color.primary,
         tabBarInactiveTintColor: color.muted,
         tabBarLabelPosition: 'below-icon',
@@ -76,7 +78,7 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const project = projects.find((p) => p.id === task?.project_id)?.name ?? 'Hộp thư';
 
   return (
-    <View style={s.panel}>
+    <FadeIn x={24} ms={duration.panel} style={s.panel}>
       <View style={s.head}>
         <Text style={s.crumb}>{task ? project : loaded ? 'Việc đã bị xoá' : ''}</Text>
         <Pressable onPress={onClose} accessibilityLabel="Đóng" style={(st) => [s.close, (st.pressed || (st as { hovered?: boolean }).hovered) && { backgroundColor: color.itemHover }]}>
@@ -86,7 +88,7 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
       <ScrollView contentContainerStyle={s.panelBody}>
         {task && <TaskForm key={task.id} task={task} projects={projects} onDone={onClose} bare />}
       </ScrollView>
-    </View>
+    </FadeIn>
   );
 }
 

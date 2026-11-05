@@ -5,7 +5,7 @@ import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar'
 import { QuickAdd } from '@/components/QuickAdd';
 import { Stat, StatRow, statText } from '@/components/Stat';
 import { TaskGroup } from '@/components/TaskRow';
-import { Badge, Card, EmptyState, Screen, useWide } from '@/components/ui';
+import { Badge, Card, EmptyState, Screen, useWide, webEase } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
 import { fmtDay, fromIso, toIso, today } from '@/lib/dates';
 import { dayCounts, groupByProject, monthCounts } from '@/lib/journal';
@@ -152,6 +152,7 @@ function MonthChart({ counts, missed, selected, onSelect }: { counts: Record<str
                     <View
                       style={[
                         s.bar,
+                        webEase,
                         { height: v ? 6 + (v / max) * 114 : 4 },
                         { backgroundColor: on ? color.primary : (st as { hovered?: boolean }).hovered ? color.chartBarHover : v ? color.chartBar : color.border },
                         future && { opacity: 0.4 },
