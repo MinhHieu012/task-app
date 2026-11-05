@@ -15,7 +15,9 @@ export type Task = {
   note: string | null;
   priority: number;
   due_date: string | null;
-  due_time: string | null;
+  due_time: string | null; // start time
+  end_date: string | null;
+  end_time: string | null;
   repeat: string | null;
   completed_at: string | null;
   completed_day: string | null;

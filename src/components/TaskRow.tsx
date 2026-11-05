@@ -4,7 +4,7 @@ import { useContext, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card, ListRow, Meta, Tick } from '@/components/ui';
-import { color, type Priority, text } from '@/constants/theme';
+import { color, priority as pColor, type Priority, text } from '@/constants/theme';
 import { addDays, fmtDay, localDay, nextDue, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { ok, type Project, supabase, type Task } from '@/lib/supabase';
@@ -37,13 +37,32 @@ export async function toggleDone(t: Task) {
   return ok(await tasks.update(done).eq('id', t.id));
 }
 
+function dayName(d: string) {
+  const day = today();
+  if (d === day) return 'Hôm nay';
+  if (d === addDays(day, -1)) return 'Hôm qua';
+  if (d === addDays(day, 1)) return 'Ngày mai';
+  return fmtDay(d);
+}
+
+/** Last day a task is open: its end day, or its start day when it has no end. */
+export const endDay = (t: Task) => t.end_date ?? t.due_date;
+
+/** "09:00", "09:00–10:30", or "22:00 – Ngày mai 02:00" when the end is on another day. */
+const timeRange = (t: Task) => {
+  if (!t.due_time) return '';
+  const start = t.due_time.slice(0, 5);
+  if (!t.end_time) return start;
+  const end = t.end_time.slice(0, 5);
+  return t.end_date === t.due_date ? `${start}–${end}` : `${start} – ${dayName(t.end_date!)} ${end}`;
+};
+
 function dueMeta(t: Task) {
   if (!t.due_date) return null;
   const day = today();
-  const time = t.due_time?.slice(0, 5);
-  if (t.due_date < day) return <Meta tone="over">{t.due_date === addDays(day, -1) ? 'Hôm qua' : fmtDay(t.due_date)}</Meta>;
-  if (t.due_date === day) return <Meta tone="today">{time ? `Hôm nay ${time}` : 'Hôm nay'}</Meta>;
-  return <Meta>{[t.due_date === addDays(day, 1) ? 'Ngày mai' : fmtDay(t.due_date), time].filter(Boolean).join(' ')}</Meta>;
+  const label = [dayName(t.due_date), timeRange(t)].filter(Boolean).join(' ');
+  if (endDay(t)! < day) return <Meta tone="over">{label}</Meta>;
+  return <Meta tone={t.due_date <= day ? 'today' : undefined}>{label}</Meta>;
 }
 
 export function TaskRow({ task, project, hideDate }: { task: Task; project?: string; hideDate?: boolean }) {
@@ -52,7 +71,7 @@ export function TaskRow({ task, project, hideDate }: { task: Task; project?: str
   const done = !!task.completed_at;
   const parts = [
     !done && !hideDate && dueMeta(task),
-    hideDate && task.due_time && <Meta>{task.due_time.slice(0, 5)}</Meta>,
+    hideDate && task.due_time && <Meta>{timeRange(task)}</Meta>,
     // Journal entries: local time of completion; a recurring copy shows just the repeat icon.
     done && <Meta>{new Date(task.completed_at!).toTimeString().slice(0, 5)}</Meta>,
     (task.repeat || task.recurring_copy) && (
@@ -62,11 +81,14 @@ export function TaskRow({ task, project, hideDate }: { task: Task; project?: str
       </View>
     ),
     project && <Meta>{project}</Meta>,
+    // Level 4 is the default ("no priority"), so only 1-3 get a label.
+    task.priority < 4 && <Text style={[text.xs, { color: pColor[task.priority as Priority], fontWeight: '500' }]}>Mức {task.priority}</Text>,
   ].filter(Boolean);
 
   return (
     <ListRow
       title={task.title}
+      note={task.note}
       selected={sel?.id === task.id}
       onPress={() => (sel ? sel.select(task.id) : router.push({ pathname: '/task/[id]', params: { id: task.id } }))}
       left={

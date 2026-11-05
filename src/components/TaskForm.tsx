@@ -21,6 +21,8 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
   const [projectId, setProjectId] = useState(task.project_id ?? '');
   const [date, setDate] = useState(ddmmyyyy(task.due_date));
   const [time, setTime] = useState(task.due_time?.slice(0, 5) ?? '');
+  const [endDate, setEndDate] = useState(task.end_date === task.due_date ? '' : ddmmyyyy(task.end_date));
+  const [endTime, setEndTime] = useState(task.end_time?.slice(0, 5) ?? '');
   const [kind, setKind] = useState(k0 as Kind);
   const [weekDays, setWeekDays] = useState<number[]>(k0 === 'weekly' ? arg0.split(',').map(Number) : []);
   const [everyN, setEveryN] = useState(k0 === 'every' ? arg0 : '');
@@ -35,6 +37,14 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
     if (date.trim() && !due) e.date = 'Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY';
     if (time.trim() && !at) e.time = 'Giờ phải từ 00:00 đến 23:59';
     if (at && !due && !e.date) e.time = 'Đặt giờ thì cần có ngày';
+    // End day left blank = same day as the start.
+    const endDue = endDate.trim() ? parseDate(endDate) : due;
+    const end = endTime.trim() ? parseTime(endTime) : null;
+    if (endDate.trim() && !endDue) e.endDate = 'Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY';
+    if (endDate.trim() && !endTime.trim()) e.endTime = 'Đặt ngày kết thúc thì cần có giờ kết thúc';
+    else if (endTime.trim() && !end) e.endTime = 'Giờ phải từ 00:00 đến 23:59';
+    else if (end && !at && !e.time) e.endTime = 'Đặt giờ kết thúc thì cần có giờ bắt đầu';
+    else if (end && at && endDue && due && `${endDue} ${end}` <= `${due} ${at}`) e.endTime = 'Thời gian kết thúc phải sau lúc bắt đầu';
     if (kind && !due && !e.date) e.repeat = 'Việc lặp lại cần có ngày bắt đầu';
     if (kind === 'weekly' && !weekDays.length) e.repeat = 'Chọn ít nhất một thứ';
     if (kind === 'every' && !/^[1-9]\d*$/.test(everyN.trim())) e.repeat = 'Gõ số ngày, từ 1 trở lên';
@@ -48,7 +58,7 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
       : kind || null;
     setBusy(true);
     const res = await supabase.from('tasks').update({
-      title: title.trim(), note: note.trim() || null, priority: prio, project_id: projectId || null, due_date: due, due_time: at, repeat,
+      title: title.trim(), note: note.trim() || null, priority: prio, project_id: projectId || null, due_date: due, due_time: at, end_date: end && endDue, end_time: end, repeat,
     }).eq('id', id);
     setBusy(false);
     if (ok(res)) onDone();
@@ -84,7 +94,7 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
       <Card title="Hạn và lặp lại">
         <View style={s.form}>
           <Field
-            label="Ngày"
+            label="Ngày bắt đầu"
             value={date}
             onChangeText={setDate}
             placeholder="DD/MM"
@@ -93,12 +103,30 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
             right={date ? <Button title="Bỏ" variant="ghost" onPress={() => setDate('')} /> : undefined}
           />
           <Field
-            label="Giờ"
+            label="Giờ bắt đầu"
             value={time}
             onChangeText={setTime}
             placeholder="HH:MM"
             error={errors.time}
             right={time ? <Button title="Bỏ" variant="ghost" onPress={() => setTime('')} /> : undefined}
+          />
+          <Field
+            label="Ngày kết thúc"
+            value={endDate}
+            onChangeText={setEndDate}
+            placeholder="DD/MM"
+            hint="Để trống nếu kết thúc cùng ngày bắt đầu"
+            error={errors.endDate}
+            right={endDate ? <Button title="Bỏ" variant="ghost" onPress={() => setEndDate('')} /> : undefined}
+          />
+          <Field
+            label="Giờ kết thúc"
+            value={endTime}
+            onChangeText={setEndTime}
+            placeholder="HH:MM"
+            hint="Không bắt buộc"
+            error={errors.endTime}
+            right={endTime ? <Button title="Bỏ" variant="ghost" onPress={() => setEndTime('')} /> : undefined}
           />
           <View style={s.group}>
             <Text style={s.label}>Lặp lại</Text>
