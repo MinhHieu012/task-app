@@ -1,11 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useContext, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { type ComponentProps, useContext, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, ListRow, Meta, Tick } from '@/components/ui';
-import { color, priority as pColor, type Priority, text } from '@/constants/theme';
-import { addDays, fmtDay, localDay, nextDue, today } from '@/lib/dates';
+import { active, Empty, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
+import { color, type Priority, radius, text } from '@/constants/theme';
+import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { ok, type Project, supabase, type Task } from '@/lib/supabase';
 
@@ -48,91 +48,185 @@ function dayName(d: string) {
 /** Last day a task is open: its end day, or its start day when it has no end. */
 export const endDay = (t: Task) => t.end_date ?? t.due_date;
 
+/** Open tasks split by deadline, overdue first; empty groups dropped. */
+export function groupByDue(open: Task[], day = today()) {
+  const groups: [string, Task[]][] = [
+    ['Quá hạn', open.filter((t) => t.due_date && endDay(t)! < day)],
+    ['Hôm nay', open.filter((t) => t.due_date && t.due_date <= day && endDay(t)! >= day)],
+    ['Sắp tới', open.filter((t) => t.due_date && t.due_date > day)],
+    ['Chưa hẹn', open.filter((t) => !t.due_date)],
+  ];
+  return groups.filter(([, list]) => list.length);
+}
+
+/** Whole days between two ISO days. */
+const daysBetween = (from: string, to: string) => Math.round((fromIso(to).getTime() - fromIso(from).getTime()) / 86_400_000);
+
 /** "09:00", "09:00–10:30", or "22:00 – Ngày mai 02:00" when the end is on another day. */
 const timeRange = (t: Task) => {
   if (!t.due_time) return '';
   const start = t.due_time.slice(0, 5);
-  if (!t.end_time) return start;
+  if (!t.end_time || t.end_time.startsWith('23:59')) return start; // quick add ends at 23:59: just "from now"
   const end = t.end_time.slice(0, 5);
   return t.end_date === t.due_date ? `${start}–${end}` : `${start} – ${dayName(t.end_date!)} ${end}`;
 };
 
-function dueMeta(t: Task) {
-  if (!t.due_date) return null;
-  const day = today();
-  const label = [dayName(t.due_date), timeRange(t)].filter(Boolean).join(' ');
-  if (endDay(t)! < day) return <Meta tone="over">{label}</Meta>;
-  return <Meta tone={t.due_date <= day ? 'today' : undefined}>{label}</Meta>;
-}
-
-export function TaskRow({ task, project, hideDate }: { task: Task; project?: string; hideDate?: boolean }) {
-  const [busy, setBusy] = useState(false);
-  const sel = useContext(Selection);
-  const done = !!task.completed_at;
-  const parts = [
-    !done && !hideDate && dueMeta(task),
-    hideDate && task.due_time && <Meta>{timeRange(task)}</Meta>,
-    // Journal entries: local time of completion; a recurring copy shows just the repeat icon.
-    done && <Meta>{new Date(task.completed_at!).toTimeString().slice(0, 5)}</Meta>,
-    (task.repeat || task.recurring_copy) && (
-      <View style={s.rep}>
-        <Ionicons name="repeat" size={12} color={color.muted} />
-        {!done && task.repeat && <Meta>{repeatLabel(task.repeat)}</Meta>}
-      </View>
-    ),
-    project && <Meta>{project}</Meta>,
-    // Level 4 is the default ("no priority"), so only 1-3 get a label.
-    task.priority < 4 && <Text style={[text.xs, { color: pColor[task.priority as Priority], fontWeight: '500' }]}>Mức {task.priority}</Text>,
-  ].filter(Boolean);
-
+type Icon = ComponentProps<typeof Ionicons>['name'];
+function M({ icon, children, tone }: { icon?: Icon; children: string; tone?: 'over' }) {
+  const c = tone === 'over' ? color.danger : color.muted;
   return (
-    <ListRow
-      title={task.title}
-      note={task.note}
-      selected={sel?.id === task.id}
-      onPress={() => (sel ? sel.select(task.id) : router.push({ pathname: '/task/[id]', params: { id: task.id } }))}
-      left={
-        <Tick
-          priority={task.priority as Priority}
-          checked={done}
-          disabled={busy}
-          onPress={async () => {
-            setBusy(true);
-            await toggleDone(task);
-            setBusy(false);
-          }}
-        />
-      }
-      meta={parts.length ? parts.map((p, i) => <View key={i} style={s.rep}>{i > 0 && <Meta>· </Meta>}{p}</View>) : undefined}
-    />
+    <View style={s.m}>
+      {icon && <Ionicons name={icon} size={14} color={c} />}
+      <Text style={[s.mText, { color: c }, tone && { fontWeight: '500' }]}>{children}</Text>
+    </View>
   );
 }
 
-/** A card of task rows with a small heading and count; amber for overdue. */
-export function TaskGroup({ title, tasks, projects, over, hideDate, empty }: {
-  title: string; tasks: Task[]; projects: Project[]; over?: boolean; hideDate?: boolean; empty?: string;
+/** One task as a white card row (Figma "Task" row).
+ *  timeCol: Today's layout, a left column with "Bắt đầu 9:00" or "Hạn 02/11 · Trễ 3 ngày".
+ *  compact: narrow columns (Sắp tới), no priority tag. */
+export function TaskRow({ task, project, hideDate, timeCol, compact }: {
+  task: Task; project?: string; hideDate?: boolean; timeCol?: boolean; compact?: boolean;
 }) {
-  const names = new Map(projects.map((p) => [p.id, p.name]));
+  const [busy, setBusy] = useState(false);
+  const sel = useContext(Selection);
+  const wide = useWide();
+  const done = !!task.completed_at;
+  const day = today();
+  const last = endDay(task);
+  const over = !done && !!last && last < day;
+  const late = over ? `Trễ ${daysBetween(last!, day)} ngày` : '';
+  const range = timeRange(task);
+  const side = wide && timeCol;
+
+  const tick = (
+    <Tick
+      priority={task.priority as Priority}
+      checked={done}
+      disabled={busy}
+      size={wide ? 36 : 28}
+      onPress={async () => {
+        setBusy(true);
+        await toggleDone(task);
+        setBusy(false);
+      }}
+    />
+  );
+
+  const meta = [
+    // Today on a phone: the time column is gone, so lateness and start move into the meta line.
+    timeCol && !side && over && <M key="late" icon="alert-circle-outline" tone="over">{late}</M>,
+    timeCol && !side && !over && range && <M key="start" icon="time-outline">{range}</M>,
+    project !== undefined && <M key="p" icon={project ? 'folder-outline' : 'file-tray-outline'}>{project || 'Hộp thư'}</M>,
+    !timeCol && !hideDate && !done && task.due_date && (
+      <M key="d" icon="calendar-clear-outline" tone={over ? 'over' : undefined}>{[dayName(task.due_date), range].filter(Boolean).join(' · ')}</M>
+    ),
+    !timeCol && !hideDate && !done && !task.due_date && <M key="nd">Chưa có hạn</M>,
+    (hideDate || side) && range && range.includes('–') && <M key="t" icon="time-outline">{range}</M>,
+    hideDate && !side && range && !range.includes('–') && <M key="t1" icon="time-outline">{range}</M>,
+    done && <M key="at" icon="checkmark-circle-outline">{new Date(task.completed_at!).toTimeString().slice(0, 5)}</M>,
+    (task.repeat || task.recurring_copy) && <M key="r" icon="repeat-outline">{!done && task.repeat ? repeatLabel(task.repeat) : 'Lặp lại'}</M>,
+    task.note && <M key="n" icon="document-text-outline">{task.note}</M>,
+  ].filter(Boolean);
+
+  const selected = sel?.id === task.id;
   return (
-    <Card
-      flush
-      title={
-        <Text style={[s.title, over && { color: color.warning }]}>
-          {title} <Text style={s.count}>{tasks.length || ''}</Text>
-        </Text>
-      }
+    <Pressable
+      onPress={() => (sel ? sel.select(selected ? null : task.id) : router.push({ pathname: '/task/[id]', params: { id: task.id } }))}
+      style={(st) => [s.row, active(st) && { borderColor: color.borderStrong }, selected && s.selected]}
     >
-      {tasks.map((t) => (
-        <TaskRow key={t.id} task={t} project={t.project_id ? names.get(t.project_id) : undefined} hideDate={hideDate} />
-      ))}
-      {!tasks.length && empty && <Text style={s.empty}>{empty}</Text>}
-    </Card>
+      {side ? (
+        <View style={s.timeCol}>
+          {tick}
+          <View>
+            {over ? (
+              <>
+                <Text style={s.timeL}>Hạn {fmtDay(last!)}</Text>
+                <M icon="alert-circle-outline" tone="over">{late}</M>
+              </>
+            ) : task.due_time ? (
+              <>
+                <Text style={s.timeL}>Bắt đầu</Text>
+                <M icon="time-outline">{task.due_time.slice(0, 5)}</M>
+              </>
+            ) : (
+              <>
+                <Text style={s.timeL}>Cả ngày</Text>
+                <M>Chưa hẹn giờ</M>
+              </>
+            )}
+          </View>
+        </View>
+      ) : (
+        <View style={[s.tickCol, !wide && s.tickColNarrow]}>{tick}</View>
+      )}
+      <View style={[s.body, !wide && s.bodyNarrow, !side && { paddingLeft: wide ? 16 : 12 }]}>
+        <Text style={[s.title, done && s.done]}>{task.title}</Text>
+        {meta.length > 0 && <View style={s.meta}>{meta}</View>}
+      </View>
+      {wide && !compact && (
+        <View style={s.side}>
+          <PriorityTag priority={task.priority} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+/** Heading with count, then one card per task. Skeleton rows while loading. */
+export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeCol, compact, loading }: {
+  title: string; tasks: Task[]; projects?: Project[]; over?: boolean; hideDate?: boolean; empty?: string; timeCol?: boolean; compact?: boolean; loading?: boolean;
+}) {
+  const names = projects && new Map(projects.map((p) => [p.id, p.name]));
+  return (
+    <View>
+      <GroupTitle title={title} count={loading ? 0 : tasks.length} over={over} />
+      <View style={s.rows}>
+        {loading
+          ? [0, 1, 2].map((i) => <SkeletonRow key={i} />)
+          : tasks.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                project={names ? (t.project_id ? names.get(t.project_id) ?? '' : '') : undefined}
+                hideDate={hideDate}
+                timeCol={timeCol}
+                compact={compact}
+              />
+            ))}
+        {!loading && !tasks.length && empty && (compact ? <View style={s.emptyBox}><Empty>{empty}</Empty></View> : <Empty>{empty}</Empty>)}
+      </View>
+    </View>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <View style={[s.row, { alignItems: 'center' }]}>
+      <View style={s.tickCol}><Skeleton width={32} height={32} round /></View>
+      <View style={[s.body, { gap: 10 }]}>
+        <Skeleton width="60%" height={14} />
+        <Skeleton width="30%" height={12} />
+      </View>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  rep: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  title: { ...text.smMedium, fontWeight: '600', color: color.foreground },
-  count: { fontWeight: '400', color: color.muted },
-  empty: { ...text.sm, color: color.muted, paddingHorizontal: 12, paddingBottom: 8 },
+  rows: { gap: 12 },
+  emptyBox: { borderRadius: radius.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.borderStrong },
+  row: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: 'transparent' },
+  selected: { borderColor: color.primary, boxShadow: `0 0 0 3px ${color.ringFocus}` },
+  timeCol: { width: 184, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 20, borderRightWidth: 1, borderRightColor: color.border },
+  timeL: { ...text.meta, fontWeight: '500', color: color.foreground, marginBottom: 2 },
+  tickCol: { paddingLeft: 20, paddingVertical: 16, justifyContent: 'center' },
+  tickColNarrow: { paddingLeft: 14, paddingVertical: 14, justifyContent: 'flex-start' },
+  body: { flex: 1, minWidth: 0, paddingVertical: 16, paddingHorizontal: 20, justifyContent: 'center', gap: 6 },
+  bodyNarrow: { paddingVertical: 12, paddingHorizontal: 14, gap: 4 },
+  title: { ...text.body, color: color.foreground },
+  done: { color: color.muted, textDecorationLine: 'line-through' },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 },
+  m: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  mText: { ...text.meta, flexShrink: 1 },
+  side: { width: 148, paddingVertical: 16, paddingHorizontal: 20, alignItems: 'flex-end', justifyContent: 'center' },
 });

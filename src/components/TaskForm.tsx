@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Choices, Field } from '@/components/ui';
@@ -12,7 +12,11 @@ const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const ddmmyyyy = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '');
 
 /** Edit form for one task; mount with key={task.id} so switching tasks resets it. */
-export function TaskForm({ task, projects, onDone }: { task: Task; projects: Project[]; onDone: () => void }) {
+export function TaskForm({ task, projects, onDone, bare }: { task: Task; projects: Project[]; onDone: () => void; bare?: boolean }) {
+  // bare: straight on the white side panel; otherwise white cards on the gray page.
+  // A plain function, not a component: a component defined here would remount the inputs on every keystroke.
+  const box = (children: ReactNode, title?: string) =>
+    bare ? <View style={s.form}>{title && <Text style={s.section}>{title}</Text>}{children}</View> : <Card title={title}>{children}</Card>;
   const id = task.id;
   const [k0, arg0 = ''] = (task.repeat ?? '').split(':');
   const [title, setTitle] = useState(task.title);
@@ -71,7 +75,7 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
 
   return (
     <>
-      <Card>
+      {box(
         <View style={s.form}>
           <Field label="Tên việc" value={title} onChangeText={setTitle} error={errors.title} />
           <Field label="Ghi chú" value={note} onChangeText={setNote} multiline style={s.note} placeholder="Không bắt buộc" />
@@ -81,17 +85,17 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
               layout="cols"
               value={prio}
               onChange={setPrio}
-              options={([1, 2, 3, 4] as const).map((n) => ({ value: n, label: `Mức ${n}`, dot: priority[n] }))}
+              options={([1, 2, 3, 4] as const).map((n) => ({ value: n, label: n === 4 ? 'Thường' : `Mức ${n}`, dot: priority[n] }))}
             />
           </View>
           <View style={s.group}>
             <Text style={s.label}>Project</Text>
             <Choices value={projectId} onChange={setProjectId} options={[{ value: '', label: 'Hộp thư' }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} />
           </View>
-        </View>
-      </Card>
+        </View>,
+      )}
 
-      <Card title="Hạn và lặp lại">
+      {box(
         <View style={s.form}>
           <Field
             label="Ngày bắt đầu"
@@ -154,8 +158,9 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
             {kind === 'monthly' && <Text style={s.muted}>Lặp vào ngày {date ? date.split('/')[0] : '…'} mỗi tháng (theo ngày ở trên).</Text>}
             {kind === 'every' && <Field value={everyN} onChangeText={setEveryN} placeholder="Số ngày, ví dụ 3" keyboardType="number-pad" aria-label="Số ngày" />}
           </View>
-        </View>
-      </Card>
+        </View>,
+        'Hạn và lặp lại',
+      )}
 
       <View style={s.actions}>
         <Button title="Xoá việc" variant="danger" onPress={remove} />
@@ -168,7 +173,8 @@ export function TaskForm({ task, projects, onDone }: { task: Task; projects: Pro
 const s = StyleSheet.create({
   form: { gap: 16 },
   group: { gap: 8 },
-  label: { ...text.smMedium, color: color.foreground },
+  label: { ...text.meta, fontWeight: '500', color: color.soft },
+  section: { ...text.h2, color: color.foreground, marginTop: 4 },
   muted: { ...text.sm, color: color.muted },
   note: { height: 88, paddingTop: 12, textAlignVertical: 'top' },
   actions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingBottom: 24 },
