@@ -37,11 +37,34 @@ create table tasks (
 create index tasks_user_completed_day on tasks (user_id, completed_day);
 create index tasks_user_due_date on tasks (user_id, due_date);
 
+-- Checklist inside a task. One level only: a subtask is not a task, so it never shows in lists or the journal.
+create table subtasks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  task_id uuid not null references tasks on delete cascade,
+  title text not null,
+  done boolean not null default false,
+  -- Start = start_date + start_time, end = end_date + end_time. Fitting inside the parent's span is checked in the app.
+  start_date date,
+  start_time time,
+  end_date date,
+  end_time time,
+  created_at timestamptz not null default now(),
+  check (start_time is null or start_date is not null),
+  check (end_time is null or end_date is not null),
+  check (end_date is null or (start_date is not null and end_date >= start_date)),
+  check (end_time is null or start_time is null or (end_date, end_time) > (start_date, start_time))
+);
+
+create index subtasks_task on subtasks (task_id);
+
 alter table projects enable row level security;
 alter table tasks enable row level security;
+alter table subtasks enable row level security;
 
 create policy "own rows" on projects for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "own rows" on tasks for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own rows" on subtasks for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Tick a recurring task: insert a done copy for the journal and move the original to its next due date,
 -- in one transaction. Security invoker, so RLS hides other users' tasks.
@@ -60,6 +83,9 @@ begin
 
   -- The end moves with the start, keeping the same span.
   update tasks set due_date = p_next_due, end_date = p_next_due + (end_date - due_date) where id = p_task_id;
+  -- The checklist moves with the task and starts the next round unticked.
+  update subtasks set done = false, start_date = start_date + (p_next_due - t.due_date), end_date = end_date + (p_next_due - t.due_date)
+  where task_id = p_task_id;
 end $$;
 
-alter publication supabase_realtime add table projects, tasks;
+alter publication supabase_realtime add table projects, tasks, subtasks;

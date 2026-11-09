@@ -24,6 +24,7 @@ export type Task = {
   recurring_copy: boolean;
   created_at: string;
 };
+export type Subtask = { id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
 
 export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, process.env.EXPO_PUBLIC_SUPABASE_KEY!, {
   auth: {
