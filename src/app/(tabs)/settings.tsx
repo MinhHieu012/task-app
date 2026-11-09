@@ -4,14 +4,14 @@ import { createElement, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Button, Card, Choices, Field, InfoLine, Screen, useWide } from '@/components/ui';
-import { color, radius, rule, text } from '@/constants/theme';
+import { color, dark, radius, rule, text } from '@/constants/theme';
 import { accentTokens, ACCENTS, DEFAULT_ACCENT, isHex } from '@/lib/accent';
 import { fmtDay, localDay } from '@/lib/dates';
 import { getLang, type Lang, LANGS, tr } from '@/lib/i18n';
 import { getPref, restart, setPref } from '@/lib/prefs';
 import { toast } from '@/lib/notify';
 import { ok, supabase, useSession } from '@/lib/supabase';
-
+type Theme = 'light' | 'dark' | 'system';
 
 export default function Settings() {
   const session = useSession();
@@ -22,13 +22,16 @@ export default function Settings() {
   const current = (getPref('accent') ?? DEFAULT_ACCENT).toLowerCase();
   const [hex, setHex] = useState(current);
   const [lang, setLangPick] = useState<Lang>(getLang());
+  const theme0 = (getPref('theme') ?? 'system') as Theme;
+  const [theme, setTheme] = useState<Theme>(theme0);
   const accent = accentTokens(isHex(hex) ? hex : current).primary; // what the app will really use (light picks get darkened)
-  const dirty = lang !== getLang() || accent !== current;
+  const dirty = lang !== getLang() || accent !== current || theme !== theme0;
 
-  // Both settings are device-local and applied together by one reload: styles and strings are fixed at startup.
+  // All three settings are device-local and applied together by one reload: styles and strings are fixed at startup.
   const apply = () => {
     setPref('lang', lang);
     setPref('accent', accent);
+    setPref('theme', theme);
     restart();
   };
 
@@ -60,11 +63,23 @@ export default function Settings() {
 
       <PasswordCard email={user?.email ?? ''} wide={wide} />
 
+      <Card title={tr('Giao diện')}>
+        <Choices<Theme>
+          value={theme}
+          onChange={setTheme}
+          options={[
+            { value: 'light', label: tr('Sáng') },
+            { value: 'dark', label: tr('Tối') },
+            { value: 'system', label: tr('Theo hệ thống') },
+          ]}
+        />
+      </Card>
+
       <AccentCard hex={hex} setHex={setHex} shown={accent} />
 
       <View style={s.applyRow}>
-        <Text style={[s.meta, s.info]}>{tr('Đổi ngôn ngữ hoặc màu sẽ tải lại ứng dụng.')}</Text>
-        {dirty && <Button title={tr('Hoàn tác')} variant="ghost" onPress={() => { setHex(current); setLangPick(getLang()); }} />}
+        <Text style={[s.meta, s.info]}>{tr('Đổi ngôn ngữ, giao diện hoặc màu sẽ tải lại ứng dụng.')}</Text>
+        {dirty && <Button title={tr('Hoàn tác')} variant="ghost" onPress={() => { setHex(current); setLangPick(getLang()); setTheme(theme0); }} />}
         <Button title={tr('Áp dụng')} variant="primary" disabled={!dirty} onPress={apply} />
       </View>
     </Screen>
@@ -167,7 +182,7 @@ function AccentCard({ hex, setHex, shown }: { hex: string; setHex: (h: string) =
 
 /** Wide screens: the picked colour on a few real pieces of the app, before the reload that applies it. */
 function Preview({ hex }: { hex: string }) {
-  const t = accentTokens(isHex(hex) ? hex : getPref('accent') ?? DEFAULT_ACCENT);
+  const t = accentTokens(isHex(hex) ? hex : getPref('accent') ?? DEFAULT_ACCENT, dark);
   const bars = [3, 5, 2, 6, 4, 7, 5];
   return (
     <>

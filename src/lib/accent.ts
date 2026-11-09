@@ -60,9 +60,23 @@ export function neutral(hex: string, accent: string) {
   return fromHsl((h + turn + 360) % 360, s, l);
 }
 
-/** Tokens for an accent. A light pick is darkened until white text on it reads (4.5:1), so buttons stay legible. */
-export function accentTokens(input: string) {
+/** The dark theme's sheet; the accent is lightened against it. */
+export const DARK_SURFACE = '#24211e';
+
+/** Tokens for an accent. A light pick is darkened until white text on it reads (4.5:1), so buttons stay legible.
+ *  Dark theme: the accent is lightened until it reads as text on the dark sheet, and carries dark text instead. */
+export function accentTokens(input: string, dark = false) {
   let primary = isHex(input) ? input.trim().toLowerCase() : DEFAULT_ACCENT;
+  if (dark) {
+    while (contrast(primary, DARK_SURFACE) < 4.5) primary = mix(primary, '#ffffff', 0.05);
+    return {
+      primary,
+      hover: mix(primary, '#ffffff', 0.15),
+      light: mix(primary, DARK_SURFACE, 0.82),
+      bar: mix(primary, DARK_SURFACE, 0.55),
+      barHover: mix(primary, DARK_SURFACE, 0.35),
+    };
+  }
   while (contrast(primary, '#ffffff') < 4.5) primary = mix(primary, '#000000', 0.05);
   return {
     primary,

@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar';
 import { ReportBadge } from '@/components/Report';
-import { active, Empty, EmptyState, Field, Screen } from '@/components/ui';
+import { active, Button, Empty, EmptyState, Field, InfoLine, Screen } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
-import { fmtDate, fromIso } from '@/lib/dates';
+import { addDays, fmtDate, fromIso, today, toIso } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
-import { DEADLINE, matches, snippet } from '@/lib/reports';
+import { DEADLINE, matches, reportStats, reportStatus, snippet, type Status } from '@/lib/reports';
 import { type Report, useRows } from '@/lib/supabase';
 
 const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -17,9 +18,26 @@ export default function Reports() {
   const [reports, , loaded] = useRows<Report>('daily_reports', (q) => q.order('day', { ascending: false }));
   const [q, setQ] = useState('');
   const shown = q.trim() ? reports.filter((r) => matches(r.body, q)) : reports;
+  const now = today();
+  const mine = reports.find((r) => r.day === now);
+  const write = (
+    <Button
+      title={mine ? tr('Sửa báo cáo hôm nay') : tr('Viết báo cáo hôm nay')}
+      icon={mine ? 'create-outline' : 'add'}
+      variant={mine ? 'outline' : 'primary'}
+      onPress={() => router.push({ pathname: '/report/[day]', params: { day: now } })}
+    />
+  );
 
   return (
-    <Screen back title={tr('Báo cáo ngày')} sub={loaded ? tr('{n} báo cáo, {late} nộp trễ', { n: reports.length, late: reports.filter((r) => r.late).length }) : undefined}>
+    <Screen
+      back
+      title={tr('Báo cáo ngày')}
+      sub={loaded ? tr('{n} báo cáo, {late} nộp trễ', { n: reports.length, late: reports.filter((r) => r.late).length }) : undefined}
+      right={loaded ? write : undefined}
+      aside={loaded && reports.length ? <Overview reports={reports} /> : undefined}
+      maxWidth={880}
+    >
       <Field value={q} onChangeText={setQ} icon="search-outline" placeholder={tr('Tìm trong báo cáo…')} aria-label={tr('Tìm trong báo cáo')} autoCorrect={false} />
       {loaded && !reports.length && (
         <EmptyState icon="document-text-outline" title={tr('Chưa có báo cáo nào')}>
@@ -50,7 +68,55 @@ export default function Reports() {
   );
 }
 
+/** Wide screens: the month at a glance (report marks per day) and the running totals since the first report. */
+function Overview({ reports }: { reports: Report[] }) {
+  const [day, setDay] = useState(today);
+  const { year, month } = monthOf(day);
+  const by = new Map(reports.map((r) => [r.day, r]));
+  const since = reports.at(-1)?.day ?? null; // sorted newest first
+
+  const counts: Record<string, number> = {};
+  const missed = new Set<string>();
+  for (let d = 1, n = new Date(year, month, 0).getDate(); d <= n; d++) {
+    const iso = toIso(new Date(year, month - 1, d));
+    counts[iso] = by.get(iso)?.done_count ?? 0;
+    if (by.get(iso)?.missed_count) missed.add(iso);
+  }
+  const statuses: Record<string, Status> = Object.fromEntries(Object.keys(counts).map((d) => [d, reportStatus(d, by.get(d), since)]));
+
+  // ponytail: walks every day since the first report; fine for years of reports.
+  const days: string[] = [];
+  for (let d = since, end = today(); d && d <= end; d = addDays(d, 1)) days.push(d);
+  const st = reportStats(days, reports, since);
+
+  return (
+    <>
+      <MonthCalendar
+        year={year}
+        month={month}
+        selected={day}
+        counts={counts}
+        missed={missed}
+        reports={statuses}
+        onSelect={(d) => {
+          setDay(d);
+          router.push({ pathname: '/report/[day]', params: { day: d } });
+        }}
+        onMonth={(delta) => setDay(dayForMonth(year, month + delta))}
+      />
+      <View>
+        <Text style={s.asideTitle}>{tr('Tổng quan')}</Text>
+        <InfoLine icon="checkmark-circle-outline" label={tr('Đúng hạn')} n={st.ontime} tone={st.ontime ? color.success : undefined} />
+        <InfoLine icon="time-outline" label={tr('Nộp trễ')} n={st.late} tone={st.late ? color.warning : undefined} />
+        <InfoLine icon="alert-circle-outline" label={tr('Thiếu báo cáo')} n={st.missing} tone={st.missing ? color.danger : undefined} />
+        <InfoLine icon="flame-outline" label={tr('Chuỗi hiện tại')} n={tr('{n} ngày', { n: st.streak })} last />
+      </View>
+    </>
+  );
+}
+
 const s = StyleSheet.create({
+  asideTitle: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 12, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   list: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
   row: { paddingVertical: 14, paddingHorizontal: 16, gap: 6, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   last: { borderBottomWidth: 0 },

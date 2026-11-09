@@ -298,12 +298,13 @@ export const useWide = () => useWindowDimensions().width >= 1024;
 /* Screen: title, scrolling body, optional right aside (wide only) and footer pinned above the tab bar.
    On wide screens the top bar holds the quick add, so `footer` is hidden there unless `wideFooter`. */
 export function Screen({ title, sub, back, right, footer, wideFooter, aside, children, maxWidth = 760 }: {
-  title: string; sub?: string; back?: boolean; right?: ReactNode; footer?: ReactNode; wideFooter?: boolean; aside?: ReactNode; children: ReactNode; maxWidth?: number;
+  // `back`: narrow only, where there is no rail. 'always' also shows it on wide, for pages the rail can't reach.
+  title: string; sub?: string; back?: boolean | 'always'; right?: ReactNode; footer?: ReactNode; wideFooter?: boolean; aside?: ReactNode; children: ReactNode; maxWidth?: number;
 }) {
   const wide = useWide();
   const body = (
     <ScrollView style={st.screen} contentContainerStyle={[st.screenBody, wide && { padding: 32, gap: 28, maxWidth, alignSelf: 'flex-start' }]} keyboardShouldPersistTaps="handled">
-      {back && !wide && (
+      {back && (!wide || back === 'always') && (
         <Button
           title={tr('Quay lại')}
           icon="chevron-back"
