@@ -92,7 +92,7 @@ export default function SignIn() {
       <View style={{ gap: 16 }}>
         <Field
           label="Email"
-          placeholder={tr('bạn@email.com')}
+          placeholder={tr('ten@vidu.com')}
           value={email}
           onChangeText={setEmail}
           error={err('email')}
@@ -115,6 +115,7 @@ export default function SignIn() {
         {up && (
           <Field
             label={tr('Nhập lại mật khẩu')}
+            placeholder={tr('Gõ lại mật khẩu ở trên')}
             value={confirm}
             onChangeText={setConfirm}
             error={err('confirm')}
