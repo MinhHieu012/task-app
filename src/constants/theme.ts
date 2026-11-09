@@ -95,6 +95,8 @@ export const easeCss = 'cubic-bezier(0.33, 1, 0.68, 1)'; // web CSS transitions,
 // One soft shadow for things that float above the page (dialogs, toasts); sheets stay flat.
 export const shadowModal = '0 12px 32px rgba(35,33,29,0.12)';
 export const shadowPrimary = 'none';
+// The selected tab of a segmented control: lifted just off its rail.
+export const shadowRaised = '0 1px 2px rgba(35,33,29,0.12)';
 
 // Project marks, picked by the project's position in the name-sorted list. All >= 3:1 on the sheet.
 // The first follows the user's accent; a fixed mark equal to it is dropped so two projects never share it.

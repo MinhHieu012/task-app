@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { endDay } from '@/components/TaskRow';
-import { active, Button, EmptyState, Field, Screen, Skeleton, useWide } from '@/components/ui';
+import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
+import { active, Button, EmptyState, Field, InfoLine, Screen, Skeleton, useWide } from '@/components/ui';
 import { color, projectColor, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
+import { Selection } from '@/lib/selection';
 import { ok, type Project, supabase, type Task, useRows } from '@/lib/supabase';
 
 // Projects as one table on a sheet (app screens: tables before cards). Phones restack each row.
@@ -15,10 +16,11 @@ export default function Projects() {
   const day = today();
   const wide = useWide();
   const [projects, , loaded] = useRows<Project>('projects', (q) => q.order('name'));
-  const [open] = useRows<Task>('tasks', (q) => q.is('completed_at', null).not('project_id', 'is', null));
+  const [open] = useRows<Task>('tasks', (q) => q.is('completed_at', null).not('project_id', 'is', null).order('due_date', { nullsFirst: false }).order('priority'));
   const [done] = useRows<Task>('tasks', (q) => q.not('project_id', 'is', null).gte('completed_day', addDays(day, -6)), `pdone:${day}`);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const sel = useContext(Selection);
 
   const add = async () => {
     if (!name.trim() || busy) return;
@@ -37,8 +39,42 @@ export default function Projects() {
     </View>
   );
 
+  // Below the table: every open project task by due date, so the page shows the work, not just counts.
+  const byDue = groupByDue(open, day);
+  const count = (title: string) => byDue.find(([t]) => t === title)?.[1].length ?? 0;
+  const total = open.length + done.length;
+  const pct = total ? Math.round((done.length / total) * 100) : 0;
+
+  // Wide screens: an overview of all projects on the right, like the project detail screen.
+  const aside = (
+    <>
+      <View>
+        <Text style={s.title}>{tr('Tiến độ tuần này')}</Text>
+        <View style={s.pctRow}>
+          <Text style={s.pct}>{pct}%</Text>
+          <Text style={s.meta}>{tr('{done}/{total} việc đã xong', { done: done.length, total })}</Text>
+        </View>
+        <View style={s.track}>
+          <View style={[s.fill, { width: `${pct}%`, backgroundColor: color.primary }]} />
+        </View>
+      </View>
+      <View>
+        <Text style={s.title}>{tr('Theo hạn')}</Text>
+        <InfoLine icon="alert-circle-outline" label={tr('Quá hạn')} n={count(tr('Quá hạn'))} tone={count(tr('Quá hạn')) ? color.danger : undefined} />
+        <InfoLine icon="sunny-outline" label={tr('Hôm nay')} n={count(tr('Hôm nay'))} />
+        <InfoLine icon="calendar-outline" label={tr('Sắp tới')} n={count(tr('Sắp tới'))} />
+        <InfoLine icon="help-circle-outline" label={tr('Chưa hẹn ngày')} n={count(tr('Chưa hẹn'))} last />
+      </View>
+    </>
+  );
+
   return (
-    <Screen title="Project" sub={loaded ? tr('{p} project, {n} việc đang mở', { p: projects.length, n: open.length }) : undefined} maxWidth={1040}>
+    <Screen
+      title="Project"
+      sub={loaded ? tr('{p} project, {n} việc đang mở', { p: projects.length, n: open.length }) : undefined}
+      maxWidth={100000}
+      aside={loaded && projects.length > 0 && !sel?.id ? aside : undefined}
+    >
       {!loaded ? (
         <View style={s.sheet}>
           {[0, 1, 2].map((i) => (
@@ -121,6 +157,9 @@ export default function Projects() {
             })}
             {newRow}
           </View>
+          {byDue.map(([title, list]) => (
+            <TaskGroup key={title} title={title} tasks={list} projects={projects} over={title === tr('Quá hạn')} compact />
+          ))}
         </>
       )}
     </Screen>
@@ -128,6 +167,10 @@ export default function Projects() {
 }
 
 const s = StyleSheet.create({
+  // Aside heads match the project detail screen.
+  title: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  pctRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 8, marginBottom: 10 },
+  pct: { ...text.h1, fontSize: 40, lineHeight: 44, letterSpacing: -1.2, color: color.foreground, fontVariant: ['tabular-nums'] },
   sheet: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 56, paddingHorizontal: 20, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   rowNarrow: { flexDirection: 'column', alignItems: 'stretch', gap: 8, paddingVertical: 14, paddingHorizontal: 16 },
