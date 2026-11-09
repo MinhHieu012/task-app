@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { fromIso, today } from './dates';
 import { tr } from './i18n';
 import { reportReminders } from './reports';
-import { type Report, type Task, useRows } from './supabase';
+import { type Report, supabase, type Task, useRows } from './supabase';
 
 const native = Platform.OS !== 'web';
 
@@ -43,6 +43,14 @@ async function schedule(tasks: Task[], reported: string[]) {
 
 // Serialize reschedules so a quick second update can't interleave with the first.
 let queue = Promise.resolve();
+
+// Scheduled notifications carry task titles and live in the OS, not the React tree: drop them on any sign-out
+// (button, expired or revoked session) so the next person on the device doesn't see them.
+if (native) {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') queue = queue.then(() => Notifications.cancelAllScheduledNotificationsAsync()).catch(() => {});
+  });
+}
 
 /** Local notification at the due time of each open task that has one (R7, KTD8), and the daily report nudges.
  *  Does nothing on web (Today shows the report nudge instead). */
