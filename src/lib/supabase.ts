@@ -5,6 +5,7 @@ import { createClient, type PostgrestFilterBuilder, type Session } from '@supaba
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { tr } from './i18n';
 import { showError } from './notify';
 
 export type Project = { id: string; name: string; created_at: string };
@@ -55,8 +56,9 @@ AppState.addEventListener('change', (s) =>
 );
 
 /** Surfaces a Supabase error on web and native; returns true on success. */
-export function ok({ error }: { error: { message: string } | null }) {
-  if (error) showError(error.message);
+export function ok({ error }: { error: { message: string; code?: string } | null }) {
+  // Supabase's default mailer sends only a few emails an hour; say so in words the user can act on.
+  if (error) showError(error.code === 'over_email_send_rate_limit' ? tr('Đã gửi quá nhiều email trong một giờ. Đợi một lúc rồi thử lại.') : error.message);
   return !error;
 }
 
