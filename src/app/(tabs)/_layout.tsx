@@ -54,8 +54,10 @@ export default function TabLayout() {
       <Tabs.Screen name="inbox" options={tab('Hộp thư', icon('Hộp thư'))} />
       <Tabs.Screen name="projects" options={tab('Project', icon('Project'))} />
       <Tabs.Screen name="journal" options={tab('Nhật ký', icon('Nhật ký'))} />
-      {/* Hidden from the tab bar but still routable (href: null drops the URL). */}
+      {/* Hidden from the tab bar but still routable (href: null drops the URL). Settings opens from the
+          avatar on Today (narrow) or the rail (wide), so it does not take a sixth tab slot. */}
       <Tabs.Screen name="project/[id]" options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
   if (!wide) return tabs;

@@ -3,10 +3,10 @@ import { type Href, router, usePathname } from 'expo-router';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 
 import { QuickAdd } from '@/components/QuickAdd';
-import { type IconName } from '@/components/ui';
+import { Avatar, type IconName } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { fmtDay, fromIso, today } from '@/lib/dates';
-import { type Project, supabase, type Task, useRows, useSession } from '@/lib/supabase';
+import { type Project, type Task, useRows } from '@/lib/supabase';
 
 export const NAV: { href: Href; label: string; icon: IconName; match: (p: string) => boolean }[] = [
   { href: '/', label: 'Hôm nay', icon: 'sunny-outline', match: (p) => p === '/' },
@@ -26,9 +26,7 @@ export function useOverdue() {
 /** Wide screens: 88px icon rail on a warm paper step; labels show as tooltips on hover. */
 export function Rail() {
   const path = usePathname();
-  const session = useSession();
   const over = useOverdue();
-  const initial = (session?.user.email ?? '?')[0].toUpperCase();
 
   return (
     <View style={s.rail}>
@@ -39,8 +37,8 @@ export function Rail() {
         ))}
       </View>
       <View style={s.foot}>
-        <RailItem icon="log-out-outline" label="Đăng xuất" onPress={() => supabase.auth.signOut()} />
-        <View style={s.avatar} accessibilityLabel={session?.user.email}><Text style={s.avatarText}>{initial}</Text></View>
+        <RailItem icon="settings-outline" label="Cài đặt" on={path === '/settings'} onPress={() => router.navigate('/settings')} />
+        <Avatar />
       </View>
     </View>
   );
@@ -108,8 +106,6 @@ const s = StyleSheet.create({
   badgeText: { ...text.xs, fontSize: 10, lineHeight: 14, fontWeight: '600', color: color.primaryFg, fontVariant: ['tabular-nums'] },
   tip: { ...text.xs, position: 'absolute', left: 58, top: 14, backgroundColor: color.foreground, color: color.primaryFg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm, zIndex: 30, width: 'max-content' as never },
   foot: { alignItems: 'center', gap: 8 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { ...text.smMedium, fontWeight: '600', color: color.primary },
 
   top: { height: 72, flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 32, backgroundColor: color.surface, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   qa: { flex: 1, maxWidth: 460, marginHorizontal: 'auto' },

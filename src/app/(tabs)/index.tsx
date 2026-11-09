@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
 import { endDay, TaskGroup } from '@/components/TaskRow';
-import { active, Button, Empty, EmptyState, Screen, TextLink } from '@/components/ui';
+import { active, Avatar, Button, Empty, EmptyState, Screen, TextLink, useWide } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
@@ -19,6 +19,7 @@ const daysBetween = (a: string, b: string) => Math.round((fromIso(b).getTime() -
 export default function Today() {
   const day = today();
   const sel = useContext(Selection);
+  const wide = useWide();
   const [open, , loaded] = useRows<Task>(
     'tasks',
     (q) => q.is('completed_at', null).lte('due_date', day).order('due_date').order('due_time', { nullsFirst: false }).order('priority'),
@@ -132,6 +133,8 @@ export default function Today() {
       sub={`${WEEKDAY[fromIso(day).getDay()]}, ${fmtDay(day)}${loaded ? `, ${open.length} việc` : ''}`}
       footer={<QuickAdd defaults={{ due_date: day }} placeholder="Thêm việc cho hôm nay…" />}
       aside={sel?.id ? undefined : aside}
+      // Wide screens reach settings from the rail.
+      right={!wide && <View style={s.me}><Avatar onPress={() => router.navigate('/settings')} /></View>}
       maxWidth={100000}
     >
       <StatRow>
@@ -172,6 +175,8 @@ export default function Today() {
 }
 
 const s = StyleSheet.create({
+  // The header row aligns to the bottom; the avatar sits level with the title instead.
+  me: { alignSelf: 'flex-start' },
   groups: { gap: 28 },
   asideHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   asideTitle: { ...text.h2, color: color.foreground },

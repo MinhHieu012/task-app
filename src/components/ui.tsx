@@ -36,6 +36,7 @@ import {
   shadowModal,
   text,
 } from '@/constants/theme';
+import { useSession } from '@/lib/supabase';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -122,6 +123,22 @@ export function IconButton({ icon, label, onPress, tint, surface, size = 32 }: {
       style={(s) => [st.iconBtn, { width: size, height: size }, surface && st.iconBtnSurface, tint && { backgroundColor: color.primaryLight }, !tint && active(s) && { backgroundColor: surface ? color.buttonHover : color.itemHover }, pressed(s)]}
     >
       <Ionicons name={icon} size={18} color={tint ? color.primary : color.muted} />
+    </Pressable>
+  );
+}
+
+/* The signed-in user's initial on an accent wash; with onPress it is a button (opens settings) */
+export function Avatar({ size = 40, onPress }: { size?: number; onPress?: () => void }) {
+  const email = useSession()?.user.email;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `Cài đặt, ${email ?? ''}` : email}
+      style={(s) => [st.avatar, { width: size, height: size, borderRadius: size / 2 }, pressed(s)]}
+    >
+      <Text style={[st.avatarText, { fontSize: size * 0.42, lineHeight: size * 0.6 }]}>{(email ?? '?')[0].toUpperCase()}</Text>
     </Pressable>
   );
 }
@@ -474,6 +491,8 @@ export const st = StyleSheet.create({
 
   btn: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.ctl, borderWidth: rule.hair, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   btnText: { ...text.smMedium, lineHeight: 18, textAlign: 'center' },
+  avatar: { backgroundColor: color.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: font, fontWeight: '600', color: color.primary },
   iconBtn: { borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   iconBtnSurface: { borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.fieldEdge, backgroundColor: color.surface },
   link: { ...text.meta, fontWeight: '500', color: color.foreground, textDecorationLine: 'underline', textDecorationColor: color.primary },
