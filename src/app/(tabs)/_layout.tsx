@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
 import { TaskForm } from '@/components/TaskForm';
@@ -27,6 +28,7 @@ export default function TabLayout() {
   useReminders();
   const wide = useWide();
   const over = useOverdue();
+  const { bottom } = useSafeAreaInsets();
   const [selected, select] = useState<string | null>(null);
 
   const tabs = (
@@ -42,7 +44,9 @@ export default function TabLayout() {
         tabBarLabelPosition: 'below-icon',
         // The tab bar would otherwise sit between the footer input and the keyboard on Android.
         tabBarHideOnKeyboard: true,
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, borderTopWidth: rule.bar, height: 64, paddingTop: 6, paddingBottom: 8 },
+        // A fixed height/padding replaces the default safe-area padding, so add the bottom inset back
+        // or the labels sit on the home indicator / gesture bar.
+        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, borderTopWidth: rule.bar, height: 64 + bottom, paddingTop: 6, paddingBottom: 8 + bottom },
       }}
     >
       <Tabs.Screen name="index" options={tab('Hôm nay', icon('Hôm nay'), over)} />
@@ -50,8 +54,10 @@ export default function TabLayout() {
       <Tabs.Screen name="inbox" options={tab('Hộp thư', icon('Hộp thư'))} />
       <Tabs.Screen name="projects" options={tab('Project', icon('Project'))} />
       <Tabs.Screen name="journal" options={tab('Nhật ký', icon('Nhật ký'))} />
-      {/* Hidden from the tab bar but still routable (href: null drops the URL). */}
+      {/* Hidden from the tab bar but still routable (href: null drops the URL). Settings opens from the
+          avatar on Today (narrow) or the rail (wide), so it does not take a sixth tab slot. */}
       <Tabs.Screen name="project/[id]" options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
   if (!wide) return tabs;
