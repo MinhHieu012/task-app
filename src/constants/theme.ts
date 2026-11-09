@@ -3,14 +3,20 @@
 // terracotta accent for the primary action and the current selection only. The slate/ink/square version read cold.
 // Every text colour passes 4.5:1 on the sheet; priority 2 and 4 text sits a step darker than their marks.
 // Be Vietnam Pro stays the one family: it has full Vietnamese glyphs (DM Sans broke them). Loaded in src/app/_layout.tsx.
+import { accentTokens, DEFAULT_ACCENT } from '@/lib/accent';
+import { getPref } from '@/lib/prefs';
+
 export const font = 'Be Vietnam Pro';
 
+// The accent is the user's pick from Settings (default terracotta), read before any StyleSheet is built.
+const accent = accentTokens(getPref('accent') ?? DEFAULT_ACCENT);
+
 export const color = {
-  primary: '#b04a24', // terracotta accent
-  primaryHover: '#963c1b',
+  primary: accent.primary,
+  primaryHover: accent.hover,
   primaryFg: '#ffffff',
-  primaryLight: '#fdeee6', // selection wash
-  ringFocus: '#b04a24', // focus ring, drawn as an outline
+  primaryLight: accent.light, // selection wash
+  ringFocus: accent.primary, // focus ring, drawn as an outline
 
   background: '#f6f3ee', // cream stock
   surface: '#ffffff', // the sheet
@@ -32,8 +38,8 @@ export const color = {
   chipText: '#3f3b35',
   backdrop: 'rgba(35,33,29,0.4)',
   skeleton: '#efeae2',
-  chartBar: '#e9b8a2', // a tint of the accent, so data reads while the selected day stays the strongest
-  chartBarHover: '#d99476',
+  chartBar: accent.bar, // a tint of the accent, so data reads while the selected day stays the strongest
+  chartBarHover: accent.barHover,
   scrollbar: 'rgba(35,33,29,0.22)',
 
   danger: '#b42318',

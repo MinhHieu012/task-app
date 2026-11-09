@@ -7,6 +7,7 @@ import { endDay } from '@/components/TaskRow';
 import { active, Button, EmptyState, Field, Screen, Skeleton, useWide } from '@/components/ui';
 import { color, projectColor, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { ok, type Project, supabase, type Task, useRows } from '@/lib/supabase';
 
 // Projects as one table on a sheet (app screens: tables before cards). Phones restack each row.
@@ -28,16 +29,16 @@ export default function Projects() {
 
   const newRow = (
     <View style={[s.newRow, !wide && s.newRowNarrow]}>
-      <Text style={s.newLabel}>Project mới</Text>
+      <Text style={s.newLabel}>{tr('Project mới')}</Text>
       <View style={s.newField}>
-        <Field value={name} onChangeText={setName} placeholder="Tên project" aria-label="Tên project mới" onSubmitEditing={add} />
+        <Field value={name} onChangeText={setName} placeholder={tr('Tên project')} aria-label="Tên project mới" onSubmitEditing={add} />
       </View>
-      <Button title="Thêm project" icon="add" variant="primary" onPress={add} loading={busy} />
+      <Button title={tr('Thêm project')} icon="add" variant="primary" onPress={add} loading={busy} />
     </View>
   );
 
   return (
-    <Screen title="Project" sub={loaded ? `${projects.length} project, ${open.length} việc đang mở` : undefined} maxWidth={1040}>
+    <Screen title="Project" sub={loaded ? tr('{p} project, {n} việc đang mở', { p: projects.length, n: open.length }) : undefined} maxWidth={1040}>
       {!loaded ? (
         <View style={s.sheet}>
           {[0, 1, 2].map((i) => (
@@ -50,18 +51,18 @@ export default function Projects() {
       ) : (
         <>
           {!projects.length && (
-            <EmptyState icon="folder-open-outline" title="Chưa có project nào">
-              Gom các việc cùng mục tiêu vào một project. Tạo project đầu tiên ở dòng bên dưới.
+            <EmptyState icon="folder-open-outline" title={tr('Chưa có project nào')}>
+              {tr('Gom các việc cùng mục tiêu vào một project. Tạo project đầu tiên ở dòng bên dưới.')}
             </EmptyState>
           )}
           <View style={s.sheet}>
             {wide && projects.length > 0 && (
               <View style={[s.row, s.headRow]}>
                 <Text style={[s.th, s.cName]}>Project</Text>
-                <Text style={[s.th, s.cNum]}>Đang mở</Text>
-                <Text style={[s.th, s.cNum]}>Quá hạn</Text>
-                <Text style={[s.th, s.cWeek]}>Xong tuần này</Text>
-                <Text style={[s.th, s.cNext]}>Hạn gần nhất</Text>
+                <Text style={[s.th, s.cNum]}>{tr('Đang mở')}</Text>
+                <Text style={[s.th, s.cNum]}>{tr('Quá hạn')}</Text>
+                <Text style={[s.th, s.cWeek]}>{tr('Xong tuần này')}</Text>
+                <Text style={[s.th, s.cNext]}>{tr('Hạn gần nhất')}</Text>
                 <View style={s.cGo} />
               </View>
             )}
@@ -96,7 +97,7 @@ export default function Projects() {
                         {bar}
                         <Text style={s.td}>{doneN}/{total}</Text>
                       </View>
-                      <Text style={[s.td, s.cNext, !next && s.mutedText]}>{next ? fmtDay(next) : 'Chưa có hạn sắp tới'}</Text>
+                      <Text style={[s.td, s.cNext, !next && s.mutedText]}>{next ? fmtDay(next) : tr('Chưa có hạn sắp tới')}</Text>
                       <Ionicons name="chevron-forward" size={18} color={color.muted} style={s.cGo} />
                     </>
                   ) : (
@@ -107,12 +108,12 @@ export default function Projects() {
                         <Ionicons name="chevron-forward" size={18} color={color.muted} />
                       </View>
                       <View style={s.metaLine}>
-                        <Text style={s.meta}><Text style={s.b}>{mine.length}</Text> đang mở</Text>
-                        {over > 0 && <Text style={[s.meta, s.over]}><Text style={[s.b, s.over]}>{over}</Text> quá hạn</Text>}
-                        <Text style={s.meta}>Xong tuần này <Text style={s.b}>{doneN}/{total}</Text></Text>
+                        <Text style={s.meta}><Text style={s.b}>{mine.length}</Text> {tr('đang mở')}</Text>
+                        {over > 0 && <Text style={[s.meta, s.over]}><Text style={[s.b, s.over]}>{over}</Text> {tr('quá hạn')}</Text>}
+                        <Text style={s.meta}>{tr('Xong tuần này')} <Text style={s.b}>{doneN}/{total}</Text></Text>
                       </View>
                       {bar}
-                      <Text style={s.meta}>{next ? `Hạn gần nhất ${fmtDay(next)}` : 'Chưa có hạn sắp tới'}</Text>
+                      <Text style={s.meta}>{next ? tr('Hạn gần nhất {date}', { date: fmtDay(next) }) : tr('Chưa có hạn sắp tới')}</Text>
                     </>
                   )}
                 </Pressable>

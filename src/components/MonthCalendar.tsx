@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { color, radius, text } from '@/constants/theme';
 import { today, toIso } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 
 const WD = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
@@ -24,9 +25,9 @@ export function MonthCalendar({ year, month, selected, counts, missed, onSelect,
   return (
     <View style={s.root}>
       <View style={s.head}>
-        <NavButton icon="chevron-back" label="Tháng trước" onPress={() => onMonth(-1)} />
-        <Text style={s.title}>Tháng {month}, {year}</Text>
-        <NavButton icon="chevron-forward" label="Tháng sau" onPress={() => onMonth(1)} disabled={isCurrent} />
+        <NavButton icon="chevron-back" label={tr('Tháng trước')} onPress={() => onMonth(-1)} />
+        <Text style={s.title}>{tr('Tháng {m}, {y}', { m: month, y: year })}</Text>
+        <NavButton icon="chevron-forward" label={tr('Tháng sau')} onPress={() => onMonth(1)} disabled={isCurrent} />
       </View>
       <View style={s.grid}>
         {WD.map((d) => <Text key={d} style={s.wd}>{d}</Text>)}
@@ -40,7 +41,7 @@ export function MonthCalendar({ year, month, selected, counts, missed, onSelect,
               disabled={future}
               accessibilityRole="button"
               accessibilityState={{ selected: on, disabled: future }}
-              accessibilityLabel={`${d.slice(8)}/${d.slice(5, 7)}: ${n} việc xong`}
+              accessibilityLabel={tr('{date}: {n} việc xong', { date: `${d.slice(8)}/${d.slice(5, 7)}`, n })}
               style={({ pressed }) => [s.cell, s.day, pressed && { backgroundColor: color.itemHover }, on && { backgroundColor: color.primary }]}
             >
               <Text style={[s.n, future && s.future, d === now && s.today, on && { color: color.primaryFg }]}>{Number(d.slice(8))}</Text>

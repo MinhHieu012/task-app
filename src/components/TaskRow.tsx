@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { active, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
 import { color, type Priority, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { Selection } from '@/lib/selection';
 import { ok, type Project, type Subtask, supabase, type Task, useRows } from '@/lib/supabase';
 
@@ -13,10 +14,10 @@ const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 export function repeatLabel(repeat: string) {
   const [kind, arg] = repeat.split(':');
-  if (kind === 'daily') return 'Hằng ngày';
-  if (kind === 'weekly') return arg.split(',').map((d) => DAYS[Number(d)]).join(', ');
-  if (kind === 'monthly') return `Ngày ${arg} hằng tháng`;
-  return `Mỗi ${arg} ngày`;
+  if (kind === 'daily') return tr('Hằng ngày');
+  if (kind === 'weekly') return arg.split(',').map((d) => tr(DAYS[Number(d)])).join(', ');
+  if (kind === 'monthly') return tr('Ngày {d} hằng tháng', { d: arg });
+  return tr('Mỗi {n} ngày', { n: arg });
 }
 
 /** Tick, untick (KTD5). Returns true on success. */
@@ -39,9 +40,9 @@ export async function toggleDone(t: Task) {
 
 function dayName(d: string) {
   const day = today();
-  if (d === day) return 'Hôm nay';
-  if (d === addDays(day, -1)) return 'Hôm qua';
-  if (d === addDays(day, 1)) return 'Ngày mai';
+  if (d === day) return tr('Hôm nay');
+  if (d === addDays(day, -1)) return tr('Hôm qua');
+  if (d === addDays(day, 1)) return tr('Ngày mai');
   return fmtDay(d);
 }
 
@@ -51,10 +52,10 @@ export const endDay = (t: Task) => t.end_date ?? t.due_date;
 /** Open tasks split by deadline, overdue first; empty groups dropped. */
 export function groupByDue(open: Task[], day = today()) {
   const groups: [string, Task[]][] = [
-    ['Quá hạn', open.filter((t) => t.due_date && endDay(t)! < day)],
-    ['Hôm nay', open.filter((t) => t.due_date && t.due_date <= day && endDay(t)! >= day)],
-    ['Sắp tới', open.filter((t) => t.due_date && t.due_date > day)],
-    ['Chưa hẹn', open.filter((t) => !t.due_date)],
+    [tr('Quá hạn'), open.filter((t) => t.due_date && endDay(t)! < day)],
+    [tr('Hôm nay'), open.filter((t) => t.due_date && t.due_date <= day && endDay(t)! >= day)],
+    [tr('Sắp tới'), open.filter((t) => t.due_date && t.due_date > day)],
+    [tr('Chưa hẹn'), open.filter((t) => !t.due_date)],
   ];
   return groups.filter(([, list]) => list.length);
 }
@@ -95,7 +96,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
   const day = today();
   const last = endDay(task);
   const over = !done && !!last && last < day;
-  const late = over ? `Trễ ${daysBetween(last!, day)} ngày` : '';
+  const late = over ? tr('Trễ {n} ngày', { n: daysBetween(last!, day) }) : '';
   const range = timeRange(task);
   const side = wide && timeCol;
 
@@ -117,15 +118,15 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
     // Today on a phone: the time column is gone, so lateness and start move into the meta line.
     timeCol && !side && over && <M key="late" icon="alert-circle-outline" tone="over">{late}</M>,
     timeCol && !side && !over && range && <M key="start" icon="time-outline">{range}</M>,
-    project !== undefined && <M key="p" icon={project ? 'folder-outline' : 'file-tray-outline'}>{project || 'Hộp thư'}</M>,
+    project !== undefined && <M key="p" icon={project ? 'folder-outline' : 'file-tray-outline'}>{project || tr('Hộp thư')}</M>,
     !timeCol && !hideDate && !done && task.due_date && (
       <M key="d" icon="calendar-clear-outline" tone={over ? 'over' : undefined}>{[dayName(task.due_date), range].filter(Boolean).join(', ')}</M>
     ),
-    !timeCol && !hideDate && !done && !task.due_date && <M key="nd">Chưa có hạn</M>,
+    !timeCol && !hideDate && !done && !task.due_date && <M key="nd">{tr('Chưa có hạn')}</M>,
     (hideDate || side) && range && range.includes('–') && <M key="t" icon="time-outline">{range}</M>,
     hideDate && !side && range && !range.includes('–') && <M key="t1" icon="time-outline">{range}</M>,
     done && <M key="at" icon="checkmark-circle-outline">{new Date(task.completed_at!).toTimeString().slice(0, 5)}</M>,
-    (task.repeat || task.recurring_copy) && <M key="r" icon="repeat-outline">{!done && task.repeat ? repeatLabel(task.repeat) : 'Lặp lại'}</M>,
+    (task.repeat || task.recurring_copy) && <M key="r" icon="repeat-outline">{!done && task.repeat ? repeatLabel(task.repeat) : tr('Lặp lại')}</M>,
     subs && <M key="s" icon="checkbox-outline">{subs}</M>,
     task.note && <M key="n" icon="document-text-outline">{task.note}</M>,
   ].filter(Boolean);
@@ -142,18 +143,18 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
           <View>
             {over ? (
               <>
-                <Text style={s.timeL}>Hạn {fmtDay(last!)}</Text>
+                <Text style={s.timeL}>{tr('Hạn {date}', { date: fmtDay(last!) })}</Text>
                 <M icon="alert-circle-outline" tone="over">{late}</M>
               </>
             ) : task.due_time ? (
               <>
-                <Text style={s.timeL}>Bắt đầu</Text>
+                <Text style={s.timeL}>{tr('Bắt đầu')}</Text>
                 <M icon="time-outline">{task.due_time.slice(0, 5)}</M>
               </>
             ) : (
               <>
-                <Text style={s.timeL}>Cả ngày</Text>
-                <M>Chưa hẹn giờ</M>
+                <Text style={s.timeL}>{tr('Cả ngày')}</Text>
+                <M>{tr('Chưa hẹn giờ')}</M>
               </>
             )}
           </View>

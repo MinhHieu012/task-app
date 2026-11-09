@@ -1,4 +1,5 @@
 import { parseDate, parseTime } from './dates.ts';
+import { tr } from './i18n.ts';
 import type { Subtask, Task } from './supabase.ts';
 
 type When = { date: string | null; time: string | null };
@@ -29,20 +30,23 @@ const at = (date: string, time: string | null) => (time ? `${date} ${time.slice(
  *  A date without a time is compared by day only, so "the parent's start day" fits a parent starting at 09:00. */
 export function spanError(parent: Pick<Task, 'due_date' | 'due_time' | 'end_date' | 'end_time'>, sub: Span) {
   if (!sub.start_date && !sub.end_date) return '';
-  if (!sub.start_date) return 'Đặt lúc kết thúc thì cần có lúc bắt đầu';
-  if (!parent.due_date) return 'Việc cha chưa có ngày, nên việc con chưa đặt ngày được';
+  if (!sub.start_date) return tr('Đặt lúc kết thúc thì cần có lúc bắt đầu');
+  if (!parent.due_date) return tr('Việc cha chưa có ngày, nên việc con chưa đặt ngày được');
   const endDate = sub.end_date ?? sub.start_date;
-  if (sub.end_time && !sub.start_time) return 'Đặt giờ kết thúc thì cần có giờ bắt đầu';
+  if (sub.end_time && !sub.start_time) return tr('Đặt giờ kết thúc thì cần có giờ bắt đầu');
   const subStart = at(sub.start_date, sub.start_time);
   const subEnd = at(endDate, sub.end_time);
   // With a time on both sides the end must be later; otherwise only the day can't go backwards.
-  if (sub.start_time && sub.end_time ? subEnd <= subStart : endDate < sub.start_date) return 'Lúc kết thúc phải sau lúc bắt đầu';
+  if (sub.start_time && sub.end_time ? subEnd <= subStart : endDate < sub.start_date) return tr('Lúc kết thúc phải sau lúc bắt đầu');
   // Parent span: a missing start time is 00:00, a missing end time is the end of its last day.
   const pStart = at(parent.due_date, parent.due_time ?? '00:00');
   const pEnd = at(parent.end_date ?? parent.due_date, parent.end_time ?? '23:59');
   const day = (x: string, p: string) => (x.length === 10 ? p.slice(0, 10) : p); // a day-only side compares by day
   if (subStart < day(subStart, pStart) || subEnd > day(subEnd, pEnd)) {
-    return `Phải nằm trong thời gian của việc cha (${fmtWhen(parent.due_date, parent.due_time)} – ${fmtWhen(parent.end_date ?? parent.due_date, parent.end_time ?? '23:59')})`;
+    return tr('Phải nằm trong thời gian của việc cha ({from} – {to})', {
+      from: fmtWhen(parent.due_date, parent.due_time),
+      to: fmtWhen(parent.end_date ?? parent.due_date, parent.end_time ?? '23:59'),
+    });
   }
   return '';
 }

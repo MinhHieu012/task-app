@@ -6,6 +6,7 @@ import { QuickAdd } from '@/components/QuickAdd';
 import { Avatar, type IconName } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { fmtDay, fromIso, today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
 export const NAV: { href: Href; label: string; icon: IconName; match: (p: string) => boolean }[] = [
@@ -33,11 +34,11 @@ export function Rail() {
       <View style={s.mark}><Ionicons name="checkmark-done" size={20} color={color.primaryFg} /></View>
       <View style={s.items}>
         {NAV.map((n) => (
-          <RailItem key={n.label} icon={n.icon} label={n.label} on={n.match(path)} badge={n.href === '/' ? over : 0} onPress={() => router.navigate(n.href)} />
+          <RailItem key={n.label} icon={n.icon} label={tr(n.label)} on={n.match(path)} badge={n.href === '/' ? over : 0} onPress={() => router.navigate(n.href)} />
         ))}
       </View>
       <View style={s.foot}>
-        <RailItem icon="settings-outline" label="Cài đặt" on={path === '/settings'} onPress={() => router.navigate('/settings')} />
+        <RailItem icon="settings-outline" label={tr('Cài đặt')} on={path === '/settings'} onPress={() => router.navigate('/settings')} />
         <Avatar />
       </View>
     </View>
@@ -78,16 +79,16 @@ export function TopBar() {
   const projectId = path.startsWith('/project/') ? path.split('/')[2] : null;
   const name = projects.find((p) => p.id === projectId)?.name;
   const add =
-    projectId ? { defaults: { project_id: projectId }, placeholder: `Thêm việc vào ${name ?? 'project'}…` }
-    : path === '/' ? { defaults: { due_date: day }, placeholder: 'Thêm việc cho hôm nay…' }
-    : { defaults: {}, placeholder: 'Thêm vào Hộp thư…' };
+    projectId ? { defaults: { project_id: projectId }, placeholder: tr('Thêm việc vào {name}…', { name: name ?? 'project' }) }
+    : path === '/' ? { defaults: { due_date: day }, placeholder: tr('Thêm việc cho hôm nay…') }
+    : { defaults: {}, placeholder: tr('Thêm vào Hộp thư…') };
 
   return (
     <View style={s.top}>
       <View style={s.qa}><QuickAdd key={path} flat {...add} /></View>
       <View style={s.pill}>
         <Ionicons name="calendar-clear-outline" size={14} color={color.soft} />
-        <Text style={s.pillText}>{WEEKDAY[fromIso(day).getDay()]}, {fmtDay(day)}</Text>
+        <Text style={s.pillText}>{tr(WEEKDAY[fromIso(day).getDay()])}, {fmtDay(day)}</Text>
       </View>
     </View>
   );

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { fromIso, today } from './dates';
+import { tr } from './i18n';
 import { type Task, useRows } from './supabase';
 
 const native = Platform.OS !== 'web';
@@ -26,7 +27,7 @@ async function schedule(tasks: Task[]) {
   const upcoming = tasks.map((t) => ({ t, at: dueAt(t) })).filter((r) => r.at > now).sort((a, b) => +a.at - +b.at).slice(0, 60);
   for (const { t, at } of upcoming) {
     await Notifications.scheduleNotificationAsync({
-      content: { title: t.title, body: `Đến hạn lúc ${t.due_time!.slice(0, 5)}` },
+      content: { title: t.title, body: tr('Đến hạn lúc {time}', { time: t.due_time!.slice(0, 5) }) },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
     });
   }

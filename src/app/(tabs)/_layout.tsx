@@ -8,11 +8,13 @@ import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
 import { TaskForm } from '@/components/TaskForm';
 import { FadeIn, type IconName, useWide } from '@/components/ui';
 import { color, duration, radius, rule, text } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 import { useReminders } from '@/lib/reminders';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
-const tab = (title: string, icon: IconName, badge?: number) => ({
+// `key` is the Vietnamese label: it also finds the icon in NAV, so translate only for display.
+const tab = (key: string, icon: IconName, badge?: number, title = tr(key)) => ({
   title,
   tabBarIcon: ({ color: c }: { color: unknown }) => <Ionicons name={icon} size={22} color={c as string} />,
   // Own label: the default one clips Vietnamese diacritics on web.
@@ -83,13 +85,13 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [rows, , loaded] = useRows<Task>('tasks', (q) => q.eq('id', id), id);
   const [projects] = useRows<Project>('projects', (q) => q.order('name'));
   const task = rows[0];
-  const project = projects.find((p) => p.id === task?.project_id)?.name ?? 'Hộp thư';
+  const project = projects.find((p) => p.id === task?.project_id)?.name ?? tr('Hộp thư');
 
   return (
     <FadeIn x={24} ms={duration.panel} style={s.panel}>
       <View style={s.head}>
-        <Text style={s.crumb}>{task ? project : loaded ? 'Việc đã bị xoá' : ''}</Text>
-        <Pressable onPress={onClose} accessibilityLabel="Đóng" style={(st) => [s.close, (st.pressed || (st as { hovered?: boolean }).hovered) && { backgroundColor: color.itemHover }]}>
+        <Text style={s.crumb}>{task ? project : loaded ? tr('Việc đã bị xoá') : ''}</Text>
+        <Pressable onPress={onClose} accessibilityLabel={tr('Đóng')} style={(st) => [s.close, (st.pressed || (st as { hovered?: boolean }).hovered) && { backgroundColor: color.itemHover }]}>
           <Ionicons name="close" size={18} color={color.muted} />
         </Pressable>
       </View>

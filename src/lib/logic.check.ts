@@ -1,8 +1,11 @@
 /// <reference types="node" />
 // Run: npm test
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
+import { accentTokens, contrast, DEFAULT_ACCENT } from './accent.ts';
 import { fromIso, localDay, nextDue, parseDate, parseTime } from './dates.ts';
+import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
 import { parseWhen, spanError } from './subtasks.ts';
@@ -138,5 +141,34 @@ assert.equal(parseWhen('a b c', TUE), null);
   assert.equal(spanError({ due_date: MON, due_time: null, end_date: null, end_time: null }, { start_date: MON, start_time: '23:59', end_date: null, end_time: null }), '');
   assert.match(spanError({ due_date: null, due_time: null, end_date: null, end_time: null }, { start_date: MON, start_time: null, end_date: null, end_time: null }), /chưa có ngày/);
 }
+
+// Accent: default kept as is; a light pick is darkened until white text reads; junk falls back to the default.
+assert.equal(accentTokens(DEFAULT_ACCENT).primary, DEFAULT_ACCENT);
+assert.ok(contrast(accentTokens('#ffe066').primary, '#ffffff') >= 4.5);
+assert.equal(accentTokens('red').primary, DEFAULT_ACCENT);
+assert.match(accentTokens('#2563B0').light, /^#[0-9a-f]{6}$/);
+
+// i18n: Vietnamese is the key, English fills placeholders, a missing entry falls back to the key.
+assert.equal(tr('Mỗi {n} ngày', { n: 3 }), 'Mỗi 3 ngày');
+setLang('en');
+assert.equal(tr('Mỗi {n} ngày', { n: 3 }), 'Every 3 days');
+assert.equal(tr('chưa dịch'), 'chưa dịch');
+setLang('vi');
+// Every quoted Vietnamese string in the app (tr keys and the constants translated at render) has an English entry.
+const missing: string[] = [];
+const scan = (dir: string): void => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const f = `${dir}/${e.name}`;
+    if (e.isDirectory()) scan(f);
+    else if (/\.tsx?$/.test(f) && !/design-system|logic\.check|i18n\.ts/.test(f)) {
+      for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
+        if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(line)) continue;
+        for (const m of line.matchAll(/'([^'\n]*[À-ỹĐđ][^'\n]*)'/g)) if (!(m[1] in en)) missing.push(`${f}: ${m[1]}`);
+      }
+    }
+  }
+};
+scan('src'); // npm test runs from the repo root
+assert.deepEqual(missing, []);
 
 console.log('logic.check: all assertions passed');

@@ -4,6 +4,7 @@ import { ActivityIndicator, Platform, StyleSheet, Text, TextInput } from 'react-
 import { Field } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { supabase, type Task } from '@/lib/supabase';
 
 // The last mounted quick add box answers "Thêm việc" buttons and the N shortcut.
@@ -21,7 +22,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 
 /** Add box: Enter saves; the text is cleared only after a successful insert (KTD7, AE5). */
 /** `defaults` may be a function so values like "now" are taken at submit time. */
-export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…', flat }: { defaults?: Partial<Task> | (() => Partial<Task>); placeholder?: string; flat?: boolean }) {
+export function QuickAdd({ defaults = {}, placeholder = tr('Thêm việc…'), flat }: { defaults?: Partial<Task> | (() => Partial<Task>); placeholder?: string; flat?: boolean }) {
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -45,7 +46,7 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…', flat 
     const now = new Date().toTimeString().slice(0, 5);
     const { error: e } = await supabase.from('tasks').insert({ title: t, due_date: day, due_time: now, end_date: day, end_time: '23:59:59', ...d });
     setBusy(false);
-    if (e) return setError('Chưa lưu được. Kiểm tra mạng rồi thử lại.');
+    if (e) return setError(tr('Chưa lưu được. Kiểm tra mạng rồi thử lại.'));
     setTitle('');
     setError('');
   };
@@ -60,7 +61,7 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…', flat 
         if (error) setError('');
       }}
       placeholder={placeholder}
-      aria-label="Tên việc mới"
+      aria-label={tr('Tên việc mới')}
       onSubmitEditing={add}
       submitBehavior="submit"
       returnKeyType="done"

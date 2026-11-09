@@ -10,7 +10,13 @@ import { Platform } from 'react-native';
 
 import { Notifier } from '@/components/Notifier';
 import { color, duration, easeCss, font } from '@/constants/theme';
+import { getLang, setLang } from '@/lib/i18n';
+import { getPref } from '@/lib/prefs';
 import { useSession } from '@/lib/supabase';
+
+// Before the first render; strings are translated as they render (see i18n.ts).
+setLang(getPref('lang'));
+if (Platform.OS === 'web' && typeof document !== 'undefined') document.documentElement.lang = getLang();
 
 // Web: the page's one stylesheet. It opens with the Hallmark stamp (the design decisions, read by sloplint),
 // declares the tokens at :root from theme.ts, and holds what React Native styles cannot: scrollbars, focus
