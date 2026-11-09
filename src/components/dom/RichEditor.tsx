@@ -84,6 +84,9 @@ export default function RichEditor({ initial, labels, palette, onChange }: {
         ref={ref}
         className="re-body"
         contentEditable
+        // No red squiggles: reports mix Vietnamese, English and jargon the spell checker flags.
+        spellCheck={false}
+        autoCorrect="off"
         role="textbox"
         aria-multiline
         aria-label={labels.placeholder}
