@@ -106,6 +106,9 @@ function PasswordCard({ email, wide }: { email: string; wide: boolean }) {
 
   return (
     <Card title={tr('Đổi mật khẩu')}>
+      {/* Password managers pair a password with the nearest text field before it; without this they took the
+          top bar's quick add for the username and filled the email into it. Chrome's advice: a hidden username. */}
+      {Platform.OS === 'web' && createElement('input', { type: 'text', name: 'username', autoComplete: 'username', value: email, readOnly: true, hidden: true })}
       <View style={wide ? s.pair : s.stack}>
         {field(tr('Mật khẩu hiện tại'), old, setOld, err('old'), 'current-password', tr('Mật khẩu đang dùng'))}
         {field(tr('Mật khẩu mới'), next, setNext, err('next'), 'new-password', tr('Ít nhất 6 ký tự'))}

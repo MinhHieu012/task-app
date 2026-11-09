@@ -62,6 +62,7 @@ export function QuickAdd({ defaults = {}, placeholder = tr('Thêm việc…'), f
       }}
       placeholder={placeholder}
       aria-label={tr('Tên việc mới')}
+      autoComplete="off" // a task title, never a login: keeps password managers from filling the email here
       onSubmitEditing={add}
       submitBehavior="submit"
       returnKeyType="done"
