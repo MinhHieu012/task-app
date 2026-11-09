@@ -1,83 +1,92 @@
-// Tokens from the Figma reference (Octom task app), chosen in the wireframe "A+B" (2026-11-05).
-// Muted, red, green and amber are a step darker than the Figma file so text passes 4.5:1. Change the accent here only.
-// Be Vietnam Pro: close to the Figma geometric sans and has full Vietnamese glyphs (DM Sans has none). Loaded in src/app/_layout.tsx.
+// Hallmark redesign (2026-11-09): the Almanac material. Slate stock, a pale printed sheet for content,
+// blue-black ink, hairline and firm rules, square corners, one deep magenta for the primary action and the
+// current selection only. Values are the theme's OKLCH tokens converted to hex (native RN has no oklch()).
+// Every text colour passes 4.5:1 on the sheet; priority 2 and 4 text sits a step darker than their marks.
+// Be Vietnam Pro stays the one family: it has full Vietnamese glyphs (DM Sans broke them). Loaded in src/app/_layout.tsx.
 export const font = 'Be Vietnam Pro';
 
 export const color = {
-  primary: '#5051f9',
-  primaryHover: '#4243e0',
-  primaryFg: '#ffffff',
-  primaryLight: '#edecfe',
-  ringFocus: 'rgba(80,81,249,0.14)',
+  primary: '#970d63', // accent, oklch(45% .18 350)
+  primaryHover: '#76004b',
+  primaryFg: '#f2f6f9',
+  primaryLight: '#f1d5e1', // selection wash
+  ringFocus: '#9d0367', // focus ring, drawn as an outline
 
-  background: '#f3f4f8',
-  surface: '#ffffff',
-  rail: '#fbfaff',
-  field: '#f3f6fa',
-  foreground: '#232360',
-  soft: '#4b5577',
-  muted: '#5d6880',
-  border: '#eceef3',
-  borderStrong: '#e1e4ec',
-  itemHover: '#f3f4f8',
-  secondary: '#e7e8ec',
-  secondaryHover: '#dbdce2',
-  buttonHover: '#f3f4f8',
-  ghostHover: 'rgba(35,35,96,0.05)',
-  chip: 'rgba(35,35,96,0.05)',
-  chipHover: 'rgba(35,35,96,0.10)',
-  chipText: 'rgba(35,35,96,0.75)',
-  backdrop: 'rgba(0,0,0,0.4)',
-  skeleton: '#e9ebf1',
-  chartBar: '#dcdbfe',
-  chartBarHover: '#c9c8fd',
+  background: '#c4cbd2', // slate stock
+  surface: '#e5eaef', // the printed sheet
+  rail: '#bbc2c8', // paper-2
+  field: '#e5eaef',
+  foreground: '#060e15', // ink
+  soft: '#182027', // ink-2
+  muted: '#3b434b',
+  border: '#a1a9af', // hairline rule
+  borderStrong: '#2b343b', // firm rule
+  itemHover: '#d7dde3',
+  secondary: '#bbc2c8',
+  secondaryHover: '#aeb5bb',
+  buttonHover: '#d7dde3',
+  ghostHover: '#d7dde3',
+  chip: '#d7dde3',
+  chipHover: '#c4cbd2',
+  chipText: '#182027',
+  backdrop: 'rgba(6,14,21,0.45)',
+  skeleton: '#c9cfd5',
+  chartBar: '#6b737a',
+  chartBarHover: '#3b434b',
+  scrollbar: 'rgba(6,14,21,0.28)',
 
-  danger: '#c8283a',
-  dangerBg: '#ffecee',
-  dangerBgHover: '#ffdfe3',
-  error: '#c8283a',
-  errorRing: 'rgba(200,40,58,0.12)',
-  errorText: '#c8283a',
-  errorBg: '#ffecee',
-  errorStrong: '#a51d2d',
-  successBg: '#e6f6ec',
-  success: '#0e7a3e',
-  warningBg: '#fff1e7',
-  warning: '#c2410c',
-  infoBg: '#e4f4ff',
-  neutralBg: '#f3f4f8',
-  neutral: '#4b5577',
+  danger: '#a51f1e',
+  dangerBg: '#f8deda',
+  dangerBgHover: '#f4cdc8',
+  error: '#a51f1e',
+  errorRing: '#a51f1e',
+  errorText: '#a51f1e',
+  errorBg: '#f8deda',
+  errorStrong: '#8a1716',
+  successBg: '#d7ebda',
+  success: '#196632',
+  warningBg: '#f4e1cc',
+  warning: '#934f00',
+  infoBg: '#d5e3f2',
+  neutralBg: '#d7dde3',
+  neutral: '#182027',
 } as const;
 
-// Priority scale: ticks, choice dots and the priority tag.
-export const priority = { 1: '#c8003a', 2: '#b45309', 3: '#155dfc', 4: '#8a93a6' } as const;
-export const priorityBg = { 1: '#ffecee', 2: '#fff1e7', 3: '#e4f4ff', 4: '#f3f4f8' } as const;
-export const priorityText = { 1: '#c8003a', 2: '#b45309', 3: '#155dfc', 4: '#5d6880' } as const;
+// Priority scale: ticks, choice marks and the priority tag.
+export const priority = { 1: '#b32322', 2: '#a45e00', 3: '#215da5', 4: '#6b737a' } as const;
+export const priorityBg = { 1: '#f8deda', 2: '#f4e1cc', 3: '#d5e3f2', 4: '#d7dde3' } as const;
+export const priorityText = { 1: '#a51f1e', 2: '#934f00', 3: '#215da5', 4: '#3b434b' } as const;
 export type Priority = keyof typeof priority;
 
-export const radius = { sm: 8, ctl: 10, md: 12, lg: 16, full: 9999 } as const;
+// Square corners: 2px on controls, 0 on surfaces. `full` stays for round ticks and the avatar.
+export const radius = { sm: 2, ctl: 2, md: 2, lg: 0, full: 9999 } as const;
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24 } as const;
+// Two rule weights carry every surface: a hairline between rows, a firm line under a head.
+export const rule = { hair: 1, bar: 2 } as const;
 
+// Heads one weight (600), tightened; body at 16. Figures use tabular numerals (`num`).
 export const text = {
-  h1: { fontFamily: font, fontSize: 28, lineHeight: 36, fontWeight: '700' },
-  h2: { fontFamily: font, fontSize: 18, lineHeight: 28, fontWeight: '600' },
-  xl: { fontFamily: font, fontSize: 20, lineHeight: 28, fontWeight: '600' },
-  lg: { fontFamily: font, fontSize: 18, lineHeight: 28, fontWeight: '600' },
+  h1: { fontFamily: font, fontSize: 30, lineHeight: 34, fontWeight: '600', letterSpacing: -0.6 },
+  h2: { fontFamily: font, fontSize: 18, lineHeight: 24, fontWeight: '600', letterSpacing: -0.2 },
+  xl: { fontFamily: font, fontSize: 20, lineHeight: 26, fontWeight: '600', letterSpacing: -0.3 },
+  lg: { fontFamily: font, fontSize: 18, lineHeight: 26, fontWeight: '600' },
   base: { fontFamily: font, fontSize: 16, lineHeight: 24, fontWeight: '600' },
-  body: { fontFamily: font, fontSize: 15, lineHeight: 22, fontWeight: '500' },
+  body: { fontFamily: font, fontSize: 16, lineHeight: 24, fontWeight: '400' },
   sm: { fontFamily: font, fontSize: 14, lineHeight: 20 },
   smMedium: { fontFamily: font, fontSize: 14, lineHeight: 20, fontWeight: '500' },
   meta: { fontFamily: font, fontSize: 13, lineHeight: 18 },
   xs: { fontFamily: font, fontSize: 12, lineHeight: 16 },
 } as const;
+export const num = { fontVariant: ['tabular-nums'] } as { fontVariant: ['tabular-nums'] };
 
-// Motion: one set of durations (ms) for the whole app. Enter = ease-out, exit = ease-in (see `motion` in ui.tsx).
+// Motion is state only: colour and opacity, short. Enter = ease-out, exit = ease-in (see `animate` in ui.tsx).
 export const duration = { press: 120, fast: 150, base: 200, modal: 220, panel: 260, toast: 300 } as const;
 export const easeCss = 'cubic-bezier(0.33, 1, 0.68, 1)'; // web CSS transitions, same curve as Easing.out(Easing.cubic)
 
-export const shadowModal = '0 20px 25px -5px rgba(35,35,96,0.1), 0 8px 10px -6px rgba(35,35,96,0.1)';
-export const shadowPrimary = '0 6px 16px rgba(80,81,249,0.28)';
+// No drop shadows in this material: depth is a rule and a paper step.
+export const shadowModal = 'none';
+export const shadowPrimary = 'none';
 
-// Project marks, picked by the project's position in the name-sorted list.
-export const projectColors = ['#5051f9', '#e8590c', '#0e7a3e', '#1a96e6', '#c8283a', '#7c3aed'] as const;
+// Project marks, picked by the project's position in the name-sorted list. Muted print inks, all >= 3:1 on the sheet.
+export const projectColors = ['#970d63', '#a45e00', '#196632', '#215da5', '#a51f1e', '#3b434b'] as const;
 export const projectColor = (i: number) => projectColors[i % projectColors.length];

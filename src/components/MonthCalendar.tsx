@@ -78,9 +78,9 @@ const s = StyleSheet.create({
   wd: { width: '14.2857%', textAlign: 'center', ...text.xs, color: color.muted, paddingVertical: 4 },
   cell: { width: '14.2857%', height: 48 },
   day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  n: { ...text.sm, color: color.foreground },
+  n: { ...text.sm, color: color.foreground, fontVariant: ['tabular-nums'] },
   today: { fontWeight: '700', textDecorationLine: 'underline' },
   future: { color: color.muted, opacity: 0.5 },
-  cnt: { fontSize: 11, lineHeight: 16, minHeight: 16, fontWeight: '600', color: color.success },
-  miss: { position: 'absolute', top: 6, right: '22%', width: 6, height: 6, borderRadius: 3, backgroundColor: color.warning },
+  cnt: { fontFamily: text.xs.fontFamily, fontSize: 11, lineHeight: 16, minHeight: 16, fontWeight: '600', color: color.success, fontVariant: ['tabular-nums'] },
+  miss: { position: 'absolute', top: 6, right: '22%', width: 6, height: 6, borderRadius: 1, backgroundColor: color.warning },
 });

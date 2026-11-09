@@ -32,7 +32,7 @@ import {
   priorityText,
   type Priority,
   radius,
-  shadowModal,
+  rule,
   text,
 } from '@/constants/theme';
 
@@ -79,7 +79,7 @@ const pressed = (s: PressableStateCallbackType) => s.pressed && st.pressed;
 /* Button */
 type Variant = 'outline' | 'primary' | 'secondary' | 'ghost' | 'danger';
 const btn: Record<Variant, { bg: string; bgActive: string; fg: string; border?: string }> = {
-  outline: { bg: color.surface, bgActive: color.buttonHover, fg: color.foreground, border: color.borderStrong },
+  outline: { bg: 'transparent', bgActive: color.buttonHover, fg: color.foreground, border: color.foreground },
   primary: { bg: color.primary, bgActive: color.primaryHover, fg: color.primaryFg },
   secondary: { bg: color.secondary, bgActive: color.secondaryHover, fg: color.foreground },
   ghost: { bg: 'transparent', bgActive: color.ghostHover, fg: color.muted },
@@ -125,11 +125,11 @@ export function IconButton({ icon, label, onPress, tint, surface, size = 32 }: {
   );
 }
 
-/* Text link in the accent color */
+/* Text link: ink with an accent underline; the underline turns ink on hover */
 export function TextLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} hitSlop={8} accessibilityRole="link">
-      {(s) => <Text style={[st.link, active(s) && { textDecorationLine: 'underline' }]}>{label}</Text>}
+      {(s) => <Text style={[st.link, active(s) && { textDecorationColor: color.foreground }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -146,7 +146,6 @@ export function Badge({ label, tone = 'neutral' }: { label: string; tone?: Tone 
   const [bg, fg] = tones[tone];
   return (
     <View style={[st.badge, { backgroundColor: bg }]}>
-      <View style={[st.badgeDot, { backgroundColor: fg }]} />
       <Text style={[st.badgeText, { color: fg }]}>{label}</Text>
     </View>
   );
@@ -176,7 +175,8 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
             st.inputBox,
             webEase,
             boxStyle,
-            focus && { borderColor: error ? color.error : color.primary, backgroundColor: color.surface, boxShadow: `0 0 0 4px ${error ? color.errorRing : color.ringFocus}` },
+            // Focus is a 2px ring outside the edge (the edge itself never changes width).
+            focus && { boxShadow: `0 0 0 2px ${error ? color.errorRing : color.ringFocus}` },
             !!error && !focus && { borderColor: color.error },
             !editable && st.inputDisabled,
           ]}
@@ -201,7 +201,7 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
   );
 }
 
-/* Card: white, no border, 16px corners (Figma) */
+/* Card: a printed sheet on the slate, square, a firm ink rule across its head */
 export function Card({ title, action, flush, children, style }: { title?: ReactNode; action?: ReactNode; flush?: boolean; children: ReactNode; style?: ViewStyle }) {
   return (
     <View style={[st.card, flush && st.cardFlush, style]}>
@@ -257,7 +257,7 @@ export function ConfirmModal({ visible, title, message, confirmText = 'Xoá', on
       <Animated.View style={[st.backdrop, { opacity: v }]}>
         <Animated.View style={[st.modal, { transform: [{ scale }] }]}>
           <View style={st.modalHead}>
-            <View style={st.modalIcon}><Ionicons name="trash-outline" size={22} color={color.danger} /></View>
+            <Ionicons name="trash-outline" size={22} color={color.danger} style={st.modalIcon} />
             <View style={st.modalBody}>
               <Text style={st.cardTitle}>{title}</Text>
               {message && <Text style={st.modalText}>{message}</Text>}
@@ -334,7 +334,7 @@ export function GroupTitle({ title, count, over }: { title: string; count?: numb
 export function InfoLine({ icon, label, n, tone, last }: { icon: IconName; label: string; n: number | string; tone?: string; last?: boolean }) {
   return (
     <View style={[st.line, last && { borderBottomWidth: 0 }]}>
-      <View style={st.lineIcon}><Ionicons name={icon} size={16} color={tone ?? color.soft} /></View>
+      <Ionicons name={icon} size={16} color={tone ?? color.muted} />
       <Text style={st.lineLabel}>{label}</Text>
       <Text style={[st.lineN, tone && { color: tone }]}>{n}</Text>
     </View>
@@ -350,7 +350,7 @@ export function EmptyState({ icon, title, children, action }: { icon: IconName; 
     <FadeIn>
     <Card>
       <View style={st.emptyBox}>
-        <View style={st.emptyIcon}><Ionicons name={icon} size={26} color={color.primary} /></View>
+        <Ionicons name={icon} size={24} color={color.muted} style={st.emptyIcon} />
         <Text style={st.emptyTitle}>{title}</Text>
         {children && <Text style={st.emptyText}>{children}</Text>}
         {action && <View style={st.emptyAction}>{action}</View>}
@@ -369,7 +369,7 @@ export function Skeleton({ width, height, round }: { width: ViewStyle['width']; 
     a.start();
     return () => a.stop();
   }, [v]);
-  return <Animated.View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: color.skeleton, opacity: v }} />;
+  return <Animated.View style={{ width, height, borderRadius: round ? height / 2 : radius.sm, backgroundColor: color.skeleton, opacity: v }} />;
 }
 
 /* Round tick in the priority color; done fills green */
@@ -405,7 +405,7 @@ export function Tick({ priority = 4, checked, onPress, disabled, size = 24 }: {
           ]}
         >
           {(checked || active(s)) && (
-            <Ionicons name="checkmark" size={size * 0.5} color={checked ? '#fff' : c} style={!checked && { opacity: 0.6 }} />
+            <Ionicons name="checkmark" size={size * 0.5} color={checked ? color.primaryFg : c} style={!checked && { opacity: 0.6 }} />
           )}
         </Animated.View>
       )}
@@ -447,7 +447,7 @@ export function Choices<T extends string | number>({ options, value, onChange, l
               ]}
             >
               {o.dot && <View style={[st.dot, { backgroundColor: o.dot }]} />}
-              <Text numberOfLines={1} style={[st.choiceText, on && { color: color.primary, fontWeight: '600' }]}>{o.label}</Text>
+              <Text numberOfLines={1} style={[st.choiceText, on && { color: color.primary, fontWeight: '600' }, st.num]}>{o.label}</Text>
             </Pressable>
           );
         })}
@@ -463,88 +463,89 @@ function ErrorText({ children }: { children: string }) {
 }
 
 export const st = StyleSheet.create({
-  disabled: { opacity: 0.5 },
-  pressed: { transform: [{ scale: 0.97 }] },
+  disabled: { opacity: 0.55 },
+  // State, not movement: a press darkens a step instead of scaling.
+  pressed: { opacity: 0.85 },
   hidden: { opacity: 0 },
+  num: { fontVariant: ['tabular-nums'] },
 
-  btn: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.ctl, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  btn: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.ctl, borderWidth: rule.hair, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   btnText: { ...text.smMedium, lineHeight: 18, textAlign: 'center' },
   iconBtn: { borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  iconBtnSurface: { borderRadius: radius.ctl, borderWidth: 1, borderColor: color.borderStrong, backgroundColor: color.surface },
-  link: { ...text.meta, fontWeight: '500', color: color.primary },
+  iconBtnSurface: { borderWidth: rule.hair, borderColor: color.muted, backgroundColor: color.surface },
+  link: { ...text.meta, fontWeight: '500', color: color.foreground, textDecorationLine: 'underline', textDecorationColor: color.primary },
 
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { ...text.xs, fontWeight: '500' },
-  tag: { height: 24, paddingHorizontal: 10, borderRadius: 6, justifyContent: 'center', alignSelf: 'flex-start' },
+  badge: { alignSelf: 'flex-start', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { ...text.xs, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  tag: { height: 22, paddingHorizontal: 8, borderRadius: radius.sm, justifyContent: 'center', alignSelf: 'flex-start' },
   tagText: { ...text.xs, fontWeight: '500' },
 
   field: { gap: 6 },
-  label: { ...text.meta, fontWeight: '500', color: color.soft },
+  label: { ...text.meta, fontWeight: '500', color: color.muted },
   fieldRow: { flexDirection: 'row', gap: 8 },
-  inputBox: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 16, paddingRight: 8, borderRadius: radius.md, borderWidth: 1, borderColor: 'transparent', backgroundColor: color.field },
-  input: { flex: 1, minWidth: 0, height: 42, paddingRight: 8, fontFamily: font, color: color.foreground, fontSize: 15, outlineWidth: 0, outlineStyle: 'solid' },
-  inputDisabled: { opacity: 0.5 },
+  inputBox: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 14, paddingRight: 8, borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.muted, backgroundColor: color.field },
+  input: { flex: 1, minWidth: 0, height: 42, paddingRight: 8, fontFamily: font, color: color.foreground, fontSize: 16, outlineWidth: 0, outlineStyle: 'solid' },
+  inputDisabled: { opacity: 0.55 },
   hint: { ...text.xs, color: color.muted },
 
-  card: { backgroundColor: color.surface, borderRadius: radius.lg, paddingVertical: 20, paddingHorizontal: 24 },
+  card: { backgroundColor: color.surface, borderRadius: radius.lg, borderTopWidth: rule.bar, borderTopColor: color.foreground, paddingVertical: 20, paddingHorizontal: 24 },
   cardFlush: { paddingHorizontal: 0, paddingVertical: 16 },
-  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 },
+  cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 },
   cardHeadFlush: { paddingHorizontal: 20, marginBottom: 6 },
   cardBodyFlush: { paddingHorizontal: 8 },
   cardTitle: { ...text.h2, color: color.foreground, flexShrink: 1 },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: radius.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   rowBody: { flex: 1, minWidth: 0 },
   rowTitle: { ...text.body, color: color.foreground },
   rowDone: { color: color.muted, textDecorationLine: 'line-through' },
-  rowMeta: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4, marginTop: 2 },
-  meta: { ...text.meta, color: color.muted },
+  rowMeta: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, marginTop: 2 },
+  meta: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
   metaToday: { color: color.foreground, fontWeight: '500' },
 
   backdrop: { flex: 1, backgroundColor: color.backdrop, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modal: { width: '100%', maxWidth: 400, backgroundColor: color.surface, borderRadius: radius.lg, padding: 24, gap: 24, boxShadow: shadowModal },
-  modalHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  modalIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: color.dangerBg, alignItems: 'center', justifyContent: 'center' },
-  modalBody: { flex: 1, minWidth: 0, paddingTop: 8 },
+  modal: { width: '100%', maxWidth: 400, backgroundColor: color.surface, borderTopWidth: rule.bar, borderTopColor: color.foreground, padding: 24, gap: 24 },
+  modalHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  modalIcon: { paddingTop: 2 },
+  modalBody: { flex: 1, minWidth: 0 },
   modalText: { ...text.sm, lineHeight: 22, color: color.muted, marginTop: 4 },
   modalFoot: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 },
 
   screen: { flex: 1, backgroundColor: color.background },
   split: { flex: 1, flexDirection: 'row' },
-  aside: { width: 360, flexGrow: 0, backgroundColor: color.surface },
-  asideBody: { paddingHorizontal: 28, paddingTop: 28, paddingBottom: 32, gap: 28 },
+  aside: { width: 360, flexGrow: 0, backgroundColor: color.surface, borderLeftWidth: rule.hair, borderLeftColor: color.border },
+  asideBody: { paddingHorizontal: 28, paddingTop: 32, paddingBottom: 32, gap: 32 },
   screenBody: { padding: 16, gap: 20, width: '100%', maxWidth: 720, alignSelf: 'center' },
-  back: { alignSelf: 'flex-start', marginLeft: -12, marginBottom: -12, paddingHorizontal: 12 },
-  head: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 },
+  back: { alignSelf: 'flex-start', marginLeft: -12, marginBottom: -12, paddingHorizontal: 12, borderWidth: 0 },
+  // The page head sits on a firm ink rule, like a dated head over a printed table.
+  head: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, paddingBottom: 14, borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
   headText: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
-  h1: { ...text.h1, color: color.foreground, letterSpacing: -0.3 },
-  sub: { ...text.sm, color: color.muted, marginTop: 2 },
+  h1: { ...text.h1, color: color.foreground },
+  sub: { ...text.sm, color: color.muted, marginTop: 6, fontVariant: ['tabular-nums'] },
   footer: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 },
 
-  groupHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  groupHead: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 8 },
   groupTitle: { ...text.h2, color: color.foreground },
-  groupCount: { ...text.meta, fontWeight: '500', color: color.muted },
+  groupCount: { ...text.meta, fontWeight: '500', color: color.muted, fontVariant: ['tabular-nums'] },
 
-  line: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: color.border },
-  lineIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: color.background, alignItems: 'center', justifyContent: 'center' },
+  line: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   lineLabel: { ...text.sm, flex: 1, color: color.soft },
-  lineN: { ...text.base, color: color.foreground, fontVariant: ['tabular-nums'] },
+  lineN: { ...text.base, color: color.foreground, fontVariant: ['tabular-nums'], textAlign: 'right' },
 
-  empty: { ...text.sm, color: color.muted, textAlign: 'center', paddingVertical: 24 },
-  emptyBox: { alignItems: 'center', paddingVertical: 28, gap: 8 },
-  emptyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: color.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  emptyTitle: { ...text.base, color: color.foreground, textAlign: 'center' },
-  emptyText: { ...text.sm, color: color.muted, textAlign: 'center', maxWidth: 320 },
-  emptyAction: { marginTop: 12, flexDirection: 'row', gap: 8 },
+  empty: { ...text.sm, color: color.muted, paddingVertical: 16 },
+  emptyBox: { alignItems: 'flex-start', paddingVertical: 8, gap: 6 },
+  emptyIcon: { marginBottom: 4 },
+  emptyTitle: { ...text.base, color: color.foreground },
+  emptyText: { ...text.sm, color: color.muted, maxWidth: 420 },
+  emptyAction: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 
   tick: { alignItems: 'center', justifyContent: 'center' },
 
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choicesStack: { flexDirection: 'column', flexWrap: 'nowrap', alignItems: 'stretch' },
-  choice: { height: 34, paddingHorizontal: 12, borderRadius: radius.full, borderWidth: 1, borderColor: color.borderStrong, backgroundColor: color.surface, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  choice: { height: 36, paddingHorizontal: 12, borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.muted, backgroundColor: color.surface, flexDirection: 'row', alignItems: 'center', gap: 6 },
   choiceOn: { borderColor: color.primary, backgroundColor: color.primaryLight },
   choiceGrid: { flex: 1, minWidth: 0, paddingHorizontal: 4, gap: 4, justifyContent: 'center' },
   choiceText: { ...text.meta, color: color.soft },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 8, height: 8, borderRadius: 1 },
 });

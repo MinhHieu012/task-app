@@ -105,7 +105,7 @@ function Times({ row, task }: { row: Subtask; task: Task }) {
     <View style={s.times}>
       <View style={s.timesRow}>
         {input(start, setStart, 'Bắt đầu')}
-        <Text style={s.count}>–</Text>
+        <Text style={s.count}>đến</Text>
         {input(end, setEnd, 'Kết thúc')}
       </View>
       {!!error && <Text style={s.error}>{error}</Text>}
