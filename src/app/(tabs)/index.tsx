@@ -4,13 +4,16 @@ import { useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
+import { ReportNudge } from '@/components/Report';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
 import { endDay, TaskGroup } from '@/components/TaskRow';
 import { active, Avatar, Button, Empty, EmptyState, Screen, TextLink, useWide } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
+import { reportStatus } from '@/lib/reports';
 import { Selection } from '@/lib/selection';
-import { type Project, type Task, useRows } from '@/lib/supabase';
+import { type Project, type Report, type Task, useRows } from '@/lib/supabase';
 
 const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 const SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -28,6 +31,7 @@ export default function Today() {
   const past = Array.from({ length: 7 }, (_, i) => addDays(day, i - 6)); // last 7 days, today last
   const [recent] = useRows<Task>('tasks', (q) => q.gte('completed_day', past[0]).lte('completed_day', day).order('completed_at'), `done7:${day}`);
   const [projects] = useRows<Project>('projects');
+  const [reports, , reportLoaded] = useRows<Report>('daily_reports', (q) => q.eq('day', day), `rep:${day}`);
   const week = Array.from({ length: 7 }, (_, i) => addDays(day, i + 1));
   const [soon] = useRows<Task>(
     'tasks',
@@ -45,24 +49,24 @@ export default function Today() {
   const names = new Map(projects.map((p) => [p.id, p.name]));
 
   const list = !loaded ? (
-    <TaskGroup title="Hôm nay" tasks={[]} loading />
+    <TaskGroup title={tr('Hôm nay')} tasks={[]} loading />
   ) : open.length === 0 ? (
     <EmptyState
       icon="sunny-outline"
-      title="Xong hết việc hôm nay"
+      title={tr('Xong hết việc hôm nay')}
       action={
         <>
-          <Button title="Xem Sắp tới" onPress={() => router.navigate('/upcoming')} />
-          <Button title="Thêm việc" icon="add" variant="primary" onPress={focusQuickAdd} />
+          <Button title={tr('Xem Sắp tới')} onPress={() => router.navigate('/upcoming')} />
+          <Button title={tr('Thêm việc')} icon="add" variant="primary" onPress={focusQuickAdd} />
         </>
       }
     >
-      Việc có hạn hôm nay sẽ hiện ở đây. Thêm một việc, hoặc xem các ngày tới.
+      {tr('Việc có hạn hôm nay sẽ hiện ở đây. Thêm một việc, hoặc xem các ngày tới.')}
     </EmptyState>
   ) : (
     <View style={s.groups}>
-      {over.length > 0 && <TaskGroup title="Quá hạn" over tasks={over} projects={projects} timeCol />}
-      <TaskGroup title="Hôm nay" tasks={due} projects={projects} timeCol empty="Không còn việc nào có hạn hôm nay." />
+      {over.length > 0 && <TaskGroup title={tr('Quá hạn')} over tasks={over} projects={projects} timeCol />}
+      <TaskGroup title={tr('Hôm nay')} tasks={due} projects={projects} timeCol empty={tr('Không còn việc nào có hạn hôm nay.')} />
     </View>
   );
 
@@ -71,8 +75,8 @@ export default function Today() {
     <>
       <View>
         <View style={s.asideHead}>
-          <Text style={s.asideTitle}>7 ngày tới</Text>
-          <TextLink label="Xem tất cả" onPress={() => router.navigate('/upcoming')} />
+          <Text style={s.asideTitle}>{tr('7 ngày tới')}</Text>
+          <TextLink label={tr('Xem tất cả')} onPress={() => router.navigate('/upcoming')} />
         </View>
         <View style={s.week}>
           {week.map((w, i) => {
@@ -82,10 +86,10 @@ export default function Today() {
               <Pressable
                 key={w}
                 onPress={() => router.navigate('/upcoming')}
-                accessibilityLabel={`${SHORT[fromIso(w).getDay()]} ${fmtDay(w)}: ${n} việc`}
+                accessibilityLabel={tr('{day} {date}: {n} việc', { day: tr(SHORT[fromIso(w).getDay()]), date: fmtDay(w), n })}
                 style={(st) => [s.wd, active(st) && { backgroundColor: color.itemHover }, on && s.wdOn]}
               >
-                <Text style={s.wdDay}>{SHORT[fromIso(w).getDay()]}</Text>
+                <Text style={s.wdDay}>{tr(SHORT[fromIso(w).getDay()])}</Text>
                 <Text style={s.wdNum}>{w.slice(8)}</Text>
                 <Text style={s.wdCount}>{n || ''}</Text>
               </Pressable>
@@ -95,14 +99,14 @@ export default function Today() {
         {next && (
           <View style={s.next}>
             <View style={s.nextHead}>
-              <Text style={s.nextLabel}>Việc kế tiếp</Text>
-              <Text style={s.nextLabel}>{WEEKDAY[fromIso(next.due_date!).getDay()]} {fmtDay(next.due_date!)}</Text>
+              <Text style={s.nextLabel}>{tr('Việc kế tiếp')}</Text>
+              <Text style={s.nextLabel}>{tr(WEEKDAY[fromIso(next.due_date!).getDay()])} {fmtDay(next.due_date!)}</Text>
             </View>
             <Text style={s.nextTitle} numberOfLines={2}>{next.title}</Text>
             <View style={s.nextMeta}>
               <Ionicons name="time-outline" size={14} color={color.muted} />
               <Text style={s.nextLabel}>
-                {[next.due_time?.slice(0, 5), next.project_id ? names.get(next.project_id) : 'Hộp thư'].filter(Boolean).join(', ')}
+                {[next.due_time?.slice(0, 5), next.project_id ? names.get(next.project_id) : tr('Hộp thư')].filter(Boolean).join(', ')}
               </Text>
             </View>
           </View>
@@ -110,8 +114,8 @@ export default function Today() {
       </View>
       <View>
         <View style={s.asideHead}>
-          <Text style={s.asideTitle}>Đã xong hôm nay</Text>
-          <TextLink label="Nhật ký" onPress={() => router.navigate('/journal')} />
+          <Text style={s.asideTitle}>{tr('Đã xong hôm nay')}</Text>
+          <TextLink label={tr('Nhật ký')} onPress={() => router.navigate('/journal')} />
         </View>
         {done.map((t, i) => (
           <View key={t.id} style={[s.mini, i === done.length - 1 && { borderBottomWidth: 0 }]}>
@@ -122,16 +126,16 @@ export default function Today() {
             </View>
           </View>
         ))}
-        {!done.length && <Empty>Chưa xong việc nào.</Empty>}
+        {!done.length && <Empty>{tr('Chưa xong việc nào.')}</Empty>}
       </View>
     </>
   );
 
   return (
     <Screen
-      title="Hôm nay"
-      sub={`${WEEKDAY[fromIso(day).getDay()]}, ${fmtDay(day)}${loaded ? `, ${open.length} việc` : ''}`}
-      footer={<QuickAdd defaults={{ due_date: day }} placeholder="Thêm việc cho hôm nay…" />}
+      title={tr('Hôm nay')}
+      sub={`${tr(WEEKDAY[fromIso(day).getDay()])}, ${fmtDay(day)}${loaded ? tr(', {n} việc', { n: open.length }) : ''}`}
+      footer={<QuickAdd defaults={{ due_date: day }} placeholder={tr('Thêm việc cho hôm nay…')} />}
       aside={sel?.id ? undefined : aside}
       // Wide screens reach settings from the rail.
       right={!wide && <View style={s.me}><Avatar onPress={() => router.navigate('/settings')} /></View>}
@@ -140,35 +144,36 @@ export default function Today() {
       <StatRow>
         <Stat
           icon="list-outline"
-          label="Còn lại"
+          label={tr('Còn lại')}
           n={due.length}
-          foot={<Text style={statText.foot}>Trên <Text style={statText.b}>{due.length + done.length}</Text> việc hôm nay</Text>}
+          foot={<Text style={statText.foot}>{tr('Trên')} <Text style={statText.b}>{due.length + done.length}</Text> {tr('việc hôm nay')}</Text>}
         />
         <Stat
           icon="alert-circle-outline"
-          label="Quá hạn"
+          label={tr('Quá hạn')}
           n={over.length}
           tone={over.length ? color.danger : undefined}
-          foot={<Text style={statText.foot}>{oldest ? <>Cũ nhất <Text style={[statText.b, { color: color.danger }]}>{oldest} ngày</Text></> : 'Không có việc trễ'}</Text>}
+          foot={<Text style={statText.foot}>{oldest ? <>{tr('Cũ nhất')} <Text style={[statText.b, { color: color.danger }]}>{tr('{n} ngày', { n: oldest })}</Text></> : tr('Không có việc trễ')}</Text>}
         />
         <Stat
           icon="checkmark-circle-outline"
-          label="Đã xong"
+          label={tr('Đã xong')}
           n={done.length}
           foot={
             <>
               <Text style={statText.foot}>
-                {vsYesterday === 0 ? 'Bằng hôm qua' : (
+                {vsYesterday === 0 ? tr('Bằng hôm qua') : (
                   <>
-                    <Text style={[statText.b, { color: vsYesterday > 0 ? color.success : color.danger }]}>{vsYesterday > 0 ? '+' : ''}{vsYesterday}</Text> so với hôm qua
+                    <Text style={[statText.b, { color: vsYesterday > 0 ? color.success : color.danger }]}>{vsYesterday > 0 ? '+' : ''}{vsYesterday}</Text> {tr('so với hôm qua')}
                   </>
                 )}
               </Text>
-              <Bars values={perDay} label="Việc xong 7 ngày qua" />
+              <Bars values={perDay} label={tr('Việc xong 7 ngày qua')} />
             </>
           }
         />
       </StatRow>
+      {reportLoaded && <ReportNudge day={day} report={reports[0]} status={reportStatus(day, reports[0], day)} />}
       {list}
     </Screen>
   );

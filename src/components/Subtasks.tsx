@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Field, IconButton, Tick } from '@/components/ui';
 import { color, text } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 import { fmtWhen, parseWhen, spanError } from '@/lib/subtasks';
 import { ok, type Subtask, supabase, type Task } from '@/lib/supabase';
 
@@ -56,7 +57,7 @@ export function Subtasks({ task, draft: title, setDraft: setTitle }: { task: Tas
           <View style={s.row}>
             <Tick checked={r.done} onPress={() => toggle(r)} size={22} />
             <Text style={[s.title, r.done && s.done]}>{r.title}</Text>
-            <IconButton icon="close" label={`Xoá “${r.title}”`} onPress={() => remove(r)} />
+            <IconButton icon="close" label={tr('Xoá “{name}”', { name: r.title })} onPress={() => remove(r)} />
           </View>
           <Times row={r} task={task} />
         </View>
@@ -65,12 +66,12 @@ export function Subtasks({ task, draft: title, setDraft: setTitle }: { task: Tas
         icon="add"
         value={title}
         onChangeText={setTitle}
-        placeholder="Thêm việc con…"
-        aria-label="Tên việc con mới"
+        placeholder={tr('Thêm việc con…')}
+        aria-label={tr('Tên việc con mới')}
         onSubmitEditing={add}
         submitBehavior="submit"
         returnKeyType="done"
-        right={title.trim() ? <Button title="Thêm" onPress={add} loading={busy} /> : undefined}
+        right={title.trim() ? <Button title={tr('Thêm')} onPress={add} loading={busy} /> : undefined}
       />
     </View>
   );
@@ -88,7 +89,7 @@ function Times({ row, task }: { row: Subtask; task: Task }) {
     // A bare time means the parent's start day; the end's bare time means the subtask's start day.
     const a = parseWhen(start, task.due_date);
     const b = a && parseWhen(end, a.date ?? task.due_date);
-    if (!a || !b) return setError('Gõ DD/MM HH:MM, DD/MM hoặc HH:MM');
+    if (!a || !b) return setError(tr('Gõ DD/MM HH:MM, DD/MM hoặc HH:MM'));
     const span = { start_date: a.date, start_time: a.time, end_date: b.date, end_time: b.time };
     const e = spanError(task, span);
     setError(e);
@@ -104,9 +105,9 @@ function Times({ row, task }: { row: Subtask; task: Task }) {
   return (
     <View style={s.times}>
       <View style={s.timesRow}>
-        {input(start, setStart, 'Bắt đầu')}
-        <Text style={s.count}>đến</Text>
-        {input(end, setEnd, 'Kết thúc')}
+        {input(start, setStart, tr('Bắt đầu'))}
+        <Text style={s.count}>{tr('đến')}</Text>
+        {input(end, setEnd, tr('Kết thúc'))}
       </View>
       {!!error && <Text style={s.error}>{error}</Text>}
     </View>

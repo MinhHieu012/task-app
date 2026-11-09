@@ -36,6 +36,7 @@ import {
   shadowModal,
   text,
 } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 import { useSession } from '@/lib/supabase';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -135,7 +136,7 @@ export function Avatar({ size = 40, onPress }: { size?: number; onPress?: () => 
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? `Cài đặt, ${email ?? ''}` : email}
+      accessibilityLabel={onPress ? `${tr('Cài đặt')}, ${email ?? ''}` : email}
       style={(s) => [st.avatar, { width: size, height: size, borderRadius: size / 2 }, pressed(s)]}
     >
       <Text style={[st.avatarText, { fontSize: size * 0.42, lineHeight: size * 0.6 }]}>{(email ?? '?')[0].toUpperCase()}</Text>
@@ -174,7 +175,7 @@ export function PriorityTag({ priority }: { priority: number }) {
   const p = priority as Priority;
   return (
     <View style={[st.tag, { backgroundColor: priorityBg[p] }]}>
-      <Text style={[st.tagText, { color: priorityText[p] }]}>{p === 4 ? 'Bình thường' : `Ưu tiên ${p}`}</Text>
+      <Text style={[st.tagText, { color: priorityText[p] }]}>{p === 4 ? tr('Bình thường') : tr('Ưu tiên {n}', { n: p })}</Text>
     </View>
   );
 }
@@ -257,7 +258,7 @@ export function Meta({ children, tone }: { children: ReactNode; tone?: 'over' | 
 }
 
 /* Confirm modal */
-export function ConfirmModal({ visible, title, message, confirmText = 'Xoá', onCancel, onConfirm, busy }: {
+export function ConfirmModal({ visible, title, message, confirmText = tr('Xoá'), onCancel, onConfirm, busy }: {
   visible: boolean; title: string; message?: string; confirmText?: string; onCancel: () => void; onConfirm: () => void; busy?: boolean;
 }) {
   // Backdrop fades, card fades + scales from 0.96. The Modal stays mounted (`shown`) until the exit finishes.
@@ -282,7 +283,7 @@ export function ConfirmModal({ visible, title, message, confirmText = 'Xoá', on
             </View>
           </View>
           <View style={st.modalFoot}>
-            <Button title="Huỷ" variant="secondary" onPress={onCancel} />
+            <Button title={tr('Huỷ')} variant="secondary" onPress={onCancel} />
             <Button title={confirmText} icon="trash-outline" variant="danger" onPress={onConfirm} loading={busy} />
           </View>
         </Animated.View>
@@ -304,7 +305,7 @@ export function Screen({ title, sub, back, right, footer, wideFooter, aside, chi
     <ScrollView style={st.screen} contentContainerStyle={[st.screenBody, wide && { padding: 32, gap: 28, maxWidth, alignSelf: 'flex-start' }]} keyboardShouldPersistTaps="handled">
       {back && !wide && (
         <Button
-          title="Quay lại"
+          title={tr('Quay lại')}
           icon="chevron-back"
           variant="ghost"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
@@ -409,7 +410,7 @@ export function Tick({ priority = 4, checked, onPress, disabled, size = 24 }: {
       onPress={() => { pop(); onPress?.(); }}
       disabled={disabled}
       accessibilityRole="checkbox"
-      accessibilityLabel={checked ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'}
+      accessibilityLabel={checked ? tr('Bỏ đánh dấu xong') : tr('Đánh dấu xong')}
       accessibilityState={{ checked, disabled }}
       hitSlop={size < 32 ? 10 : 4}
       style={[disabled && st.disabled]}

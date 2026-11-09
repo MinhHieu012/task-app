@@ -3,13 +3,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar';
 import { QuickAdd } from '@/components/QuickAdd';
+import { ReportCard } from '@/components/Report';
 import { Stat, StatRow, statText } from '@/components/Stat';
 import { TaskGroup } from '@/components/TaskRow';
 import { Badge, Card, EmptyState, Screen, useWide, webEase } from '@/components/ui';
 import { color, rule, text } from '@/constants/theme';
-import { fmtDay, fromIso, toIso, today } from '@/lib/dates';
+import { addDays, fmtDay, fromIso, toIso, today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { dayCounts, groupByProject, monthCounts } from '@/lib/journal';
-import { type Project, type Task, useRows } from '@/lib/supabase';
+import { reportStats, reportStatus, type Status } from '@/lib/reports';
+import { type Project, type Report, type Task, useRows } from '@/lib/supabase';
 
 const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
@@ -23,6 +26,12 @@ export default function Journal() {
   const [done, , loaded] = useRows<Task>('tasks', (q) => q.gte('completed_day', from).lte('completed_day', to), `done:${from}`);
   const [due] = useRows<Task>('tasks', (q) => q.gte('due_date', from).lte('due_date', to), `due:${from}`);
   const [projects] = useRows<Project>('projects');
+  // Reports of the month, plus the last 120 days for the streak (ponytail: a streak caps at 120 days).
+  const recent = addDays(today(), -120);
+  const [reports] = useRows<Report>('daily_reports', (q) => q.gte('day', from < recent ? from : recent).lte('day', to), `rep:${from}`);
+  // The first report ever: days before it are not counted as missing.
+  const [first] = useRows<Report>('daily_reports', (q) => q.order('day').limit(1), 'rep:first');
+  const since = first[0]?.day ?? null;
 
   const rows = [...new Map([...done, ...due].map((t) => [t.id, t])).values()];
   const counts = monthCounts(rows, year, month);
@@ -45,10 +54,13 @@ export default function Journal() {
   const active = days.filter((d) => counts[d] > 0).length;
   const best = days.reduce<string | null>((b, d) => (counts[d] > (b ? counts[b] : 0) ? d : b), null);
   const lastMissed = [...missed].sort().at(-1);
+  const byDay = new Map(reports.map((r) => [r.day, r]));
+  const statuses: Record<string, Status> = Object.fromEntries(Object.keys(counts).map((d) => [d, reportStatus(d, byDay.get(d), since)]));
+  const rep = reportStats(days, reports, since);
   const avg = days.length ? (total / days.length).toFixed(1).replace('.', ',') : '0';
 
   const wide = useWide();
-  const log = <QuickAdd defaults={logDefaults} placeholder={isToday ? 'Ghi việc đã làm hôm nay…' : `Ghi việc đã làm ngày ${label}…`} />;
+  const log = <QuickAdd defaults={logDefaults} placeholder={isToday ? tr('Ghi việc đã làm hôm nay…') : tr('Ghi việc đã làm ngày {day}…', { day: label })} />;
   const calendar = (
     <Card>
       <MonthCalendar
@@ -57,6 +69,7 @@ export default function Journal() {
         selected={day}
         counts={counts}
         missed={missed}
+        reports={statuses}
         onSelect={setDay}
         onMonth={(delta) => setDay(dayForMonth(year, month + delta))}
       />
@@ -65,45 +78,52 @@ export default function Journal() {
   const dayList = (
     <>
       <View style={s.dayHead}>
-        <Text style={s.dayTitle}>{isToday ? 'Hôm nay' : WEEKDAY[fromIso(day).getDay()]}, {label}</Text>
+        <Text style={s.dayTitle}>{isToday ? tr('Hôm nay') : tr(WEEKDAY[fromIso(day).getDay()])}, {label}</Text>
         <View style={s.badges}>
-          <Badge tone="success" label={`Xong ${n}`} />
-          {m > 0 && <Badge tone="warning" label={`Trễ ${m}`} />}
+          <Badge tone="success" label={tr('Xong {n}', { n })} />
+          {m > 0 && <Badge tone="warning" label={tr('Trễ {n}', { n: m })} />}
         </View>
       </View>
+      <ReportCard day={day} report={byDay.get(day)} status={statuses[day] ?? 'none'} />
       {wide && log}
       {loaded && !groups.length && (
-        <EmptyState icon="book-outline" title="Chưa ghi việc nào ngày này">
-          {m ? `Có ${m} việc đến hạn mà không xong. ` : ''}Ghi lại việc đã làm ở ô {wide ? 'phía trên' : 'bên dưới'}.
+        <EmptyState icon="book-outline" title={tr('Chưa ghi việc nào ngày này')}>
+          {m ? tr('Có {n} việc đến hạn mà không xong.', { n: m }) + ' ' : ''}{wide ? tr('Ghi lại việc đã làm ở ô phía trên.') : tr('Ghi lại việc đã làm ở ô bên dưới.')}
         </EmptyState>
       )}
       {groups.map((g) => (
-        <TaskGroup key={g.id ?? 'inbox'} title={g.name} tasks={g.items} />
+        <TaskGroup key={g.id ?? 'inbox'} title={g.id ? g.name : tr(g.name)} tasks={g.items} />
       ))}
     </>
   );
 
   return (
-    <Screen title="Nhật ký" sub={`Tháng ${month}, ${year}`} maxWidth={100000} footer={wide ? undefined : log}>
+    <Screen title={tr('Nhật ký')} sub={tr('Tháng {m}, {y}', { m: month, y: year })} maxWidth={100000} footer={wide ? undefined : log}>
       <StatRow>
         <Stat
           icon="checkmark-done-outline"
-          label="Xong trong tháng"
+          label={tr('Xong trong tháng')}
           n={total}
-          foot={<Text style={statText.foot}>{best ? <>Nhiều nhất <Text style={statText.b}>{counts[best]} việc</Text> ngày {fmtDay(best)}</> : 'Chưa có việc nào xong'}</Text>}
+          foot={<Text style={statText.foot}>{best ? <>{tr('Nhiều nhất')} <Text style={statText.b}>{tr('{n} việc', { n: counts[best] })}</Text> {tr('ngày {date}', { date: fmtDay(best) })}</> : tr('Chưa có việc nào xong')}</Text>}
         />
         <Stat
           icon="calendar-outline"
-          label="Ngày có làm việc"
+          label={tr('Ngày có làm việc')}
           n={active}
-          foot={<Text style={statText.foot}>Trên <Text style={statText.b}>{days.length}</Text> ngày, trung bình <Text style={statText.b}>{avg}</Text> việc/ngày</Text>}
+          foot={<Text style={statText.foot}>{tr('Trên')} <Text style={statText.b}>{days.length}</Text> {tr('ngày, trung bình')} <Text style={statText.b}>{avg}</Text> {tr('việc/ngày')}</Text>}
         />
         <Stat
           icon="alert-circle-outline"
-          label="Ngày có việc lỡ"
+          label={tr('Ngày có việc lỡ')}
           n={missed.size}
           tone={missed.size ? color.warning : undefined}
-          foot={<Text style={statText.foot}>{lastMissed ? <>Gần nhất <Text style={[statText.b, { color: color.warning }]}>{fmtDay(lastMissed)}</Text></> : 'Không lỡ ngày nào'}</Text>}
+          foot={<Text style={statText.foot}>{lastMissed ? <>{tr('Gần nhất')} <Text style={[statText.b, { color: color.warning }]}>{fmtDay(lastMissed)}</Text></> : tr('Không lỡ ngày nào')}</Text>}
+        />
+        <Stat
+          icon="document-text-outline"
+          label={tr('Báo cáo đúng hạn')}
+          n={rep.ontime}
+          foot={<Text style={statText.foot}><Text style={statText.b}>{rep.late}</Text> {tr('trễ')}, <Text style={[statText.b, rep.missing > 0 && { color: color.danger }]}>{rep.missing}</Text> {tr('thiếu')}, {tr('chuỗi')} <Text style={statText.b}>{tr('{n} ngày', { n: rep.streak })}</Text></Text>}
         />
       </StatRow>
       <MonthChart counts={counts} missed={missed} selected={day} onSelect={setDay} />
@@ -130,7 +150,7 @@ function MonthChart({ counts, missed, selected, onSelect }: { counts: Record<str
   const top = Math.max(...days.map((d) => counts[d]));
   const max = Math.max(top, 1);
   return (
-    <Card title="Việc xong theo ngày" action={<Text style={s.legend}>{top ? `Cao nhất ${top} việc` : 'Chưa có việc xong tháng này'}</Text>}>
+    <Card title={tr('Việc xong theo ngày')} action={<Text style={s.legend}>{top ? tr('Cao nhất {n} việc', { n: top }) : tr('Chưa có việc xong tháng này')}</Text>}>
       <View style={s.chart}>
         {days.map((d) => {
           const future = d > now;
@@ -142,7 +162,7 @@ function MonthChart({ counts, missed, selected, onSelect }: { counts: Record<str
               onPress={() => onSelect(d)}
               disabled={future}
               accessibilityRole="button"
-              accessibilityLabel={`${fmtDay(d)}: ${v} việc xong`}
+              accessibilityLabel={tr('{date}: {n} việc xong', { date: fmtDay(d), n: v })}
               accessibilityState={{ selected: on, disabled: future }}
               style={s.col}
             >

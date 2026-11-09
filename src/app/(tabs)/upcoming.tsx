@@ -5,6 +5,7 @@ import { QuickAdd } from '@/components/QuickAdd';
 import { TaskGroup } from '@/components/TaskRow';
 import { IconButton, Screen, useWide } from '@/components/ui';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -27,12 +28,12 @@ export default function Upcoming() {
   const groups = days.map((d, i) => (
     <View key={d} style={wide ? { width: COL } : undefined}>
       <TaskGroup
-        title={`${i === 0 ? 'Ngày mai' : DAYS[fromIso(d).getDay()]}, ${fmtDay(d)}`}
+        title={`${i === 0 ? tr('Ngày mai') : tr(DAYS[fromIso(d).getDay()])}, ${fmtDay(d)}`}
         tasks={open.filter((t) => t.due_date === d)}
         projects={projects}
         hideDate
         compact
-        empty="Trống"
+        empty={tr('Trống')}
       />
     </View>
   ));
@@ -42,16 +43,16 @@ export default function Upcoming() {
   const arrows = wide && pos.max > 0 && (
     <View style={{ flexDirection: 'row', gap: 8 }}>
       <View style={pos.x <= 0 ? { opacity: 0.35 } : undefined}>
-        <IconButton icon="chevron-back" label="Ngày trước" size={40} surface onPress={() => slide(-1)} />
+        <IconButton icon="chevron-back" label={tr('Ngày trước')} size={40} surface onPress={() => slide(-1)} />
       </View>
       <View style={pos.x >= pos.max - 1 ? { opacity: 0.35 } : undefined}>
-        <IconButton icon="chevron-forward" label="Ngày sau" size={40} surface onPress={() => slide(1)} />
+        <IconButton icon="chevron-forward" label={tr('Ngày sau')} size={40} surface onPress={() => slide(1)} />
       </View>
     </View>
   );
 
   return (
-    <Screen title="Sắp tới" sub="7 ngày tới" maxWidth={100000} right={arrows} footer={<QuickAdd placeholder="Thêm vào Hộp thư…" />}>
+    <Screen title={tr('Sắp tới')} sub={tr('7 ngày tới')} maxWidth={100000} right={arrows} footer={<QuickAdd placeholder={tr('Thêm vào Hộp thư…')} />}>
       {/* Wide screens: one column per day, side by side. */}
       {wide ? (
         <ScrollView

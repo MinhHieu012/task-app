@@ -1,6 +1,8 @@
 // In-app toasts and confirm dialog instead of window.alert/confirm (web) and Alert.alert (native), so they
 // match the app's look on every platform. Callers stay imperative; <Notifier /> in the root layout draws them.
 
+import { tr } from './i18n.ts';
+
 export type Tone = 'error' | 'success' | 'info';
 export type Toast = { id: number; tone: Tone; title: string; message: string };
 type Ask = { title: string; message: string; confirmText: string; resolve: (ok: boolean) => void };
@@ -30,10 +32,10 @@ export function toast(message: string, title: string, tone: Tone = 'info') {
 }
 export const dismissToast = (id: number) => emit({ toasts: state.toasts.filter((t) => t.id !== id) });
 
-export const showError = (message: string, title = 'Lỗi') => toast(message, title, 'error');
+export const showError = (message: string, title = tr('Lỗi')) => toast(message, title, 'error');
 
 /** Asks before a destructive action; resolves true when the user confirms. */
-export function confirmAction(title: string, message = '', confirmText = 'Xoá'): Promise<boolean> {
+export function confirmAction(title: string, message = '', confirmText = tr('Xoá')): Promise<boolean> {
   state.ask?.resolve(false); // a second ask replaces an unanswered one
   return new Promise((resolve) => emit({ ask: { title, message, confirmText, resolve }, asking: true }));
 }

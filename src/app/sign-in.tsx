@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Field, IconButton, type IconName, useWide } from '@/components/ui';
 import { color, radius, rule, shadowModal, text } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 import { toast } from '@/lib/notify';
 import { ok, supabase } from '@/lib/supabase';
 
@@ -34,9 +35,9 @@ export default function SignIn() {
   const up = mode === 'up';
 
   const errors = {
-    email: !email.trim() ? 'Nhập email.' : !/^\S+@\S+\.\S+$/.test(email.trim()) ? 'Email chưa đúng dạng.' : undefined,
-    password: !password ? 'Nhập mật khẩu.' : up && password.length < 6 ? 'Cần ít nhất 6 ký tự.' : undefined,
-    confirm: up && confirm !== password ? 'Mật khẩu nhập lại không khớp.' : undefined,
+    email: !email.trim() ? tr('Nhập email.') : !/^\S+@\S+\.\S+$/.test(email.trim()) ? tr('Email chưa đúng dạng.') : undefined,
+    password: !password ? tr('Nhập mật khẩu.') : up && password.length < 6 ? tr('Cần ít nhất 6 ký tự.') : undefined,
+    confirm: up && confirm !== password ? tr('Mật khẩu nhập lại không khớp.') : undefined,
   };
   const err = (k: keyof typeof errors) => (tried ? errors[k] : undefined);
 
@@ -57,21 +58,21 @@ export default function SignIn() {
       // ponytail: sign-up stays open for the owner and test accounts; hide this tab once sign-ups are disabled.
       const res = await supabase.auth.signUp(creds);
       if (ok(res) && !res.data.session) {
-        toast('Mở link xác nhận trong email rồi đăng nhập.', 'Kiểm tra email');
+        toast(tr('Mở link xác nhận trong email rồi đăng nhập.'), tr('Kiểm tra email'));
         switchMode('in');
       }
     }
     setBusy(false);
   };
 
-  const eye = <IconButton icon={show ? 'eye-off-outline' : 'eye-outline'} label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onPress={() => setShow(!show)} />;
+  const eye = <IconButton icon={show ? 'eye-off-outline' : 'eye-outline'} label={show ? tr('Ẩn mật khẩu') : tr('Hiện mật khẩu')} onPress={() => setShow(!show)} />;
 
   const form = (
     <View style={s.form}>
       {!wide && <Logo />}
       <View style={{ gap: 6 }}>
-        <Text style={s.title}>{up ? 'Tạo tài khoản' : 'Chào mừng trở lại'}</Text>
-        <Text style={s.sub}>{up ? 'Vài giây là xong, không cần thẻ thanh toán.' : 'Đăng nhập để xem việc của hôm nay.'}</Text>
+        <Text style={s.title}>{up ? tr('Tạo tài khoản') : tr('Chào mừng trở lại')}</Text>
+        <Text style={s.sub}>{up ? tr('Vài giây là xong, không cần thẻ thanh toán.') : tr('Đăng nhập để xem việc của hôm nay.')}</Text>
       </View>
 
       <View style={s.tabs} accessibilityRole="tablist">
@@ -83,7 +84,7 @@ export default function SignIn() {
             accessibilityState={{ selected: mode === m }}
             style={[s.tab, mode === m && s.tabOn]}
           >
-            <Text style={[s.tabText, mode === m && s.tabTextOn]}>{m === 'in' ? 'Đăng nhập' : 'Đăng ký'}</Text>
+            <Text style={[s.tabText, mode === m && s.tabTextOn]}>{m === 'in' ? tr('Đăng nhập') : tr('Đăng ký')}</Text>
           </Pressable>
         ))}
       </View>
@@ -91,7 +92,7 @@ export default function SignIn() {
       <View style={{ gap: 16 }}>
         <Field
           label="Email"
-          placeholder="ban@email.com"
+          placeholder={tr('bạn@email.com')}
           value={email}
           onChangeText={setEmail}
           error={err('email')}
@@ -101,8 +102,8 @@ export default function SignIn() {
           onSubmitEditing={submit}
         />
         <Field
-          label="Mật khẩu"
-          placeholder={up ? 'Ít nhất 6 ký tự' : 'Mật khẩu của bạn'}
+          label={tr('Mật khẩu')}
+          placeholder={up ? tr('Ít nhất 6 ký tự') : tr('Mật khẩu của bạn')}
           value={password}
           onChangeText={setPassword}
           error={err('password')}
@@ -113,7 +114,7 @@ export default function SignIn() {
         />
         {up && (
           <Field
-            label="Nhập lại mật khẩu"
+            label={tr('Nhập lại mật khẩu')}
             value={confirm}
             onChangeText={setConfirm}
             error={err('confirm')}
@@ -124,12 +125,12 @@ export default function SignIn() {
         )}
       </View>
 
-      <Button title={up ? 'Tạo tài khoản' : 'Đăng nhập'} variant="primary" onPress={submit} loading={busy} disabled={busy} />
+      <Button title={up ? tr('Tạo tài khoản') : tr('Đăng nhập')} variant="primary" onPress={submit} loading={busy} disabled={busy} />
 
       <Text style={s.switch}>
-        {up ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? '}
+        {up ? tr('Đã có tài khoản? ') : tr('Chưa có tài khoản? ')}
         <Text style={s.link} onPress={() => switchMode(up ? 'in' : 'up')} accessibilityRole="link">
-          {up ? 'Đăng nhập' : 'Tạo tài khoản'}
+          {up ? tr('Đăng nhập') : tr('Tạo tài khoản')}
         </Text>
       </Text>
     </View>
@@ -156,7 +157,7 @@ function Logo({ light }: { light?: boolean }) {
       <View style={[s.mark, light && { backgroundColor: color.surface }]}>
         <Ionicons name="checkmark-done" size={22} color={light ? color.foreground : color.surface} />
       </View>
-      <Text style={[s.brandName, light && { color: color.surface }]}>Việc & Nhật ký</Text>
+      <Text style={[s.brandName, light && { color: color.surface }]}>{tr('Việc & Nhật ký')}</Text>
     </View>
   );
 }
@@ -170,20 +171,20 @@ function Intro() {
       <Logo />
       <View style={{ gap: 28 }}>
         <View style={{ gap: 12 }}>
-          <Text style={[s.headline, !big && { fontSize: 28, lineHeight: 36 }]}>Biết hôm nay làm gì,{big ? '\n' : ' '}nhớ hôm qua đã làm gì.</Text>
-          <Text style={s.lead}>Một nơi cho việc cần làm và nhật ký việc đã xong, đồng bộ giữa web và điện thoại.</Text>
+          <Text style={[s.headline, !big && { fontSize: 28, lineHeight: 36 }]}>{tr('Biết hôm nay làm gì,')}{big ? '\n' : ' '}{tr('nhớ hôm qua đã làm gì.')}</Text>
+          <Text style={s.lead}>{tr('Một nơi cho việc cần làm và nhật ký việc đã xong, đồng bộ giữa web và điện thoại.')}</Text>
         </View>
 
         {/* Short screens drop the preview so the panel never overflows. */}
         <View style={[s.preview, height < 820 && { display: 'none' }]} aria-hidden>
-          <Text style={s.previewHead}>Hôm nay</Text>
+          <Text style={s.previewHead}>{tr('Hôm nay')}</Text>
           {PREVIEW.map(([title, meta, done], i) => (
             <View key={title} style={[s.previewRow, i === PREVIEW.length - 1 && { borderBottomWidth: 0 }]}>
               <View style={[s.previewTick, done && { backgroundColor: color.success, borderColor: color.success }]}>
                 {done && <Ionicons name="checkmark" size={12} color={color.surface} />}
               </View>
-              <Text style={[s.previewTitle, done && s.previewDone]} numberOfLines={1}>{title}</Text>
-              <Text style={[s.previewMeta, i === 2 && { color: color.danger }]}>{meta}</Text>
+              <Text style={[s.previewTitle, done && s.previewDone]} numberOfLines={1}>{tr(title)}</Text>
+              <Text style={[s.previewMeta, i === 2 && { color: color.danger }]}>{tr(meta)}</Text>
             </View>
           ))}
         </View>
@@ -192,13 +193,13 @@ function Intro() {
         <View style={s.features}>
           {FEATURES.map(([, title, body]) => (
             <View key={title} style={s.feature}>
-              <Text style={s.featureTitle}>{title}</Text>
-              <Text style={s.featureBody}>{body}</Text>
+              <Text style={s.featureTitle}>{tr(title)}</Text>
+              <Text style={s.featureBody}>{tr(body)}</Text>
             </View>
           ))}
         </View>
       </View>
-      <Text style={s.foot}>© {new Date().getFullYear()} Việc & Nhật ký</Text>
+      <Text style={s.foot}>© {new Date().getFullYear()} {tr('Việc & Nhật ký')}</Text>
     </View>
   );
 }

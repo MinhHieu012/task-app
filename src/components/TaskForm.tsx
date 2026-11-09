@@ -5,6 +5,7 @@ import { addSubtask, Subtasks } from '@/components/Subtasks';
 import { Button, Card, Choices, Field } from '@/components/ui';
 import { color, priority, text } from '@/constants/theme';
 import { fromIso, parseDate, parseTime } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { confirmAction } from '@/lib/notify';
 import { spanError } from '@/lib/subtasks';
 import { ok, type Project, type Subtask, supabase, type Task } from '@/lib/supabase';
@@ -40,21 +41,21 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     const e: Record<string, string> = {};
     const due = date.trim() ? parseDate(date) : null;
     const at = time.trim() ? parseTime(time) : null;
-    if (!title.trim()) e.title = 'Cần có tên việc';
-    if (date.trim() && !due) e.date = 'Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY';
-    if (time.trim() && !at) e.time = 'Giờ phải từ 00:00 đến 23:59';
-    if (at && !due && !e.date) e.time = 'Đặt giờ thì cần có ngày';
+    if (!title.trim()) e.title = tr('Cần có tên việc');
+    if (date.trim() && !due) e.date = tr('Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY');
+    if (time.trim() && !at) e.time = tr('Giờ phải từ 00:00 đến 23:59');
+    if (at && !due && !e.date) e.time = tr('Đặt giờ thì cần có ngày');
     // End day left blank = same day as the start.
     const endDue = endDate.trim() ? parseDate(endDate) : due;
     const end = endTime.trim() ? parseTime(endTime) : null;
-    if (endDate.trim() && !endDue) e.endDate = 'Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY';
-    if (endDate.trim() && !endTime.trim()) e.endTime = 'Đặt ngày kết thúc thì cần có giờ kết thúc';
-    else if (endTime.trim() && !end) e.endTime = 'Giờ phải từ 00:00 đến 23:59';
-    else if (end && !at && !e.time) e.endTime = 'Đặt giờ kết thúc thì cần có giờ bắt đầu';
-    else if (end && at && endDue && due && `${endDue} ${end}` <= `${due} ${at}`) e.endTime = 'Thời gian kết thúc phải sau lúc bắt đầu';
-    if (kind && !due && !e.date) e.repeat = 'Việc lặp lại cần có ngày bắt đầu';
-    if (kind === 'weekly' && !weekDays.length) e.repeat = 'Chọn ít nhất một thứ';
-    if (kind === 'every' && !/^[1-9]\d*$/.test(everyN.trim())) e.repeat = 'Gõ số ngày, từ 1 trở lên';
+    if (endDate.trim() && !endDue) e.endDate = tr('Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY');
+    if (endDate.trim() && !endTime.trim()) e.endTime = tr('Đặt ngày kết thúc thì cần có giờ kết thúc');
+    else if (endTime.trim() && !end) e.endTime = tr('Giờ phải từ 00:00 đến 23:59');
+    else if (end && !at && !e.time) e.endTime = tr('Đặt giờ kết thúc thì cần có giờ bắt đầu');
+    else if (end && at && endDue && due && `${endDue} ${end}` <= `${due} ${at}`) e.endTime = tr('Thời gian kết thúc phải sau lúc bắt đầu');
+    if (kind && !due && !e.date) e.repeat = tr('Việc lặp lại cần có ngày bắt đầu');
+    if (kind === 'weekly' && !weekDays.length) e.repeat = tr('Chọn ít nhất một thứ');
+    if (kind === 'every' && !/^[1-9]\d*$/.test(everyN.trim())) e.repeat = tr('Gõ số ngày, từ 1 trở lên');
     setErrors(e);
     if (Object.keys(e).length) return;
 
@@ -72,7 +73,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     const outside = ok(subs) ? (subs.data as Subtask[]).find((x) => spanError(patch, x)) : undefined;
     if (!subs.data || outside) {
       setBusy(false);
-      if (outside) setErrors({ date: `Việc con “${outside.title}” sẽ nằm ngoài thời gian mới. Sửa việc con trước.` });
+      if (outside) setErrors({ date: tr('Việc con “{name}” sẽ nằm ngoài thời gian mới. Sửa việc con trước.', { name: outside.title }) });
       return;
     }
     const res = await supabase.from('tasks').update(patch).eq('id', id);
@@ -83,8 +84,8 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
   };
 
   const remove = async () => {
-    const msg = `“${task.title}” sẽ bị xoá vĩnh viễn, không thể khôi phục.${task.completed_at ? ' Mục này cũng mất khỏi nhật ký.' : ''}`;
-    if (!(await confirmAction('Xoá việc này?', msg))) return;
+    const msg = tr('“{name}” sẽ bị xoá vĩnh viễn, không thể khôi phục.', { name: task.title }) + (task.completed_at ? ' ' + tr('Mục này cũng mất khỏi nhật ký.') : '');
+    if (!(await confirmAction(tr('Xoá việc này?'), msg))) return;
     if (ok(await supabase.from('tasks').delete().eq('id', id))) onDone();
   };
 
@@ -92,20 +93,20 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     <>
       {box(
         <View style={s.form}>
-          <Field label="Tên việc" value={title} onChangeText={setTitle} error={errors.title} />
-          <Field label="Ghi chú" value={note} onChangeText={setNote} multiline style={s.note} placeholder="Không bắt buộc" />
+          <Field label={tr('Tên việc')} value={title} onChangeText={setTitle} error={errors.title} />
+          <Field label={tr('Ghi chú')} value={note} onChangeText={setNote} multiline style={s.note} placeholder={tr('Không bắt buộc')} />
           <View style={s.group}>
-            <Text style={s.label}>Ưu tiên</Text>
+            <Text style={s.label}>{tr('Ưu tiên')}</Text>
             <Choices
               layout="cols"
               value={prio}
               onChange={setPrio}
-              options={([1, 2, 3, 4] as const).map((n) => ({ value: n, label: n === 4 ? 'Thường' : `Mức ${n}`, dot: priority[n] }))}
+              options={([1, 2, 3, 4] as const).map((n) => ({ value: n, label: n === 4 ? tr('Thường') : tr('Mức {n}', { n }), dot: priority[n] }))}
             />
           </View>
           <View style={s.group}>
             <Text style={s.label}>Project</Text>
-            <Choices value={projectId} onChange={setProjectId} options={[{ value: '', label: 'Hộp thư' }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} />
+            <Choices value={projectId} onChange={setProjectId} options={[{ value: '', label: tr('Hộp thư') }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} />
           </View>
         </View>,
       )}
@@ -113,53 +114,53 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
       {box(
         <View style={s.form}>
           <Field
-            label="Ngày bắt đầu"
+            label={tr('Ngày bắt đầu')}
             value={date}
             onChangeText={setDate}
             placeholder="DD/MM"
-            hint="Gõ DD/MM hoặc DD/MM/YYYY"
+            hint={tr('Gõ DD/MM hoặc DD/MM/YYYY')}
             error={errors.date}
-            right={date ? <Button title="Bỏ" variant="ghost" onPress={() => setDate('')} /> : undefined}
+            right={date ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setDate('')} /> : undefined}
           />
           <Field
-            label="Giờ bắt đầu"
+            label={tr('Giờ bắt đầu')}
             value={time}
             onChangeText={setTime}
             placeholder="HH:MM"
             error={errors.time}
-            right={time ? <Button title="Bỏ" variant="ghost" onPress={() => setTime('')} /> : undefined}
+            right={time ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setTime('')} /> : undefined}
           />
           <Field
-            label="Ngày kết thúc"
+            label={tr('Ngày kết thúc')}
             value={endDate}
             onChangeText={setEndDate}
             placeholder="DD/MM"
-            hint="Để trống nếu kết thúc cùng ngày bắt đầu"
+            hint={tr('Để trống nếu kết thúc cùng ngày bắt đầu')}
             error={errors.endDate}
-            right={endDate ? <Button title="Bỏ" variant="ghost" onPress={() => setEndDate('')} /> : undefined}
+            right={endDate ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setEndDate('')} /> : undefined}
           />
           <Field
-            label="Giờ kết thúc"
+            label={tr('Giờ kết thúc')}
             value={endTime}
             onChangeText={setEndTime}
             placeholder="HH:MM"
-            hint="Không bắt buộc"
+            hint={tr('Không bắt buộc')}
             error={errors.endTime}
-            right={endTime ? <Button title="Bỏ" variant="ghost" onPress={() => setEndTime('')} /> : undefined}
+            right={endTime ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setEndTime('')} /> : undefined}
           />
           <View style={s.group}>
-            <Text style={s.label}>Lặp lại</Text>
+            <Text style={s.label}>{tr('Lặp lại')}</Text>
             <Choices<Kind>
               layout="stack"
               value={kind}
               onChange={setKind}
               error={errors.repeat}
               options={[
-                { value: '', label: 'Không lặp' },
-                { value: 'daily', label: 'Hằng ngày' },
-                { value: 'weekly', label: 'Hằng tuần' },
-                { value: 'monthly', label: 'Hằng tháng' },
-                { value: 'every', label: 'Mỗi N ngày' },
+                { value: '', label: tr('Không lặp') },
+                { value: 'daily', label: tr('Hằng ngày') },
+                { value: 'weekly', label: tr('Hằng tuần') },
+                { value: 'monthly', label: tr('Hằng tháng') },
+                { value: 'every', label: tr('Mỗi N ngày') },
               ]}
             />
             {kind === 'weekly' && (
@@ -167,21 +168,21 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
                 layout="days"
                 value={weekDays}
                 onChange={(d) => setWeekDays((v) => (v.includes(d) ? v.filter((x) => x !== d) : [...v, d]))}
-                options={DAYS.map((label, value) => ({ value, label }))}
+                options={DAYS.map((label, value) => ({ value, label: tr(label) }))}
               />
             )}
-            {kind === 'monthly' && <Text style={s.muted}>Lặp vào ngày {date ? date.split('/')[0] : '…'} mỗi tháng (theo ngày ở trên).</Text>}
-            {kind === 'every' && <Field value={everyN} onChangeText={setEveryN} placeholder="Số ngày, ví dụ 3" keyboardType="number-pad" aria-label="Số ngày" />}
+            {kind === 'monthly' && <Text style={s.muted}>{tr('Lặp vào ngày {d} mỗi tháng (theo ngày ở trên).', { d: date ? date.split('/')[0] : '…' })}</Text>}
+            {kind === 'every' && <Field value={everyN} onChangeText={setEveryN} placeholder={tr('Số ngày, ví dụ 3')} keyboardType="number-pad" aria-label="Số ngày" />}
           </View>
         </View>,
-        'Hạn và lặp lại',
+        tr('Hạn và lặp lại'),
       )}
 
-      {box(<Subtasks task={task} draft={subDraft} setDraft={setSubDraft} />, 'Việc con')}
+      {box(<Subtasks task={task} draft={subDraft} setDraft={setSubDraft} />, tr('Việc con'))}
 
       <View style={s.actions}>
-        <Button title="Xoá việc" variant="danger" onPress={remove} />
-        <Button title="Lưu" variant="primary" onPress={save} loading={busy} style={s.save} />
+        <Button title={tr('Xoá việc')} variant="danger" onPress={remove} />
+        <Button title={tr('Lưu')} variant="primary" onPress={save} loading={busy} style={s.save} />
       </View>
     </>
   );

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { animate, ConfirmModal, ease, IconButton, type IconName, reducedMotion } from '@/components/ui';
 import { color, duration, radius, rule, shadowModal, text } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 import { answer, dismissToast, notifyStore, type Toast, type Tone } from '@/lib/notify';
 
 const look: Record<Tone, { icon: IconName; fg: string; bg: string }> = {
@@ -71,7 +72,7 @@ function ToastCard({ toast: t, fromRight }: { toast: Toast; fromRight: boolean }
         <Text style={s.title}>{t.title}</Text>
         {!!t.message && <Text style={s.message}>{t.message}</Text>}
       </View>
-      <IconButton icon="close" label="Đóng thông báo" onPress={() => setLeaving(true)} />
+      <IconButton icon="close" label={tr('Đóng thông báo')} onPress={() => setLeaving(true)} />
     </Animated.View>
   );
 }

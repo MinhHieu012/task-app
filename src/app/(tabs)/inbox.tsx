@@ -7,6 +7,7 @@ import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
 import { active, Button, Empty, EmptyState, InfoLine, Screen, TextLink } from '@/components/ui';
 import { color, projectColor, rule, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
+import { tr } from '@/lib/i18n';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
@@ -25,18 +26,18 @@ export default function Inbox() {
   const aside = (
     <>
       <View>
-        <View style={s.head}><Text style={s.title}>Tổng quan</Text></View>
-        <InfoLine icon="file-tray-outline" label="Trong Hộp thư" n={open.length} />
-        <InfoLine icon="alert-circle-outline" label="Quá hạn" n={over} tone={over ? color.danger : undefined} />
-        <InfoLine icon="sunny-outline" label="Có hạn hôm nay" n={dueToday} />
-        <InfoLine icon="help-circle-outline" label="Chưa hẹn ngày" n={undated} last />
+        <View style={s.head}><Text style={s.title}>{tr('Tổng quan')}</Text></View>
+        <InfoLine icon="file-tray-outline" label={tr('Trong Hộp thư')} n={open.length} />
+        <InfoLine icon="alert-circle-outline" label={tr('Quá hạn')} n={over} tone={over ? color.danger : undefined} />
+        <InfoLine icon="sunny-outline" label={tr('Có hạn hôm nay')} n={dueToday} />
+        <InfoLine icon="help-circle-outline" label={tr('Chưa hẹn ngày')} n={undated} last />
       </View>
       <View>
         <View style={s.head}>
           <Text style={s.title}>Project</Text>
-          <TextLink label="Quản lý" onPress={() => router.navigate('/projects')} />
+          <TextLink label={tr('Quản lý')} onPress={() => router.navigate('/projects')} />
         </View>
-        <Text style={s.hint}>Bấm một việc rồi chọn project trong panel để chuyển việc ra khỏi Hộp thư.</Text>
+        <Text style={s.hint}>{tr('Bấm một việc rồi chọn project trong panel để chuyển việc ra khỏi Hộp thư.')}</Text>
         {projects.map((p, i) => (
           <Pressable
             key={p.id}
@@ -48,29 +49,29 @@ export default function Inbox() {
             <Text style={s.count}>{inProjects.filter((t) => t.project_id === p.id).length}</Text>
           </Pressable>
         ))}
-        {!projects.length && <Empty>Chưa có project nào.</Empty>}
+        {!projects.length && <Empty>{tr('Chưa có project nào.')}</Empty>}
       </View>
     </>
   );
 
   return (
     <Screen
-      title="Hộp thư"
-      sub={`Việc chưa thuộc project nào${loaded ? `, ${open.length} việc` : ''}`}
-      footer={<QuickAdd placeholder="Thêm vào Hộp thư…" />}
+      title={tr('Hộp thư')}
+      sub={tr('Việc chưa thuộc project nào') + (loaded ? tr(', {n} việc', { n: open.length }) : '')}
+      footer={<QuickAdd placeholder={tr('Thêm vào Hộp thư…')} />}
       aside={sel?.id ? undefined : aside}
       maxWidth={100000}
     >
       {!loaded ? (
-        <TaskGroup title="Việc" tasks={[]} loading />
+        <TaskGroup title={tr('Việc')} tasks={[]} loading />
       ) : !open.length ? (
-        <EmptyState icon="file-tray-outline" title="Hộp thư trống" action={<Button title="Thêm việc" icon="add" variant="primary" onPress={focusQuickAdd} />}>
-          Việc thêm nhanh mà chưa chọn project sẽ nằm ở đây cho tới khi bạn xếp nó vào project.
+        <EmptyState icon="file-tray-outline" title={tr('Hộp thư trống')} action={<Button title={tr('Thêm việc')} icon="add" variant="primary" onPress={focusQuickAdd} />}>
+          {tr('Việc thêm nhanh mà chưa chọn project sẽ nằm ở đây cho tới khi bạn xếp nó vào project.')}
         </EmptyState>
       ) : (
         <View style={{ gap: 28 }}>
           {groupByDue(open, day).map(([title, list]) => (
-            <TaskGroup key={title} title={title} tasks={list} over={title === 'Quá hạn'} />
+            <TaskGroup key={title} title={title} tasks={list} over={title === tr('Quá hạn')} />
           ))}
         </View>
       )}

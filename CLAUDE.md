@@ -31,6 +31,9 @@ Before calling a task done: `npm run lint && npm run typecheck && npm test`.
 - A task row with `completed_at` is a journal entry. `completed_day` is frozen at tick time. Recurring tick: open task moves to `nextDue`, a `recurring_copy` done row stays in the journal.
 - `repeat` format: `daily | weekly:<0-6,...> | monthly:<1-31> | every:<N>` (enforced by a DB check).
 - New pure logic in `src/lib` gets an assert in `logic.check.ts`.
+- UI strings go through `tr('Vietnamese text', { vars })` (`src/lib/i18n.ts`): the Vietnamese is the key, add its English to `en` (`npm test` fails on a missing one). Never call `tr` at module level.
+- Language and accent are device prefs (`src/lib/prefs.ts` / `.native.ts`), read synchronously at startup; changing one reloads the app, since StyleSheets are built once at module load.
+- Daily report (`daily_reports`, one per day, HTML): due 21:00 local, `late` frozen at first save (`src/lib/reports.ts`). The editor/viewer are Expo DOM components (`src/components/dom/`, `'use dom'`): they get labels and colours as props and always pass HTML through `sanitize`.
 - Code style: small, direct, no speculative abstractions; comments explain *why*.
 
 ## Database (Supabase)
