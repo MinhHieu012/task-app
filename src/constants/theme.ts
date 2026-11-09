@@ -3,13 +3,15 @@
 // terracotta accent for the primary action and the current selection only. The slate/ink/square version read cold.
 // Every text colour passes 4.5:1 on the sheet; priority 2 and 4 text sits a step darker than their marks.
 // Be Vietnam Pro stays the one family: it has full Vietnamese glyphs (DM Sans broke them). Loaded in src/app/_layout.tsx.
-import { accentTokens, DEFAULT_ACCENT } from '@/lib/accent';
+import { accentTokens, DEFAULT_ACCENT, neutral } from '@/lib/accent';
 import { getPref } from '@/lib/prefs';
 
 export const font = 'Be Vietnam Pro';
 
 // The accent is the user's pick from Settings (default terracotta), read before any StyleSheet is built.
 const accent = accentTokens(getPref('accent') ?? DEFAULT_ACCENT);
+// Warm neutrals follow the accent's hue (unchanged for the default), so a blue accent doesn't sit on yellow cream.
+const n = (hex: string) => neutral(hex, accent.primary);
 
 export const color = {
   primary: accent.primary,
@@ -18,26 +20,26 @@ export const color = {
   primaryLight: accent.light, // selection wash
   ringFocus: accent.primary, // focus ring, drawn as an outline
 
-  background: '#f6f3ee', // cream stock
+  background: n('#f6f3ee'), // cream stock
   surface: '#ffffff', // the sheet
-  rail: '#efeae2',
+  rail: n('#efeae2'),
   field: '#ffffff',
-  foreground: '#23211d', // warm ink
-  soft: '#3f3b35',
-  muted: '#6b645a',
-  border: '#ebe5db', // hairline rule
-  borderStrong: '#ddd5c8', // the rule under a head
-  fieldEdge: '#948b7e', // input edge, 3:1 on the sheet
-  itemHover: '#f6f1ea',
-  secondary: '#efeae2',
-  secondaryHover: '#e6dfd4',
-  buttonHover: '#f6f1ea',
-  ghostHover: '#f3eee6',
-  chip: '#f3eee6',
-  chipHover: '#ebe5db',
-  chipText: '#3f3b35',
+  foreground: n('#23211d'), // warm ink
+  soft: n('#3f3b35'),
+  muted: n('#6b645a'),
+  border: n('#ebe5db'), // hairline rule
+  borderStrong: n('#ddd5c8'), // the rule under a head
+  fieldEdge: n('#948b7e'), // input edge, 3:1 on the sheet
+  itemHover: n('#f6f1ea'),
+  secondary: n('#efeae2'),
+  secondaryHover: n('#e6dfd4'),
+  buttonHover: n('#f6f1ea'),
+  ghostHover: n('#f3eee6'),
+  chip: n('#f3eee6'),
+  chipHover: n('#ebe5db'),
+  chipText: n('#3f3b35'),
   backdrop: 'rgba(35,33,29,0.4)',
-  skeleton: '#efeae2',
+  skeleton: n('#efeae2'),
   chartBar: accent.bar, // a tint of the accent, so data reads while the selected day stays the strongest
   chartBarHover: accent.barHover,
   scrollbar: 'rgba(35,33,29,0.22)',
@@ -55,14 +57,14 @@ export const color = {
   warningBg: '#fdf1dc',
   warning: '#9a5b00',
   infoBg: '#e6eef9',
-  neutralBg: '#f3eee6',
-  neutral: '#3f3b35',
+  neutralBg: n('#f3eee6'),
+  neutral: n('#3f3b35'),
 } as const;
 
 // Priority scale: ticks, choice marks and the priority tag.
-export const priority = { 1: '#b42318', 2: '#b26a00', 3: '#2563b0', 4: '#8a8378' } as const;
-export const priorityBg = { 1: '#fdecea', 2: '#fdf1dc', 3: '#e6eef9', 4: '#f3eee6' } as const;
-export const priorityText = { 1: '#b42318', 2: '#9a5b00', 3: '#2563b0', 4: '#6b645a' } as const;
+export const priority = { 1: '#b42318', 2: '#b26a00', 3: '#2563b0', 4: n('#8a8378') } as const;
+export const priorityBg = { 1: '#fdecea', 2: '#fdf1dc', 3: '#e6eef9', 4: n('#f3eee6') } as const;
+export const priorityText = { 1: '#b42318', 2: '#9a5b00', 3: '#2563b0', 4: n('#6b645a') } as const;
 export type Priority = keyof typeof priority;
 
 // Soft corners: controls 10, sheets 14. `full` for round ticks, pills and the avatar.
@@ -95,5 +97,9 @@ export const shadowModal = '0 12px 32px rgba(35,33,29,0.12)';
 export const shadowPrimary = 'none';
 
 // Project marks, picked by the project's position in the name-sorted list. All >= 3:1 on the sheet.
-export const projectColors = ['#b04a24', '#b26a00', '#1f7a45', '#2563b0', '#8e3b6e', '#6b645a'] as const;
+// The first follows the user's accent; a fixed mark equal to it is dropped so two projects never share it.
+export const projectColors = [
+  accent.primary,
+  ...['#b04a24', '#b26a00', '#1f7a45', '#2563b0', '#8e3b6e', '#6b645a'].filter((c) => c !== accent.primary),
+].slice(0, 6);
 export const projectColor = (i: number) => projectColors[i % projectColors.length];

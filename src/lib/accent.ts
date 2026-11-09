@@ -36,6 +36,30 @@ export function contrast(x: string, y: string) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+const hsl = (hex: string) => {
+  const [r, g, b] = rgb(hex).map((v) => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (!d) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [(h * 60 + 360) % 360, s, l];
+};
+const fromHsl = (h: number, s: number, l: number) => {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return toHex([r, g, b].map((v) => (v + m) * 255));
+};
+
+/** The warm neutrals (cream paper, rules, inks) were tuned for terracotta; under another accent they read yellow.
+ *  Turn their hue by the accent's distance from the default, keeping saturation and lightness, so the default
+ *  theme is unchanged and every other accent gets neutrals of its own family. */
+export function neutral(hex: string, accent: string) {
+  const turn = hsl(accent)[0] - hsl(DEFAULT_ACCENT)[0];
+  if (!turn) return hex;
+  const [h, s, l] = hsl(hex);
+  return fromHsl((h + turn + 360) % 360, s, l);
+}
+
 /** Tokens for an accent. A light pick is darkened until white text on it reads (4.5:1), so buttons stay legible. */
 export function accentTokens(input: string) {
   let primary = isHex(input) ? input.trim().toLowerCase() : DEFAULT_ACCENT;
