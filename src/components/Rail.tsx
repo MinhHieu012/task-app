@@ -23,7 +23,7 @@ export function useOverdue() {
   return open.filter((t) => (t.end_date ?? t.due_date)! < day).length;
 }
 
-/** Wide screens: 88px icon rail on the second paper step; labels show as tooltips on hover. */
+/** Wide screens: 88px icon rail on a warm paper step; labels show as tooltips on hover. */
 export function Rail() {
   const path = usePathname();
   const session = useSession();
@@ -32,7 +32,7 @@ export function Rail() {
 
   return (
     <View style={s.rail}>
-      <View style={s.mark}><Ionicons name="checkmark-done" size={20} color={color.surface} /></View>
+      <View style={s.mark}><Ionicons name="checkmark-done" size={20} color={color.primaryFg} /></View>
       <View style={s.items}>
         {NAV.map((n) => (
           <RailItem key={n.label} icon={n.icon} label={n.label} on={n.match(path)} badge={n.href === '/' ? over : 0} onPress={() => router.navigate(n.href)} />
@@ -72,7 +72,7 @@ function RailItem({ icon, label, on, badge, onPress }: { icon: IconName; label: 
 
 const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
-/** Wide screens: a sheet-coloured top bar with the quick add box in the middle and today's date on the right. */
+/** Wide screens: a white top bar with the quick add box in the middle and today's date on the right. */
 export function TopBar() {
   const path = usePathname();
   const day = today();
@@ -98,18 +98,18 @@ export function TopBar() {
 const s = StyleSheet.create({
   // Above the main column so hover labels are not covered by the page.
   rail: { width: 88, zIndex: 20, backgroundColor: color.rail, borderRightWidth: rule.hair, borderRightColor: color.border, alignItems: 'center', paddingVertical: 20 },
-  mark: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: color.foreground, alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
+  mark: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: color.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
   items: { gap: 8, flex: 1 },
-  item: { width: 48, height: 48, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  item: { width: 48, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   itemHover: { backgroundColor: color.secondaryHover },
-  // The current page: the sheet laid on the rail, the icon in the accent.
-  itemOn: { backgroundColor: color.surface, borderLeftWidth: rule.bar, borderLeftColor: color.primary },
+  // The current page: a soft accent wash, the icon in the accent.
+  itemOn: { backgroundColor: color.primaryLight },
   badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' },
   badgeText: { ...text.xs, fontSize: 10, lineHeight: 14, fontWeight: '600', color: color.primaryFg, fontVariant: ['tabular-nums'] },
   tip: { ...text.xs, position: 'absolute', left: 58, top: 14, backgroundColor: color.foreground, color: color.primaryFg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm, zIndex: 30, width: 'max-content' as never },
   foot: { alignItems: 'center', gap: 8 },
-  avatar: { width: 40, height: 40, borderRadius: 20, borderWidth: rule.hair, borderColor: color.muted, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { ...text.smMedium, fontWeight: '600', color: color.foreground },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { ...text.smMedium, fontWeight: '600', color: color.primary },
 
   top: { height: 72, flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 32, backgroundColor: color.surface, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   qa: { flex: 1, maxWidth: 460, marginHorizontal: 'auto' },

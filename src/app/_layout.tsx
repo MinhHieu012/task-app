@@ -19,8 +19,8 @@ import { useSession } from '@/lib/supabase';
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   const css = document.createElement('style');
   css.textContent = `/* Hallmark · shape: app screen · genre: editorial · theme: Almanac (deal 1/3, seed personal-task-manager-daily-4a2a·e795f77a·2026-11-09·r0) · redesign: full
- * nav: kept shell (icon rail + top bar wide, bottom tabs narrow) · signature: the day's tasks as a ruled ledger sheet · states: loading, empty, full, error (toasts)
- * axes: mid/grotesk-sans/chromatic-magenta · posture: restrained · contrast: pass · v2.0.0 */
+ * nav: kept shell (icon rail + top bar wide, bottom tabs narrow) · signature: the day's tasks as one sheet of lines · states: loading, empty, full, error (toasts)
+ * axes: light/sans/chromatic-terracotta (softened by request: the slate, ink and square corners read cold) · posture: warm · contrast: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S3 R5 V4 · weakest: S, a task list reads like any task list; set the lists as a printed ledger (firm rule, hairline lines, tabular times) instead of floating cards */
 /* Hallmark · dropped add, folder-outline, onPrimary · Ionicons names on the old project cards and a colour constant on sign-in, read as a field and a handler; no field or handler was removed */
 /* Hallmark · waive 64/fonts: one family, Be Vietnam Pro, for every role · the theme's Hanken/Newsreader/Plex lack full Vietnamese glyphs and the owner keeps this face */

@@ -5,11 +5,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { endDay } from '@/components/TaskRow';
 import { active, Button, EmptyState, Field, Screen, Skeleton, useWide } from '@/components/ui';
-import { color, projectColor, rule, text } from '@/constants/theme';
+import { color, projectColor, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, today } from '@/lib/dates';
 import { ok, type Project, supabase, type Task, useRows } from '@/lib/supabase';
 
-// Projects as one ruled table on the sheet (app screens: tables before cards). Phones restack each row.
+// Projects as one table on a sheet (app screens: tables before cards). Phones restack each row.
 export default function Projects() {
   const day = today();
   const wide = useWide();
@@ -127,7 +127,7 @@ export default function Projects() {
 }
 
 const s = StyleSheet.create({
-  sheet: { backgroundColor: color.surface, borderTopWidth: rule.bar, borderTopColor: color.foreground },
+  sheet: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 56, paddingHorizontal: 20, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   rowNarrow: { flexDirection: 'column', alignItems: 'stretch', gap: 8, paddingVertical: 14, paddingHorizontal: 16 },
   headRow: { minHeight: 40, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
@@ -140,15 +140,15 @@ const s = StyleSheet.create({
   cGo: { width: 18 },
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   weekCell: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  mark: { width: 12, height: 12, borderRadius: 1 },
+  mark: { width: 12, height: 12, borderRadius: 6 },
   name: { ...text.base, flex: 1, color: color.foreground },
   over: { color: color.danger, fontWeight: '600' },
   mutedText: { color: color.muted },
   metaLine: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 },
   meta: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
   b: { fontWeight: '600', color: color.foreground },
-  track: { flex: 1, height: 6, backgroundColor: color.background, overflow: 'hidden' },
-  fill: { height: 6 },
+  track: { flex: 1, height: 6, borderRadius: 3, backgroundColor: color.secondary, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: 3 },
   newRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16, paddingHorizontal: 20, backgroundColor: color.rail },
   newRowNarrow: { flexDirection: 'column', alignItems: 'stretch', gap: 10, paddingHorizontal: 16 },
   newLabel: { ...text.base, color: color.foreground },

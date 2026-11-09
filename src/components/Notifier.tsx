@@ -4,7 +4,7 @@ import { Animated, StyleSheet, Text, useWindowDimensions, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { animate, ConfirmModal, ease, IconButton, type IconName, reducedMotion } from '@/components/ui';
-import { color, duration, rule, text } from '@/constants/theme';
+import { color, duration, radius, rule, shadowModal, text } from '@/constants/theme';
 import { answer, dismissToast, notifyStore, type Toast, type Tone } from '@/lib/notify';
 
 const look: Record<Tone, { icon: IconName; fg: string; bg: string }> = {
@@ -86,7 +86,7 @@ const s = StyleSheet.create({
   stackWide: { right: 24, width: 380 },
   toast: {
     width: '100%', maxWidth: 380, flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    padding: 12, paddingLeft: 14, backgroundColor: color.surface, borderWidth: rule.hair, borderColor: color.border, borderTopWidth: rule.bar, borderTopColor: color.foreground,
+    padding: 12, paddingLeft: 14, backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, boxShadow: shadowModal,
   },
   icon: { width: 24, height: 32, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, minWidth: 0, paddingTop: 5 },

@@ -175,15 +175,15 @@ const s = StyleSheet.create({
   cols: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
   calCol: { width: 380 },
   dayCol: { flex: 1, minWidth: 0, gap: 16 },
-  dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingBottom: 10, borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
+  dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingBottom: 10, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   dayTitle: { ...text.h2, color: color.foreground, fontVariant: ['tabular-nums'] },
   badges: { flexDirection: 'row', gap: 6 },
   legend: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
-  // The month's one chart, set large: bars stand on a firm baseline rule.
+  // The month's one chart, set large: bars stand on a baseline rule.
   chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   col: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 },
-  barArea: { height: 140, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
-  bar: { width: '100%', maxWidth: 18 },
-  miss: { width: 5, height: 5, borderRadius: 1 },
+  barArea: { height: 140, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  bar: { width: '100%', maxWidth: 18, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  miss: { width: 5, height: 5, borderRadius: 3 },
   tick: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, color: color.muted, fontVariant: ['tabular-nums'] },
 });

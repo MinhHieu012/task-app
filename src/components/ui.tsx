@@ -33,6 +33,7 @@ import {
   type Priority,
   radius,
   rule,
+  shadowModal,
   text,
 } from '@/constants/theme';
 
@@ -79,7 +80,7 @@ const pressed = (s: PressableStateCallbackType) => s.pressed && st.pressed;
 /* Button */
 type Variant = 'outline' | 'primary' | 'secondary' | 'ghost' | 'danger';
 const btn: Record<Variant, { bg: string; bgActive: string; fg: string; border?: string }> = {
-  outline: { bg: 'transparent', bgActive: color.buttonHover, fg: color.foreground, border: color.foreground },
+  outline: { bg: color.surface, bgActive: color.buttonHover, fg: color.foreground, border: color.fieldEdge },
   primary: { bg: color.primary, bgActive: color.primaryHover, fg: color.primaryFg },
   secondary: { bg: color.secondary, bgActive: color.secondaryHover, fg: color.foreground },
   ghost: { bg: 'transparent', bgActive: color.ghostHover, fg: color.muted },
@@ -201,7 +202,7 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
   );
 }
 
-/* Card: a printed sheet on the slate, square, a firm ink rule across its head */
+/* Card: a white sheet on the cream page, soft corners and a hairline edge */
 export function Card({ title, action, flush, children, style }: { title?: ReactNode; action?: ReactNode; flush?: boolean; children: ReactNode; style?: ViewStyle }) {
   return (
     <View style={[st.card, flush && st.cardFlush, style]}>
@@ -472,10 +473,10 @@ export const st = StyleSheet.create({
   btn: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.ctl, borderWidth: rule.hair, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   btnText: { ...text.smMedium, lineHeight: 18, textAlign: 'center' },
   iconBtn: { borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  iconBtnSurface: { borderWidth: rule.hair, borderColor: color.muted, backgroundColor: color.surface },
+  iconBtnSurface: { borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.fieldEdge, backgroundColor: color.surface },
   link: { ...text.meta, fontWeight: '500', color: color.foreground, textDecorationLine: 'underline', textDecorationColor: color.primary },
 
-  badge: { alignSelf: 'flex-start', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 },
+  badge: { alignSelf: 'flex-start', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { ...text.xs, fontWeight: '500', fontVariant: ['tabular-nums'] },
   tag: { height: 22, paddingHorizontal: 8, borderRadius: radius.sm, justifyContent: 'center', alignSelf: 'flex-start' },
   tagText: { ...text.xs, fontWeight: '500' },
@@ -483,12 +484,12 @@ export const st = StyleSheet.create({
   field: { gap: 6 },
   label: { ...text.meta, fontWeight: '500', color: color.muted },
   fieldRow: { flexDirection: 'row', gap: 8 },
-  inputBox: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 14, paddingRight: 8, borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.muted, backgroundColor: color.field },
+  inputBox: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 14, paddingRight: 8, borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.fieldEdge, backgroundColor: color.field },
   input: { flex: 1, minWidth: 0, height: 42, paddingRight: 8, fontFamily: font, color: color.foreground, fontSize: 16, outlineWidth: 0, outlineStyle: 'solid' },
   inputDisabled: { opacity: 0.55 },
   hint: { ...text.xs, color: color.muted },
 
-  card: { backgroundColor: color.surface, borderRadius: radius.lg, borderTopWidth: rule.bar, borderTopColor: color.foreground, paddingVertical: 20, paddingHorizontal: 24 },
+  card: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, paddingVertical: 20, paddingHorizontal: 24 },
   cardFlush: { paddingHorizontal: 0, paddingVertical: 16 },
   cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 },
   cardHeadFlush: { paddingHorizontal: 20, marginBottom: 6 },
@@ -504,7 +505,7 @@ export const st = StyleSheet.create({
   metaToday: { color: color.foreground, fontWeight: '500' },
 
   backdrop: { flex: 1, backgroundColor: color.backdrop, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modal: { width: '100%', maxWidth: 400, backgroundColor: color.surface, borderTopWidth: rule.bar, borderTopColor: color.foreground, padding: 24, gap: 24 },
+  modal: { width: '100%', maxWidth: 400, backgroundColor: color.surface, borderRadius: radius.lg, padding: 24, gap: 24, boxShadow: shadowModal },
   modalHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   modalIcon: { paddingTop: 2 },
   modalBody: { flex: 1, minWidth: 0 },
@@ -517,8 +518,7 @@ export const st = StyleSheet.create({
   asideBody: { paddingHorizontal: 28, paddingTop: 32, paddingBottom: 32, gap: 32 },
   screenBody: { padding: 16, gap: 20, width: '100%', maxWidth: 720, alignSelf: 'center' },
   back: { alignSelf: 'flex-start', marginLeft: -12, marginBottom: -12, paddingHorizontal: 12, borderWidth: 0 },
-  // The page head sits on a firm ink rule, like a dated head over a printed table.
-  head: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, paddingBottom: 14, borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
+  head: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 },
   headText: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   h1: { ...text.h1, color: color.foreground },
   sub: { ...text.sm, color: color.muted, marginTop: 6, fontVariant: ['tabular-nums'] },
@@ -543,7 +543,7 @@ export const st = StyleSheet.create({
 
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choicesStack: { flexDirection: 'column', flexWrap: 'nowrap', alignItems: 'stretch' },
-  choice: { height: 36, paddingHorizontal: 12, borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.muted, backgroundColor: color.surface, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  choice: { height: 36, paddingHorizontal: 14, borderRadius: radius.full, borderWidth: rule.hair, borderColor: color.fieldEdge, backgroundColor: color.surface, flexDirection: 'row', alignItems: 'center', gap: 6 },
   choiceOn: { borderColor: color.primary, backgroundColor: color.primaryLight },
   choiceGrid: { flex: 1, minWidth: 0, paddingHorizontal: 4, gap: 4, justifyContent: 'center' },
   choiceText: { ...text.meta, color: color.soft },

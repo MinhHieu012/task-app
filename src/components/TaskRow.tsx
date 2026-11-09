@@ -4,7 +4,7 @@ import { type ComponentProps, useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { active, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
-import { color, type Priority, rule, text } from '@/constants/theme';
+import { color, type Priority, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { ok, type Project, type Subtask, supabase, type Task, useRows } from '@/lib/supabase';
@@ -82,7 +82,7 @@ function M({ icon, children, tone }: { icon?: Icon; children: string; tone?: 'ov
   );
 }
 
-/** One task as a ruled line on the group's sheet.
+/** One task as a line on the group's sheet.
  *  timeCol: Today's layout, a left column with "Bắt đầu 9:00" or "Hạn 02/11" over "Trễ 3 ngày".
  *  compact: narrow columns (Sắp tới), no priority tag. */
 export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
@@ -174,7 +174,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
   );
 }
 
-/** Heading with count, then the tasks as ruled lines on one sheet. Skeleton rows while loading. */
+/** Heading with count, then the tasks as lines on one sheet. Skeleton rows while loading. */
 export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeCol, compact, loading }: {
   title: string; tasks: Task[]; projects?: Project[]; over?: boolean; hideDate?: boolean; empty?: string; timeCol?: boolean; compact?: boolean; loading?: boolean;
 }) {
@@ -225,8 +225,8 @@ function SkeletonRow() {
 }
 
 const s = StyleSheet.create({
-  // The group is one printed sheet: a firm ink rule on top, hairlines between the lines.
-  rows: { backgroundColor: color.surface, borderTopWidth: rule.bar, borderTopColor: color.foreground },
+  // The group is one white sheet with soft corners; hairlines between the lines.
+  rows: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
   emptyBox: { paddingHorizontal: 16 },
   row: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: rule.hair, borderBottomColor: color.border },
   selected: { backgroundColor: color.primaryLight },

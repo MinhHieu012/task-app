@@ -80,11 +80,11 @@ export default function Inbox() {
 
 const s = StyleSheet.create({
   title: { ...text.h2, color: color.foreground },
-  // Aside heads sit on a firm ink rule; the lines under them are hairlines.
-  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
+  // Aside heads sit on a light firm rule; the lines under them are hairlines.
+  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   hint: { ...text.meta, color: color.muted, marginTop: 6, marginBottom: 8 },
   project: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 40, borderBottomWidth: rule.hair, borderBottomColor: color.border },
-  dot: { width: 10, height: 10, borderRadius: 1 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
   projectName: { ...text.sm, flex: 1, color: color.foreground },
   count: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
 });

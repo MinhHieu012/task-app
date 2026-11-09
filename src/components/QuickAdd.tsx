@@ -74,5 +74,5 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…', flat 
 const s = StyleSheet.create({
   // On the slate page the box takes the sheet colour; `flat` sits in the top bar, which is already the sheet.
   raised: { backgroundColor: color.surface },
-  kbd: { ...text.xs, fontSize: 11, lineHeight: 18, color: color.muted, borderWidth: rule.hair, borderColor: color.muted, borderRadius: radius.sm, paddingHorizontal: 6 },
+  kbd: { ...text.xs, fontSize: 11, lineHeight: 18, color: color.muted, borderWidth: rule.hair, borderColor: color.border, borderRadius: radius.sm, paddingHorizontal: 6 },
 });

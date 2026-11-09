@@ -7,7 +7,7 @@ import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
 import { endDay, TaskGroup } from '@/components/TaskRow';
 import { active, Button, Empty, EmptyState, Screen, TextLink } from '@/components/ui';
-import { color, rule, text } from '@/constants/theme';
+import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -173,16 +173,16 @@ export default function Today() {
 
 const s = StyleSheet.create({
   groups: { gap: 28 },
-  asideHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
+  asideHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   asideTitle: { ...text.h2, color: color.foreground },
-  // The week as a ruled strip of seven cells; tomorrow is underlined in ink.
-  week: { flexDirection: 'row', borderBottomWidth: rule.hair, borderBottomColor: color.border },
-  wd: { flex: 1, alignItems: 'center', gap: 2, paddingTop: 10, paddingBottom: 8, borderBottomWidth: rule.bar, borderBottomColor: 'transparent', marginBottom: -rule.hair },
-  wdOn: { borderBottomColor: color.foreground },
+  // The week as a strip of seven cells; tomorrow sits in a soft accent wash.
+  week: { flexDirection: 'row', gap: 4, marginTop: 8 },
+  wd: { flex: 1, alignItems: 'center', gap: 2, paddingTop: 10, paddingBottom: 8, borderRadius: radius.md },
+  wdOn: { backgroundColor: color.primaryLight },
   wdDay: { ...text.xs, color: color.muted },
   wdNum: { ...text.base, lineHeight: 22, color: color.foreground, fontVariant: ['tabular-nums'] },
   wdCount: { ...text.xs, height: 16, fontWeight: '600', color: color.primary, fontVariant: ['tabular-nums'] },
-  next: { marginTop: 20, paddingTop: 12, gap: 4, borderTopWidth: rule.bar, borderTopColor: color.foreground },
+  next: { marginTop: 16, padding: 16, gap: 4, borderRadius: radius.lg, backgroundColor: color.background },
   nextHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   nextLabel: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
   nextTitle: { ...text.base, fontSize: 18, lineHeight: 24, color: color.foreground },

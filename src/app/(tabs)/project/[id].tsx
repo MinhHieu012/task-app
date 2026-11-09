@@ -130,13 +130,13 @@ export default function ProjectScreen() {
 }
 
 const s = StyleSheet.create({
-  // Aside heads sit on a firm ink rule; the lines under them are hairlines.
-  title: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.foreground },
+  // Aside heads sit on a light firm rule; the lines under them are hairlines.
+  title: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   pctRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 8, marginBottom: 10 },
   pct: { ...text.h1, fontSize: 40, lineHeight: 44, letterSpacing: -1.2, color: color.foreground, fontVariant: ['tabular-nums'] },
   meta: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
-  track: { height: 6, backgroundColor: color.background, overflow: 'hidden' },
-  fill: { height: 6 },
+  track: { height: 6, borderRadius: 3, backgroundColor: color.secondary, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: 3 },
   next: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   nextTitle: { ...text.sm, flex: 1, color: color.foreground },
   nextDate: { ...text.meta, fontWeight: '500', color: color.soft, fontVariant: ['tabular-nums'] },

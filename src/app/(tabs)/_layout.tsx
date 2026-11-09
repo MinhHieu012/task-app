@@ -40,7 +40,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: color.primary,
         tabBarInactiveTintColor: color.muted,
         tabBarLabelPosition: 'below-icon',
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.foreground, borderTopWidth: rule.bar, height: 64, paddingTop: 6, paddingBottom: 8 },
+        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, borderTopWidth: rule.bar, height: 64, paddingTop: 6, paddingBottom: 8 },
       }}
     >
       <Tabs.Screen name="index" options={tab('Hôm nay', icon('Hôm nay'), over)} />
