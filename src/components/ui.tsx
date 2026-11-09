@@ -307,7 +307,9 @@ export function Screen({ title, sub, back, right, footer, wideFooter, aside, chi
   );
   return (
     <SafeAreaView edges={wide ? [] : ['top']} style={st.screen}>
-      <KeyboardAvoidingView style={st.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Both platforms: Expo apps are edge-to-edge on Android, so the window no longer resizes for the
+          keyboard; without a behavior the footer input stays under it (Expo keyboard-handling guide). */}
+      <KeyboardAvoidingView style={st.screen} behavior="padding">
         {wide && aside ? (
           <View style={st.split}>
             {body}

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Field, IconButton, type IconName, useWide } from '@/components/ui';
@@ -139,7 +139,8 @@ export default function SignIn() {
     <SafeAreaView style={[s.fill, wide && { backgroundColor: color.surface }]}>
       <View style={s.split}>
         {wide && <Intro />}
-        <KeyboardAvoidingView style={s.side} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* `padding` on Android too: edge-to-edge windows do not resize for the keyboard. */}
+        <KeyboardAvoidingView style={s.side} behavior="padding">
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
             {wide ? form : <View style={s.card}>{form}</View>}
           </ScrollView>

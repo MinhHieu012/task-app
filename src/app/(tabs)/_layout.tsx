@@ -40,6 +40,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: color.primary,
         tabBarInactiveTintColor: color.muted,
         tabBarLabelPosition: 'below-icon',
+        // The tab bar would otherwise sit between the footer input and the keyboard on Android.
+        tabBarHideOnKeyboard: true,
         tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, borderTopWidth: rule.bar, height: 64, paddingTop: 6, paddingBottom: 8 },
       }}
     >
