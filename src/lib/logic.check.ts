@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { ACCENTS, accentTokens, contrast, DEFAULT_ACCENT, neutral } from './accent.ts';
+import { ACCENTS, accentTokens, contrast, DARK_SURFACE, DEFAULT_ACCENT, neutral } from './accent.ts';
 import { fmtDate, fromIso, localDay, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
@@ -191,6 +191,8 @@ assert.equal(snippet('Đã gửi báo cáo tuần cho sếp', 'BAO CAO', 100), '
 assert.equal(accentTokens(DEFAULT_ACCENT).primary, DEFAULT_ACCENT);
 assert.ok(contrast(accentTokens('#ffe066').primary, '#ffffff') >= 4.5);
 assert.equal(accentTokens('red').primary, DEFAULT_ACCENT);
+// Dark theme: every preset reads as text on the dark sheet.
+for (const { hex } of ACCENTS) assert.ok(contrast(accentTokens(hex, true).primary, DARK_SURFACE) >= 4.5, `dark ${hex}`);
 assert.match(accentTokens('#2563B0').light, /^#[0-9a-f]{6}$/);
 // Neutrals: untouched under the default accent; under every preset the inks keep their contrast on the sheet.
 assert.equal(neutral('#f6f3ee', DEFAULT_ACCENT), '#f6f3ee');

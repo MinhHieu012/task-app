@@ -6,10 +6,11 @@ import {
 } from '@expo-google-fonts/be-vietnam-pro';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
 
 import { Notifier } from '@/components/Notifier';
-import { color, duration, easeCss, font } from '@/constants/theme';
+import { color, dark, duration, easeCss, font } from '@/constants/theme';
 import { getLang, setLang } from '@/lib/i18n';
 import { getPref } from '@/lib/prefs';
 import { useSession } from '@/lib/supabase';
@@ -34,6 +35,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
       --color-paper: ${color.background}; --color-sheet: ${color.surface}; --color-ink: ${color.foreground};
       --color-muted: ${color.muted}; --color-rule: ${color.border}; --color-accent: ${color.primary};
       --color-focus: ${color.ringFocus}; --color-scrollbar: ${color.scrollbar};
+      color-scheme: ${dark ? 'dark' : 'light'};
       --font-body: "${font}", ui-sans-serif, system-ui, sans-serif;
     }
     html, body { overflow-x: clip; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-body); }
@@ -99,6 +101,7 @@ export default function RootLayout() {
       <Stack.Screen name="design-system" />
     </Stack>
     <Notifier />
+    <StatusBar style={dark ? 'light' : 'dark'} />
     </>
   );
 }
