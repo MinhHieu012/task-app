@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { fromIso, localDay, nextDue, parseDate, parseTime } from './dates.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
+import { parseWhen, spanError } from './subtasks.ts';
 import type { Project, Task } from './supabase.ts';
 
 // 2026-11-02 is a Monday.
@@ -112,5 +113,30 @@ answer(true);
 assert.equal(await first, false);
 assert.equal(await second, true);
 assert.equal(notifyStore.get().asking, false);
+
+// Subtask spans: parse "DD/MM HH:MM" against the parent's start day, and stay inside the parent.
+assert.deepEqual(parseWhen('', TUE), { date: null, time: null });
+assert.deepEqual(parseWhen('9:30', TUE), { date: TUE, time: '09:30' });
+assert.deepEqual(parseWhen('04/11 14:00', TUE), { date: WED, time: '14:00' });
+assert.deepEqual(parseWhen('02/11', TUE), { date: '2027-11-02', time: null }); // before the parent's day -> next year
+assert.equal(parseWhen('9:30', null), null); // a time needs a day
+assert.equal(parseWhen('25:00', TUE), null);
+assert.equal(parseWhen('a b c', TUE), null);
+{
+  const parent = { due_date: MON, due_time: '09:00:00', end_date: TUE, end_time: '17:00:00' };
+  const span = (start_date: string | null, start_time: string | null, end_date: string | null = null, end_time: string | null = null) =>
+    spanError(parent, { start_date, start_time, end_date, end_time });
+  assert.equal(span(null, null), '');
+  assert.equal(span(MON, '09:00', TUE, '17:00'), '');
+  assert.equal(span(MON, null), ''); // day only: the parent's start day fits
+  assert.equal(span(TUE, null, TUE, null), '');
+  assert.match(span(MON, '08:59'), /việc cha/);
+  assert.match(span(TUE, '10:00', TUE, '17:01'), /việc cha/);
+  assert.match(span(WED, null), /việc cha/);
+  assert.match(span(MON, '10:00', MON, '10:00'), /sau lúc bắt đầu/);
+  assert.match(span(TUE, null, MON, null), /sau lúc bắt đầu/);
+  assert.equal(spanError({ due_date: MON, due_time: null, end_date: null, end_time: null }, { start_date: MON, start_time: '23:59', end_date: null, end_time: null }), '');
+  assert.match(spanError({ due_date: null, due_time: null, end_date: null, end_time: null }, { start_date: MON, start_time: null, end_date: null, end_time: null }), /chưa có ngày/);
+}
 
 console.log('logic.check: all assertions passed');

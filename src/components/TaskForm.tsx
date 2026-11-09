@@ -1,11 +1,13 @@
 import { type ReactNode, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { addSubtask, Subtasks } from '@/components/Subtasks';
 import { Button, Card, Choices, Field } from '@/components/ui';
 import { color, priority, text } from '@/constants/theme';
 import { fromIso, parseDate, parseTime } from '@/lib/dates';
 import { confirmAction } from '@/lib/notify';
-import { ok, type Project, supabase, type Task } from '@/lib/supabase';
+import { spanError } from '@/lib/subtasks';
+import { ok, type Project, type Subtask, supabase, type Task } from '@/lib/supabase';
 
 type Kind = '' | 'daily' | 'weekly' | 'monthly' | 'every';
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -32,6 +34,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
   const [everyN, setEveryN] = useState(k0 === 'every' ? arg0 : '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [subDraft, setSubDraft] = useState('');
 
   const save = async () => {
     const e: Record<string, string> = {};
@@ -60,12 +63,23 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
       : kind === 'monthly' ? `monthly:${fromIso(due!).getDate()}`
       : kind === 'every' ? `every:${everyN.trim()}`
       : kind || null;
-    setBusy(true);
-    const res = await supabase.from('tasks').update({
+    const patch = {
       title: title.trim(), note: note.trim() || null, priority: prio, project_id: projectId || null, due_date: due, due_time: at, end_date: end && endDue, end_time: end, repeat,
-    }).eq('id', id);
+    };
+    setBusy(true);
+    // Subtasks must stay inside the parent's span, so a new span can't leave one outside.
+    const subs = await supabase.from('subtasks').select('*').eq('task_id', id);
+    const outside = ok(subs) ? (subs.data as Subtask[]).find((x) => spanError(patch, x)) : undefined;
+    if (!subs.data || outside) {
+      setBusy(false);
+      if (outside) setErrors({ date: `Việc con “${outside.title}” sẽ nằm ngoài thời gian mới. Sửa việc con trước.` });
+      return;
+    }
+    const res = await supabase.from('tasks').update(patch).eq('id', id);
+    // A subtask typed but not yet added would be lost when the form closes.
+    const sub = ok(res) && (!subDraft.trim() || !!(await addSubtask(id, subDraft.trim())));
     setBusy(false);
-    if (ok(res)) onDone();
+    if (sub) onDone();
   };
 
   const remove = async () => {
@@ -162,6 +176,8 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
         </View>,
         'Hạn và lặp lại',
       )}
+
+      {box(<Subtasks task={task} draft={subDraft} setDraft={setSubDraft} />, 'Việc con')}
 
       <View style={s.actions}>
         <Button title="Xoá việc" variant="danger" onPress={remove} />

@@ -7,7 +7,7 @@ import { active, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide
 import { color, type Priority, radius, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
-import { ok, type Project, supabase, type Task } from '@/lib/supabase';
+import { ok, type Project, type Subtask, supabase, type Task, useRows } from '@/lib/supabase';
 
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
@@ -85,8 +85,8 @@ function M({ icon, children, tone }: { icon?: Icon; children: string; tone?: 'ov
 /** One task as a white card row (Figma "Task" row).
  *  timeCol: Today's layout, a left column with "Bắt đầu 9:00" or "Hạn 02/11 · Trễ 3 ngày".
  *  compact: narrow columns (Sắp tới), no priority tag. */
-export function TaskRow({ task, project, hideDate, timeCol, compact }: {
-  task: Task; project?: string; hideDate?: boolean; timeCol?: boolean; compact?: boolean;
+export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
+  task: Task; project?: string; hideDate?: boolean; timeCol?: boolean; compact?: boolean; subs?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const sel = useContext(Selection);
@@ -126,6 +126,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact }: {
     hideDate && !side && range && !range.includes('–') && <M key="t1" icon="time-outline">{range}</M>,
     done && <M key="at" icon="checkmark-circle-outline">{new Date(task.completed_at!).toTimeString().slice(0, 5)}</M>,
     (task.repeat || task.recurring_copy) && <M key="r" icon="repeat-outline">{!done && task.repeat ? repeatLabel(task.repeat) : 'Lặp lại'}</M>,
+    subs && <M key="s" icon="checkbox-outline">{subs}</M>,
     task.note && <M key="n" icon="document-text-outline">{task.note}</M>,
   ].filter(Boolean);
 
@@ -178,6 +179,13 @@ export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeC
   title: string; tasks: Task[]; projects?: Project[]; over?: boolean; hideDate?: boolean; empty?: string; timeCol?: boolean; compact?: boolean; loading?: boolean;
 }) {
   const names = projects && new Map(projects.map((p) => [p.id, p.name]));
+  // ponytail: one query + realtime channel per group; fine at a few groups per screen.
+  const ids = tasks.map((t) => t.id);
+  const [subtasks] = useRows<Subtask>('subtasks', (q) => q.in('task_id', ids), ids.join());
+  const subs = (id: string) => {
+    const mine = subtasks.filter((x) => x.task_id === id);
+    return mine.length ? `${mine.filter((x) => x.done).length}/${mine.length}` : undefined;
+  };
   return (
     <View>
       <GroupTitle title={title} count={loading ? 0 : tasks.length} over={over} />
@@ -194,6 +202,7 @@ export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeC
                   hideDate={hideDate}
                   timeCol={timeCol}
                   compact={compact}
+                  subs={subs(t.id)}
                 />
               </FadeIn>
             ))}
