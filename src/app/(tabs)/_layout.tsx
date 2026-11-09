@@ -61,6 +61,8 @@ export default function TabLayout() {
       <Tabs.Screen name="project/[id]" options={{ tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="reports" options={{ tabBarItemStyle: { display: 'none' } }} />
+      {/* Inside the tabs so wide screens keep the rail and top bar while writing a report. */}
+      <Tabs.Screen name="report/[day]" options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
   if (!wide) return tabs;

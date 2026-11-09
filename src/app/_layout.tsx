@@ -95,7 +95,6 @@ export default function RootLayout() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="task/[id]" />
-        <Stack.Screen name="report/[day]" />
       </Stack.Protected>
       <Stack.Screen name="reset-password" />
       <Stack.Screen name="design-system" />

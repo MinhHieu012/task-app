@@ -5,8 +5,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import RichEditor from '@/components/dom/RichEditor';
 import { palette, ReportBadge, timeOf } from '@/components/Report';
-import { Button, Screen } from '@/components/ui';
-import { color, text } from '@/constants/theme';
+import { Button, InfoLine, Screen } from '@/components/ui';
+import { color, rule, text } from '@/constants/theme';
 import { fmtDate, localDay, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { dayCounts, groupByProject } from '@/lib/journal';
@@ -22,11 +22,61 @@ export default function ReportScreen() {
   const [due, , uLoaded] = useRows<Task>('tasks', (q) => q.eq('due_date', day), `u:${day}`);
   const [projects, , pLoaded] = useRows<Project>('projects');
   const ready = rLoaded && dLoaded && uLoaded && pLoaded;
+  const show = valid && ready;
 
   return (
-    <Screen back title={valid ? tr('Báo cáo ngày {date}', { date: fmtDate(day) }) : tr('Không có ngày này')}>
-      {valid && ready && <ReportForm key={day} day={day} report={reports[0]} done={done} due={due} projects={projects} />}
+    <Screen
+      back="always"
+      title={valid ? tr('Báo cáo ngày {date}', { date: fmtDate(day) }) : tr('Không có ngày này')}
+      sub={valid ? tr('Hạn nộp {time} cùng ngày', { time: DEADLINE }) : undefined}
+      aside={show ? <DayAside day={day} done={done} due={due} projects={projects} /> : undefined}
+      maxWidth={880}
+    >
+      {show && <ReportForm key={day} day={day} report={reports[0]} done={done} due={due} projects={projects} />}
     </Screen>
+  );
+}
+
+/** Wide screens: the day's work beside the editor, so the report can be written without leaving the page. */
+function DayAside({ day, done, due, projects }: { day: string; done: Task[]; due: Task[]; projects: Project[] }) {
+  const open = due.filter((t) => !t.completed_day || t.completed_day > day);
+  const doneCount = done.filter((t) => t.completed_day === day).length;
+  const missed = day < today() && open.length > 0;
+  const groups = groupByProject(done.filter((t) => t.completed_day === day), projects);
+
+  return (
+    <>
+      <View>
+        <Text style={s.asideTitle}>{tr('Trong ngày')}</Text>
+        <InfoLine icon="checkmark-circle-outline" label={tr('Đã xong')} n={doneCount} tone={doneCount ? color.success : undefined} />
+        <InfoLine icon="alert-circle-outline" label={tr('Chưa xong')} n={open.length} tone={missed ? color.danger : undefined} last />
+      </View>
+      <View>
+        <Text style={s.asideTitle}>{tr('Việc đã xong')}</Text>
+        {groups.length ? groups.map((g) => (
+          <View key={g.id ?? 'inbox'} style={s.group}>
+            <Text style={s.groupName}>{g.id ? g.name : tr(g.name)}</Text>
+            {g.items.map((t) => (
+              <View key={t.id} style={s.item}>
+                <Ionicons name="checkmark" size={14} color={color.success} style={s.itemIcon} />
+                <Text style={s.itemText}>{t.title}</Text>
+              </View>
+            ))}
+          </View>
+        )) : <Text style={s.meta}>{tr('Chưa có việc nào xong trong ngày.')}</Text>}
+      </View>
+      {open.length > 0 && (
+        <View>
+          <Text style={s.asideTitle}>{tr('Chưa xong')}</Text>
+          {open.map((t) => (
+            <View key={t.id} style={s.item}>
+              <Ionicons name="ellipse-outline" size={14} color={color.muted} style={s.itemIcon} />
+              <Text style={s.itemText}>{t.title}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </>
   );
 }
 
@@ -115,4 +165,11 @@ const s = StyleSheet.create({
   save: { marginLeft: 'auto' },
   warn: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, paddingLeft: 14, borderRadius: 12, backgroundColor: color.warningBg },
   warnText: { ...text.sm, color: color.foreground, flex: 1 },
+  // Same head as the Settings aside: h2 over a firm rule.
+  asideTitle: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 12, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  group: { marginBottom: 12 },
+  groupName: { ...text.smMedium, color: color.soft, marginBottom: 4 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 3 },
+  itemIcon: { marginTop: 3 },
+  itemText: { ...text.sm, color: color.foreground, flex: 1 },
 });
