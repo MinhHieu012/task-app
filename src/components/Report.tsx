@@ -7,7 +7,7 @@ import RichView from '@/components/dom/RichView';
 import type { Palette } from '@/components/dom/RichEditor';
 import { Badge, Button, Card, TextLink } from '@/components/ui';
 import { color, text } from '@/constants/theme';
-import { fmtDay, localDay } from '@/lib/dates';
+import { fmtDate, localDay } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { DEADLINE, type Status } from '@/lib/reports';
 import type { Report } from '@/lib/supabase';
@@ -51,7 +51,7 @@ export function ReportCard({ day, report, status }: { day: string; report?: Repo
         <View style={s.gap}>
           <RichView html={report.content} palette={palette} dom={{ matchContents: true, scrollEnabled: false }} />
           <View style={s.row}>
-            <Text style={s.meta}>{tr('Nộp lúc {time} ngày {date}', { time: timeOf(report.submitted_at), date: fmtDay(localDay(new Date(report.submitted_at))) })}</Text>
+            <Text style={s.meta}>{tr('Nộp lúc {time} ngày {date}', { time: timeOf(report.submitted_at), date: fmtDate(localDay(new Date(report.submitted_at))) })}</Text>
             <Button title={tr('Sửa báo cáo')} icon="create-outline" onPress={open} />
           </View>
         </View>

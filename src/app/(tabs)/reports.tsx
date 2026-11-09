@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ReportBadge } from '@/components/Report';
 import { active, Empty, EmptyState, Field, Screen } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
-import { fmtDay, fromIso } from '@/lib/dates';
+import { fmtDate, fromIso } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { DEADLINE, matches, snippet } from '@/lib/reports';
 import { type Report, useRows } from '@/lib/supabase';
@@ -37,7 +37,7 @@ export default function Reports() {
             style={(st) => [s.row, i === shown.length - 1 && s.last, active(st) && { backgroundColor: color.itemHover }]}
           >
             <View style={s.head}>
-              <Text style={s.day}>{tr(WEEKDAY[fromIso(r.day).getDay()])}, {fmtDay(r.day)}</Text>
+              <Text style={s.day}>{tr(WEEKDAY[fromIso(r.day).getDay()])}, {fmtDate(r.day)}</Text>
               <ReportBadge status={r.late ? 'late' : 'ontime'} />
               <Text style={s.meta}>{tr('{done} việc xong, {missed} lỡ', { done: r.done_count, missed: r.missed_count })}</Text>
             </View>

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { ACCENTS, accentTokens, contrast, DEFAULT_ACCENT, neutral } from './accent.ts';
-import { fromIso, localDay, nextDue, parseDate, parseTime, toIso } from './dates.ts';
+import { fmtDate, fromIso, localDay, nextDue, parseDate, parseTime, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
@@ -143,6 +143,7 @@ assert.equal(parseWhen('a b c', TUE), null);
   assert.match(spanError({ due_date: null, due_time: null, end_date: null, end_time: null }, { start_date: MON, start_time: null, end_date: null, end_time: null }), /chưa có ngày/);
 }
 
+assert.equal(fmtDate('2026-11-09'), '09/11/2026');
 // Daily report: due 21:00 local; 21:00 itself is on time, 21:01 or a later day is late.
 const at = (d: string, hm: string) => { const x = fromIso(d); x.setHours(+hm.slice(0, 2), +hm.slice(3), 0, 0); return x; };
 assert.equal(isLate('2026-11-09', at('2026-11-09', '21:00')), false);

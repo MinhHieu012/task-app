@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -6,12 +7,12 @@ import RichEditor from '@/components/dom/RichEditor';
 import { palette, ReportBadge, timeOf } from '@/components/Report';
 import { Button, Screen } from '@/components/ui';
 import { color, text } from '@/constants/theme';
-import { fmtDay, today } from '@/lib/dates';
+import { fmtDate, localDay, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { dayCounts, groupByProject } from '@/lib/journal';
-import { toast } from '@/lib/notify';
+import { confirmAction, toast } from '@/lib/notify';
 import { DEADLINE, draftHtml, isLate, reportStatus } from '@/lib/reports';
-import { ok, type Project, type Report, supabase, type Task, useRows } from '@/lib/supabase';
+import { ok, type Project, refresh, type Report, supabase, type Task, useRows } from '@/lib/supabase';
 
 export default function ReportScreen() {
   const { day = '' } = useLocalSearchParams<{ day: string }>();
@@ -23,7 +24,7 @@ export default function ReportScreen() {
   const ready = rLoaded && dLoaded && uLoaded && pLoaded;
 
   return (
-    <Screen back title={valid ? tr('Báo cáo ngày {date}', { date: fmtDay(day) }) : tr('Không có ngày này')}>
+    <Screen back title={valid ? tr('Báo cáo ngày {date}', { date: fmtDate(day) }) : tr('Không có ngày này')}>
       {valid && ready && <ReportForm key={day} day={day} report={reports[0]} done={done} due={due} projects={projects} />}
     </Screen>
   );
@@ -39,6 +40,18 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
   const content = useRef({ html: initial, text: report?.body ?? '' });
   const [busy, setBusy] = useState(false);
   const status = reportStatus(day, report, day);
+  // Past the day's deadline a report is on the record: it can still be edited, but no longer deleted.
+  const locked = isLate(day, new Date());
+  const edited = report && +new Date(report.updated_at) - +new Date(report.submitted_at) > 60_000;
+
+  const remove = async () => {
+    if (!report || locked) return;
+    if (!(await confirmAction(tr('Xoá báo cáo ngày {date}?', { date: fmtDate(day) }), tr('Báo cáo sẽ bị xoá vĩnh viễn. Bạn vẫn viết lại được trước {time}.', { time: DEADLINE })))) return;
+    if (!ok(await supabase.from('daily_reports').delete().eq('id', report.id))) return;
+    refresh('daily_reports');
+    toast(tr('Đã xoá báo cáo ngày {date}.', { date: fmtDate(day) }), tr('Đã xoá'), 'success');
+    router.back();
+  };
 
   const save = async () => {
     const { html, text: body } = content.current;
@@ -57,6 +70,7 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
     );
     setBusy(false);
     if (!ok(res)) return;
+    refresh('daily_reports'); // Today, Journal and the list update without waiting for realtime
     toast(report ? tr('Đã lưu thay đổi.') : isLate(day, now) ? tr('Báo cáo được tính là nộp trễ.') : tr('Đúng hạn, tốt lắm!'), report ? tr('Đã lưu báo cáo') : tr('Đã nộp báo cáo'), 'success');
     router.back();
   };
@@ -67,10 +81,17 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
         <ReportBadge status={status} />
         <Text style={s.meta}>
           {report
-            ? tr('Nộp lúc {time}, hạn {deadline}.', { time: timeOf(report.submitted_at), deadline: DEADLINE })
+            ? tr('Nộp lúc {time} ngày {date}, hạn {deadline}.', { time: timeOf(report.submitted_at), date: fmtDate(localDay(new Date(report.submitted_at))), deadline: DEADLINE }) +
+              (edited ? ' ' + tr('Sửa lần cuối {time} ngày {date}.', { time: timeOf(report.updated_at), date: fmtDate(localDay(new Date(report.updated_at))) }) : '')
             : status === 'pending' ? tr('Hạn nộp {time} tối nay. Bản nháp lấy từ các việc đã xong trong ngày.', { time: DEADLINE }) : tr('Đã quá hạn {time}: nộp bây giờ sẽ tính là trễ.', { time: DEADLINE })}
         </Text>
       </View>
+      {report && locked && (
+        <View style={s.warn} accessibilityRole="alert">
+          <Ionicons name="warning-outline" size={18} color={color.warning} />
+          <Text style={s.warnText}>{tr('Báo cáo này đã qua hạn {time} nên không xoá được nữa. Bạn vẫn sửa được, và thời điểm sửa sẽ được ghi lại.', { time: DEADLINE })}</Text>
+        </View>
+      )}
       <RichEditor
         initial={initial}
         palette={palette}
@@ -78,7 +99,10 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
         onChange={async (html, body) => { content.current = { html, text: body }; }}
         dom={{ matchContents: true, scrollEnabled: false }}
       />
-      <Button title={report ? tr('Lưu thay đổi') : tr('Nộp báo cáo')} icon="send-outline" variant="primary" onPress={save} loading={busy} style={s.save} />
+      <View style={s.actions}>
+        {report && !locked && <Button title={tr('Xoá báo cáo')} icon="trash-outline" variant="danger" onPress={remove} />}
+        <Button title={report ? tr('Lưu thay đổi') : tr('Nộp báo cáo')} icon="send-outline" variant="primary" onPress={save} loading={busy} style={s.save} />
+      </View>
     </View>
   );
 }
@@ -87,5 +111,8 @@ const s = StyleSheet.create({
   root: { gap: 16 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   meta: { ...text.meta, color: color.muted, flexShrink: 1 },
-  save: { alignSelf: 'flex-end' },
+  actions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  save: { marginLeft: 'auto' },
+  warn: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, paddingLeft: 14, borderRadius: 12, backgroundColor: color.warningBg },
+  warnText: { ...text.sm, color: color.foreground, flex: 1 },
 });

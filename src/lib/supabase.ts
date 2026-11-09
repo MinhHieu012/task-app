@@ -70,8 +70,15 @@ export function useSession() {
 
 type Query = PostgrestFilterBuilder<any, any, any, any[], string, unknown, 'GET'>;
 
+// Mounted useRows loaders per table, so a write can refresh every screen at once.
+const loaders = new Map<string, Set<() => unknown>>();
+
+/** Reloads every mounted useRows of `table` now. Call after a write: realtime can arrive late or not at all
+ *  (e.g. a subscription opened before the table existed), and the user should see their own change at once. */
+export const refresh = (table: string) => loaders.get(table)?.forEach((l) => l());
+
 /**
- * Rows of a table (RLS scopes them to the user), kept live by realtime.
+ * Rows of a table (RLS scopes them to the user), kept live by realtime and by refresh() after own writes.
  * `filter` narrows/orders the select; `key` must change whenever `filter` does.
  */
 export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q, key = '') {
@@ -88,12 +95,15 @@ export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q
 
   useEffect(() => {
     load();
+    if (!loaders.has(table)) loaders.set(table, new Set());
+    loaders.get(table)!.add(load);
     // ponytail: refetches the whole query on any change to the table; fine for one user's rows.
     const channel = supabase
       .channel(`rows:${table}:${Math.random()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, () => load())
       .subscribe();
     return () => {
+      loaders.get(table)!.delete(load);
       supabase.removeChannel(channel);
     };
   }, [load, table]);

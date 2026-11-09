@@ -23,6 +23,9 @@ export function fmtDay(iso: string) {
   return y === String(new Date().getFullYear()) ? `${d}/${m}` : `${d}/${m}/${y}`;
 }
 
+/** "DD/MM/YYYY", always with the year (report dates, read back long after). */
+export const fmtDate = (iso: string) => iso.split('-').reverse().join('/');
+
 const lastDayOf = (y: number, m: number) => new Date(y, m + 1, 0).getDate(); // m is 0-based
 
 /**
