@@ -4,14 +4,16 @@ import { useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
+import { ReportNudge } from '@/components/Report';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
 import { endDay, TaskGroup } from '@/components/TaskRow';
 import { active, Avatar, Button, Empty, EmptyState, Screen, TextLink, useWide } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
+import { reportStatus } from '@/lib/reports';
 import { Selection } from '@/lib/selection';
-import { type Project, type Task, useRows } from '@/lib/supabase';
+import { type Project, type Report, type Task, useRows } from '@/lib/supabase';
 
 const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 const SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -29,6 +31,7 @@ export default function Today() {
   const past = Array.from({ length: 7 }, (_, i) => addDays(day, i - 6)); // last 7 days, today last
   const [recent] = useRows<Task>('tasks', (q) => q.gte('completed_day', past[0]).lte('completed_day', day).order('completed_at'), `done7:${day}`);
   const [projects] = useRows<Project>('projects');
+  const [reports, , reportLoaded] = useRows<Report>('daily_reports', (q) => q.eq('day', day), `rep:${day}`);
   const week = Array.from({ length: 7 }, (_, i) => addDays(day, i + 1));
   const [soon] = useRows<Task>(
     'tasks',
@@ -170,6 +173,7 @@ export default function Today() {
           }
         />
       </StatRow>
+      {reportLoaded && <ReportNudge day={day} report={reports[0]} status={reportStatus(day, reports[0], day)} />}
       {list}
     </Screen>
   );

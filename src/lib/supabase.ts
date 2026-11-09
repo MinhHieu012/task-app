@@ -24,7 +24,18 @@ export type Task = {
   recurring_copy: boolean;
   created_at: string;
 };
-export type Subtask = { id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
+export type Report = {
+  id: string;
+  day: string;
+  content: string; // HTML
+  body: string; // plain text, for search
+  late: boolean;
+  done_count: number;
+  missed_count: number;
+  submitted_at: string;
+  updated_at: string;
+};
+export type Subtask ={ id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
 
 export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, process.env.EXPO_PUBLIC_SUPABASE_KEY!, {
   auth: {

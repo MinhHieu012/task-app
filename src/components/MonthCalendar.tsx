@@ -4,15 +4,24 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, radius, text } from '@/constants/theme';
 import { today, toIso } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
+import type { Status } from '@/lib/reports';
+
+// Daily report marks: a short bar at the foot of the day (green on time, amber late, red missing).
+const MARK: Partial<Record<Status, [string, string]>> = {
+  ontime: [color.success, 'Báo cáo đúng hạn'],
+  late: [color.warning, 'Báo cáo trễ'],
+  missing: [color.danger, 'Thiếu báo cáo'],
+};
 
 const WD = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-/** Month grid (weeks start Monday): done count per day, amber dot on days with missed tasks. */
-export function MonthCalendar({ year, month, selected, counts, missed, onSelect, onMonth }: {
+/** Month grid (weeks start Monday): done count per day, amber dot on days with missed tasks, report bar. */
+export function MonthCalendar({ year, month, selected, counts, missed, reports = {}, onSelect, onMonth }: {
   year: number; month: number; // month is 1-based
   selected: string;
   counts: Record<string, number>;
   missed: Set<string>;
+  reports?: Record<string, Status>;
   onSelect: (day: string) => void;
   onMonth: (delta: number) => void;
 }) {
@@ -33,7 +42,7 @@ export function MonthCalendar({ year, month, selected, counts, missed, onSelect,
         {WD.map((d) => <Text key={d} style={s.wd}>{d}</Text>)}
         {cells.map((d, i) => {
           if (!d) return <View key={`b${i}`} style={s.cell} />;
-          const on = d === selected, future = d > now, n = counts[d];
+          const on = d === selected, future = d > now, n = counts[d], mark = MARK[reports[d]];
           return (
             <Pressable
               key={d}
@@ -41,16 +50,27 @@ export function MonthCalendar({ year, month, selected, counts, missed, onSelect,
               disabled={future}
               accessibilityRole="button"
               accessibilityState={{ selected: on, disabled: future }}
-              accessibilityLabel={tr('{date}: {n} việc xong', { date: `${d.slice(8)}/${d.slice(5, 7)}`, n })}
+              accessibilityLabel={tr('{date}: {n} việc xong', { date: `${d.slice(8)}/${d.slice(5, 7)}`, n }) + (mark ? `, ${tr(mark[1])}` : '')}
               style={({ pressed }) => [s.cell, s.day, pressed && { backgroundColor: color.itemHover }, on && { backgroundColor: color.primary }]}
             >
               <Text style={[s.n, future && s.future, d === now && s.today, on && { color: color.primaryFg }]}>{Number(d.slice(8))}</Text>
               <Text style={[s.cnt, on && { color: color.primaryFg }]}>{!future && n ? n : ''}</Text>
               {missed.has(d) && <View style={s.miss} />}
+              {mark && <View style={[s.mark, { backgroundColor: mark[0] }, on && { backgroundColor: color.primaryFg }]} />}
             </Pressable>
           );
         })}
       </View>
+      {Object.values(reports).some((r) => MARK[r]) && (
+        <View style={s.legend}>
+          {Object.values(MARK).map(([c, label]) => (
+            <View key={label} style={s.legendItem}>
+              <View style={[s.legendMark, { backgroundColor: c }]} />
+              <Text style={s.legendText}>{tr(label)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -83,5 +103,10 @@ const s = StyleSheet.create({
   today: { fontWeight: '700', textDecorationLine: 'underline' },
   future: { color: color.muted, opacity: 0.5 },
   cnt: { fontFamily: text.xs.fontFamily, fontSize: 11, lineHeight: 16, minHeight: 16, fontWeight: '600', color: color.success, fontVariant: ['tabular-nums'] },
+  mark: { position: 'absolute', bottom: 3, width: 14, height: 3, borderRadius: 2 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 10 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendMark: { width: 14, height: 3, borderRadius: 2 },
+  legendText: { ...text.xs, color: color.muted },
   miss: { position: 'absolute', top: 6, right: '22%', width: 6, height: 6, borderRadius: 1, backgroundColor: color.warning },
 });

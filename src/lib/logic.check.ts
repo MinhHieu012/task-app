@@ -3,11 +3,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { accentTokens, contrast, DEFAULT_ACCENT } from './accent.ts';
-import { fromIso, localDay, nextDue, parseDate, parseTime } from './dates.ts';
+import { ACCENTS, accentTokens, contrast, DEFAULT_ACCENT, neutral } from './accent.ts';
+import { fromIso, localDay, nextDue, parseDate, parseTime, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
+import { draftHtml, isLate, matches, reportReminders, reportStats, reportStatus, snippet } from './reports.ts';
 import { parseWhen, spanError } from './subtasks.ts';
 import type { Project, Task } from './supabase.ts';
 
@@ -142,11 +143,52 @@ assert.equal(parseWhen('a b c', TUE), null);
   assert.match(spanError({ due_date: null, due_time: null, end_date: null, end_time: null }, { start_date: MON, start_time: null, end_date: null, end_time: null }), /chưa có ngày/);
 }
 
+// Daily report: due 21:00 local; 21:00 itself is on time, 21:01 or a later day is late.
+const at = (d: string, hm: string) => { const x = fromIso(d); x.setHours(+hm.slice(0, 2), +hm.slice(3), 0, 0); return x; };
+assert.equal(isLate('2026-11-09', at('2026-11-09', '21:00')), false);
+assert.equal(isLate('2026-11-09', at('2026-11-09', '21:01')), true);
+assert.equal(isLate('2026-11-09', at('2026-11-10', '08:00')), true);
+// Status: before the first report nothing is missing; today stays pending until the deadline.
+assert.equal(reportStatus('2026-11-01', undefined, null, at('2026-11-09', '10:00')), 'none');
+assert.equal(reportStatus('2026-11-01', undefined, '2026-11-05', at('2026-11-09', '10:00')), 'none');
+assert.equal(reportStatus('2026-11-06', undefined, '2026-11-05', at('2026-11-09', '10:00')), 'missing');
+assert.equal(reportStatus('2026-11-09', undefined, '2026-11-05', at('2026-11-09', '20:00')), 'pending');
+assert.equal(reportStatus('2026-11-09', undefined, '2026-11-05', at('2026-11-09', '21:30')), 'missing');
+assert.equal(reportStatus('2026-11-08', { late: true }, '2026-11-05', at('2026-11-09', '10:00')), 'late');
+{
+  const reps = [{ day: '2026-11-05', late: false }, { day: '2026-11-07', late: true }, { day: '2026-11-08', late: false }];
+  const days = ['2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09'];
+  // 09 is pending (morning), so the streak counts back from 08: 08, 07.
+  assert.deepEqual(reportStats(days, reps, '2026-11-05', at('2026-11-09', '10:00')), { ontime: 2, late: 1, missing: 1, streak: 2 });
+  assert.deepEqual(reportStats(days, [...reps, { day: '2026-11-09', late: false }], '2026-11-05', at('2026-11-09', '22:00')), { ontime: 3, late: 1, missing: 1, streak: 3 });
+}
+// Draft escapes task titles; search ignores case and Vietnamese marks.
+assert.equal(draftHtml([{ name: 'A&B', items: [{ title: '<script>x</script>' }] }], []).includes('<b>A&amp;B</b>: &lt;script&gt;x&lt;/script&gt;'), true);
+assert.ok(matches('Họp với khách về báo cáo', 'bao CAO'));
+assert.ok(matches('Đường dây', 'duong'));
+assert.ok(!matches('Họp team', 'khách'));
+assert.equal(snippet('Đã gửi báo cáo tuần cho sếp', 'BAO CAO', 100), 'Đã gửi báo cáo tuần cho sếp');
+// Reminders: 20:30 and 21:00, from now on, skipping reported days.
+{
+  const r = reportReminders(new Set(['2026-11-10']), at('2026-11-09', '20:45'), 3);
+  assert.deepEqual(r.map((x) => [toIso(x.at), x.at.getHours() * 60 + x.at.getMinutes(), x.last]), [
+    ['2026-11-09', 1260, true], ['2026-11-11', 1230, false], ['2026-11-11', 1260, true],
+  ]);
+}
+
 // Accent: default kept as is; a light pick is darkened until white text reads; junk falls back to the default.
 assert.equal(accentTokens(DEFAULT_ACCENT).primary, DEFAULT_ACCENT);
 assert.ok(contrast(accentTokens('#ffe066').primary, '#ffffff') >= 4.5);
 assert.equal(accentTokens('red').primary, DEFAULT_ACCENT);
 assert.match(accentTokens('#2563B0').light, /^#[0-9a-f]{6}$/);
+// Neutrals: untouched under the default accent; under every preset the inks keep their contrast on the sheet.
+assert.equal(neutral('#f6f3ee', DEFAULT_ACCENT), '#f6f3ee');
+assert.notEqual(neutral('#f6f3ee', '#2563b0'), '#f6f3ee');
+for (const { hex } of ACCENTS) {
+  const a = accentTokens(hex).primary;
+  assert.ok(contrast(neutral('#6b645a', a), '#ffffff') >= 4.5, `muted on ${hex}`);
+  assert.ok(contrast(neutral('#948b7e', a), '#ffffff') >= 3, `field edge on ${hex}`);
+}
 
 // i18n: Vietnamese is the key, English fills placeholders, a missing entry falls back to the key.
 assert.equal(tr('Mỗi {n} ngày', { n: 3 }), 'Mỗi 3 ngày');

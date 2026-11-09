@@ -60,6 +60,7 @@ export default function TabLayout() {
           avatar on Today (narrow) or the rail (wide), so it does not take a sixth tab slot. */}
       <Tabs.Screen name="project/[id]" options={{ tabBarItemStyle: { display: 'none' } }} />
       <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="reports" options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
   if (!wide) return tabs;
