@@ -2,9 +2,10 @@ import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type PostgrestFilterBuilder, type Session } from '@supabase/supabase-js';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { tr } from './i18n';
 import { showError } from './notify';
 
 export type Project = { id: string; name: string; created_at: string };
@@ -49,14 +50,49 @@ export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, proc
   },
 });
 
+// A reset link that worked: Supabase says so once, with PASSWORD_RECOVERY, while it reads the link. Subscribed
+// here, right after createClient, so the event fired during startup is not missed. A used or expired link fires
+// nothing (and keeps any existing session), so /reset-password must check this, not just "is there a session".
+let recovery = false;
+const recoveryListeners = new Set<() => void>();
+const setRecovery = (on: boolean) => {
+  recovery = on;
+  recoveryListeners.forEach((l) => l());
+};
+supabase.auth.onAuthStateChange((event) => event === 'PASSWORD_RECOVERY' && setRecovery(true));
+const subscribeRecovery = (l: () => void) => {
+  recoveryListeners.add(l);
+  return () => { recoveryListeners.delete(l); };
+};
+
+/** True after a valid reset link, until the new password is saved (endRecovery): one link, one change. */
+export const useRecovery = () => useSyncExternalStore(subscribeRecovery, () => recovery);
+export const endRecovery = () => setRecovery(false);
+
 // Refresh the session only while the app is in the foreground.
 AppState.addEventListener('change', (s) =>
   s === 'active' ? supabase.auth.startAutoRefresh() : supabase.auth.stopAutoRefresh(),
 );
 
+// Supabase auth errors arrive in English whatever the app language; the common ones by code, through tr().
+// Vietnamese keys (with their English in i18n.ts), read at call time since tr must not run at module level.
+const AUTH_ERRORS: Record<string, string> = {
+  same_password: 'Mật khẩu mới phải khác mật khẩu cũ.',
+  invalid_credentials: 'Email hoặc mật khẩu chưa đúng.',
+  email_not_confirmed: 'Email chưa được xác nhận. Mở link trong email trước rồi đăng nhập.',
+  user_already_exists: 'Email này đã có tài khoản. Hãy đăng nhập.',
+  email_exists: 'Email này đã có tài khoản. Hãy đăng nhập.',
+  weak_password: 'Mật khẩu quá yếu. Chọn mật khẩu dài hơn hoặc khó đoán hơn.',
+  email_address_invalid: 'Email chưa đúng dạng.',
+  over_email_send_rate_limit: 'Đã gửi quá nhiều email trong một giờ. Đợi một lúc rồi thử lại.',
+  over_request_rate_limit: 'Thử quá nhiều lần. Đợi một lúc rồi thử lại.',
+  otp_expired: 'Link đã hết hạn hoặc được mở trên máy khác. Gửi lại link từ màn đăng nhập.',
+  signup_disabled: 'Hiện chưa mở đăng ký tài khoản mới.',
+};
+
 /** Surfaces a Supabase error on web and native; returns true on success. */
-export function ok({ error }: { error: { message: string } | null }) {
-  if (error) showError(error.message);
+export function ok({ error }: { error: { message: string; code?: string } | null }) {
+  if (error) showError(error.code && AUTH_ERRORS[error.code] ? tr(AUTH_ERRORS[error.code]) : error.message);
   return !error;
 }
 

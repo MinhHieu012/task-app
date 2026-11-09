@@ -1,0 +1,21 @@
+<!-- Supabase: Authentication → Emails → Confirm signup. Subject: Xác nhận email cho Việc & Nhật ký -->
+<!-- Same frame as reset-password.html: inline styles only, Biển blue like the app icon, cream page. -->
+<div style="background:#f6f3ee;padding:32px 16px;font-family:'Be Vietnam Pro',Segoe UI,Helvetica,Arial,sans-serif;color:#23211d">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #ebe5db;border-radius:14px;padding:32px">
+    <div style="margin-bottom:24px">
+      <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:12px;background:#2563b0;color:#ffffff;font-size:20px;font-weight:700;text-align:center;vertical-align:middle">✓</span>
+      <span style="font-size:16px;font-weight:600;vertical-align:middle;margin-left:10px">Việc &amp; Nhật ký</span>
+    </div>
+    <h1 style="font-size:22px;line-height:30px;font-weight:600;margin:0 0 12px">Chào mừng bạn!</h1>
+    <p style="font-size:15px;line-height:24px;color:#3f3b35;margin:0 0 24px">
+      Còn một bước nữa: xác nhận <b>{{ .Email }}</b> là email của bạn, rồi đăng nhập để bắt đầu ghi việc của hôm nay.
+    </p>
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#2563b0;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:10px">Xác nhận email</a>
+    <p style="font-size:13px;line-height:20px;color:#6b645a;margin:24px 0 0">
+      Link chỉ dùng được một lần. Sau khi xác nhận, quay lại app và đăng nhập bằng email và mật khẩu vừa tạo.
+    </p>
+    <p style="font-size:13px;line-height:20px;color:#6b645a;margin:12px 0 0">
+      Nếu bạn không đăng ký, cứ bỏ qua email này, sẽ không có tài khoản nào được tạo.
+    </p>
+  </div>
+</div>
