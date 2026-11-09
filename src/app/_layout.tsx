@@ -35,8 +35,10 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
     *:hover { scrollbar-color: var(--color-scrollbar) transparent; }
     [tabindex] { transition: background-color ${duration.fast}ms ${easeCss}, border-color ${duration.fast}ms ${easeCss}, box-shadow ${duration.fast}ms ${easeCss}, opacity ${duration.fast}ms ${easeCss}; }
-    /* Keyboard focus ring in the accent, instant (no transition on outline). */
-    [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    /* Keyboard focus ring in the accent, instant (no transition on outline). Text inputs are left out:
+       Field draws the ring on its whole box, and a second outline on the bare <input> doubled it. */
+    [tabindex]:not(input):not(textarea):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    input:focus-visible, textarea:focus-visible { outline: none; }
     [aria-disabled="true"], :disabled { cursor: not-allowed; }
     /* Chrome paints autofilled inputs light blue with !important; a never-ending transition delay keeps the
        input transparent so the field box colour (the sheet) shows through. */
