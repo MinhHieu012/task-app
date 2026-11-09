@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { ACCENTS, accentTokens, contrast, DEFAULT_ACCENT, neutral } from './accent.ts';
-import { fmtDate, fromIso, localDay, nextDue, parseDate, parseTime, toIso } from './dates.ts';
+import { fmtDate, fromIso, localDay, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
@@ -15,6 +15,16 @@ import type { Project, Task } from './supabase.ts';
 // 2026-11-02 is a Monday.
 assert.equal(fromIso('2026-11-02').getDay(), 1);
 const MON = '2026-11-02', TUE = '2026-11-03', WED = '2026-11-04';
+
+// spanRange: Upcoming ranges start tomorrow; quarters/years end on their last day.
+assert.deepEqual(spanRange('3d', '2026-11-09'), ['2026-11-10', '2026-11-12']);
+assert.deepEqual(spanRange('1w', '2026-11-09'), ['2026-11-10', '2026-11-16']);
+assert.deepEqual(spanRange('1m', '2026-01-31'), ['2026-02-01', '2026-02-28']); // clamps to a short month
+assert.deepEqual(spanRange('1m', '2026-12-15'), ['2026-12-16', '2027-01-15']);
+assert.deepEqual(spanRange('q', '2026-11-09'), ['2026-11-10', '2026-12-31']);
+assert.deepEqual(spanRange('q', '2026-11-09', 1), ['2027-01-01', '2027-03-31']);
+assert.deepEqual(spanRange('y', '2026-11-09', 1), ['2027-01-01', '2027-12-31']);
+assert.deepEqual(spanRange('q', '2026-12-31'), ['2027-01-01', '2026-12-31']); // last day of a quarter: empty range
 
 // AE2: 00:30 local on the 4th belongs to the 4th.
 assert.equal(localDay(new Date(2026, 10, 4, 0, 30)), '2026-11-04');

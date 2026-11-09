@@ -81,3 +81,22 @@ export function parseTime(s: string) {
   if (!m || +m[1] > 23 || +m[2] > 59) return null;
   return `${pad(+m[1])}:${m[2]}`;
 }
+
+/** Upcoming screen ranges. `n` steps whole quarters/years ahead (0 = the current one). */
+export type Span = '3d' | '1w' | '2w' | '1m' | 'q' | 'y';
+
+/** [from, to] for a span, both inclusive; never starts before tomorrow (today has its own screen). */
+export function spanRange(span: Span, todayIso = today(), n = 0): [string, string] {
+  const tomorrow = addDays(todayIso, 1);
+  const t = fromIso(todayIso);
+  const y = t.getFullYear(), m = t.getMonth();
+  const days = { '3d': 3, '1w': 7, '2w': 14 } as const;
+  if (span in days) return [tomorrow, addDays(todayIso, days[span as keyof typeof days])];
+  if (span === '1m') return [tomorrow, toIso(new Date(y, m + 1, Math.min(t.getDate(), lastDayOf(y, m + 1))))];
+  // Date() rolls month/year overflow, so quarter n of a later year just works.
+  const [start, end] = span === 'q'
+    ? [new Date(y, m - (m % 3) + 3 * n, 1), new Date(y, m - (m % 3) + 3 * n + 3, 0)]
+    : [new Date(y + n, 0, 1), new Date(y + n, 11, 31)];
+  const from = toIso(start);
+  return [from > tomorrow ? from : tomorrow, toIso(end)];
+}
