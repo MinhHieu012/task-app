@@ -56,6 +56,17 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     @media (prefers-reduced-motion: reduce) { [tabindex] { transition: none; } }
   `;
   document.head.appendChild(css);
+
+  // Tab icon in the chosen accent: the static assets/favicon.png (default terracotta) shows until this
+  // runs. Changing the accent reloads the app, so drawing it once at startup keeps it in sync.
+  // Same mark as the rail: Ionicons checkmark-done (512 grid), stroked a little heavier to read at 16px.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="144" fill="${color.primary}"/><path transform="translate(77 77) scale(0.7)" d="M464 128L240 384l-96-96M144 384l-96-96M368 128L232 284" fill="none" stroke="${color.primaryFg}" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  document.querySelectorAll('link[rel~="icon"]').forEach((l) => l.remove());
+  const icon = document.createElement('link');
+  icon.rel = 'icon';
+  icon.type = 'image/svg+xml';
+  icon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  document.head.appendChild(icon);
 }
 
 export default function RootLayout() {
