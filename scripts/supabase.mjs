@@ -8,5 +8,6 @@ const ref = new URL(EXPO_PUBLIC_SUPABASE_URL).hostname.split('.')[0];
 // Project region is eu-west-1.
 const url = `postgresql://postgres.${ref}:${encodeURIComponent(SUPABASE_DB_PASSWORD)}@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`;
 
-const args = ['-y', 'supabase@latest', ...process.argv.slice(2), `--remote=${url}`].map((a) => `"${a}"`);
+// Pinned: this process holds the DB password, so don't run whatever `latest` points to today. Bump on purpose.
+const args = ['-y', 'supabase@3.0.0', ...process.argv.slice(2), `--remote=${url}`].map((a) => `"${a}"`);
 process.exit(spawnSync('npx', args, { stdio: 'inherit', shell: true }).status ?? 1);
