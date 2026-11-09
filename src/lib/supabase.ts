@@ -43,6 +43,9 @@ export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, proc
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web',
+    // PKCE: a URL only signs in if this browser started the flow (holds the code verifier). The implicit default
+    // accepted any #access_token=… link, so a crafted link could silently swap the user into another account.
+    flowType: 'pkce',
   },
 });
 
