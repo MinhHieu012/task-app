@@ -185,5 +185,6 @@ const s = StyleSheet.create({
   barArea: { height: 140, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   bar: { width: '100%', maxWidth: 18, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   miss: { width: 5, height: 5, borderRadius: 3 },
-  tick: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, color: color.muted, fontVariant: ['tabular-nums'] },
+  // Fixed width wider than a phone's day column, centred on it, so two-digit days are not cut.
+  tick: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, width: 28, textAlign: 'center', color: color.muted, fontVariant: ['tabular-nums'] },
 });

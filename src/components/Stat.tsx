@@ -43,7 +43,9 @@ export const statText = StyleSheet.create({
 const s = StyleSheet.create({
   row: { flexDirection: 'row', backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
   stat: { flex: 1, minWidth: 0, paddingVertical: 18, paddingHorizontal: 24, gap: 6, borderRightWidth: rule.hair, borderRightColor: color.border },
-  narrow: { paddingVertical: 12, paddingHorizontal: 12, gap: 2 },
+  // Phones: a label may wrap to two lines in one column and not the next; pinning the figure to the
+  // bottom keeps the figures on one baseline across the row.
+  narrow: { paddingVertical: 12, paddingHorizontal: 12, gap: 2, justifyContent: 'space-between' },
   label: { ...text.sm, color: color.muted },
   labelNarrow: { ...text.xs },
   n: { fontFamily: text.h1.fontFamily, fontSize: 40, lineHeight: 44, fontWeight: '600', letterSpacing: -1.2, color: color.foreground, fontVariant: ['tabular-nums'] },
