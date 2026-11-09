@@ -76,7 +76,7 @@ export default function DesignSystem() {
 
         <Card title="Hôm nay" flush action={<Button title="Thêm" variant="ghost" />}>
           <ListRow title="Nộp báo cáo tháng" left={<Tick priority={1} />} meta={<Meta tone="over">Hôm qua</Meta>} />
-          <ListRow title="Tập thể dục" left={<Tick priority={2} />} meta={<><Meta tone="today">Hôm nay 07:00</Meta><Meta>· ↻ Hằng ngày</Meta></>} />
+          <ListRow title="Tập thể dục" left={<Tick priority={2} />} meta={<><Meta tone="today">Hôm nay 07:00</Meta><Meta>↻ Hằng ngày</Meta></>} />
           <ListRow title="Đọc sách" left={<Tick priority={3} checked={done} onPress={() => setDone(!done)} />} done={done} meta={<Meta>Nhà</Meta>} />
           <ListRow title="Mua sữa" left={<Tick />} />
         </Card>

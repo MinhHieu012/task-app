@@ -27,7 +27,7 @@ export default function Upcoming() {
   const groups = days.map((d, i) => (
     <View key={d} style={wide ? { width: COL } : undefined}>
       <TaskGroup
-        title={`${i === 0 ? 'Ngày mai' : DAYS[fromIso(d).getDay()]} · ${fmtDay(d)}`}
+        title={`${i === 0 ? 'Ngày mai' : DAYS[fromIso(d).getDay()]}, ${fmtDay(d)}`}
         tasks={open.filter((t) => t.due_date === d)}
         projects={projects}
         hideDate

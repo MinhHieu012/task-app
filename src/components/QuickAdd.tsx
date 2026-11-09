@@ -2,7 +2,7 @@ import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, TextInput } from 'react-native';
 
 import { Field } from '@/components/ui';
-import { color, text } from '@/constants/theme';
+import { color, radius, rule, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
 import { supabase, type Task } from '@/lib/supabase';
 
@@ -72,7 +72,7 @@ export function QuickAdd({ defaults = {}, placeholder = 'Thêm việc…', flat 
 }
 
 const s = StyleSheet.create({
-  // On the gray page the field color vanishes, so the box gets a white face and a border; `flat` is for the white top bar.
-  raised: { backgroundColor: color.surface, borderColor: color.borderStrong },
-  kbd: { ...text.xs, fontSize: 11, lineHeight: 18, color: color.muted, borderWidth: 1, borderColor: color.borderStrong, borderRadius: 6, paddingHorizontal: 6, backgroundColor: color.surface },
+  // On the slate page the box takes the sheet colour; `flat` sits in the top bar, which is already the sheet.
+  raised: { backgroundColor: color.surface },
+  kbd: { ...text.xs, fontSize: 11, lineHeight: 18, color: color.muted, borderWidth: rule.hair, borderColor: color.border, borderRadius: radius.sm, paddingHorizontal: 6 },
 });

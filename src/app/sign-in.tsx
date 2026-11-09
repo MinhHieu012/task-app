@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Field, IconButton, type IconName, useWide } from '@/components/ui';
-import { color, radius, text } from '@/constants/theme';
+import { color, radius, rule, shadowModal, text } from '@/constants/theme';
 import { toast } from '@/lib/notify';
 import { ok, supabase } from '@/lib/supabase';
 
@@ -139,7 +139,8 @@ export default function SignIn() {
     <SafeAreaView style={[s.fill, wide && { backgroundColor: color.surface }]}>
       <View style={s.split}>
         {wide && <Intro />}
-        <KeyboardAvoidingView style={s.side} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* `padding` on Android too: edge-to-edge windows do not resize for the keyboard. */}
+        <KeyboardAvoidingView style={s.side} behavior="padding">
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
             {wide ? form : <View style={s.card}>{form}</View>}
           </ScrollView>
@@ -153,20 +154,20 @@ function Logo({ light }: { light?: boolean }) {
   return (
     <View style={s.brand}>
       <View style={[s.mark, light && { backgroundColor: color.surface }]}>
-        <Ionicons name="checkmark-done" size={22} color={light ? color.primary : color.primaryFg} />
+        <Ionicons name="checkmark-done" size={22} color={light ? color.foreground : color.surface} />
       </View>
-      <Text style={[s.brandName, light && { color: color.primaryFg }]}>Việc & Nhật ký</Text>
+      <Text style={[s.brandName, light && { color: color.surface }]}>Việc & Nhật ký</Text>
     </View>
   );
 }
 
-/** Left half on wide screens: what the app does, with a small static preview. */
+/** Left side on wide screens, a soft accent panel: what the app does, with a small static preview. */
 function Intro() {
   const { width, height } = useWindowDimensions();
   const big = width >= 1280; // room for the headline at full size, one clause per line
   return (
     <View style={s.intro}>
-      <Logo light />
+      <Logo />
       <View style={{ gap: 28 }}>
         <View style={{ gap: 12 }}>
           <Text style={[s.headline, !big && { fontSize: 28, lineHeight: 36 }]}>Biết hôm nay làm gì,{big ? '\n' : ' '}nhớ hôm qua đã làm gì.</Text>
@@ -179,7 +180,7 @@ function Intro() {
           {PREVIEW.map(([title, meta, done], i) => (
             <View key={title} style={[s.previewRow, i === PREVIEW.length - 1 && { borderBottomWidth: 0 }]}>
               <View style={[s.previewTick, done && { backgroundColor: color.success, borderColor: color.success }]}>
-                {done && <Ionicons name="checkmark" size={12} color={color.primaryFg} />}
+                {done && <Ionicons name="checkmark" size={12} color={color.surface} />}
               </View>
               <Text style={[s.previewTitle, done && s.previewDone]} numberOfLines={1}>{title}</Text>
               <Text style={[s.previewMeta, i === 2 && { color: color.danger }]}>{meta}</Text>
@@ -187,14 +188,12 @@ function Intro() {
           ))}
         </View>
 
-        <View style={{ gap: 18 }}>
-          {FEATURES.map(([icon, title, body]) => (
+        {/* What the app does, as a short definition list (no icon tiles). */}
+        <View style={s.features}>
+          {FEATURES.map(([, title, body]) => (
             <View key={title} style={s.feature}>
-              <View style={s.featureIcon}><Ionicons name={icon} size={18} color={color.primaryFg} /></View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={s.featureTitle}>{title}</Text>
-                <Text style={s.featureBody}>{body}</Text>
-              </View>
+              <Text style={s.featureTitle}>{title}</Text>
+              <Text style={s.featureBody}>{body}</Text>
             </View>
           ))}
         </View>
@@ -204,14 +203,13 @@ function Intro() {
   );
 }
 
-const onPrimary = 'rgba(255,255,255,0.78)';
-
 const s = StyleSheet.create({
   fill: { flex: 1, backgroundColor: color.background },
   split: { flex: 1, flexDirection: 'row' },
   side: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingVertical: 32 },
-  card: { width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: color.surface, borderRadius: radius.lg, padding: 24 },
+  // Phones: the form on a white sheet with soft corners.
+  card: { width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, padding: 24 },
   form: { width: '100%', maxWidth: 400, alignSelf: 'center', gap: 24 },
 
   brand: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -220,27 +218,29 @@ const s = StyleSheet.create({
 
   title: { ...text.h1, color: color.foreground },
   sub: { ...text.sm, color: color.muted },
-  tabs: { flexDirection: 'row', padding: 4, borderRadius: radius.md, backgroundColor: color.field },
-  tab: { flex: 1, height: 36, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  tabOn: { backgroundColor: color.surface, boxShadow: '0 1px 2px rgba(35,35,96,0.08)' },
+  // Sign in / sign up: a ruled tab row, the current tab underlined in ink.
+  tabs: { flexDirection: 'row', borderBottomWidth: rule.hair, borderBottomColor: color.border },
+  tab: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderBottomWidth: rule.bar, borderBottomColor: 'transparent', marginBottom: -rule.hair },
+  tabOn: { borderBottomColor: color.borderStrong },
   tabText: { ...text.smMedium, color: color.muted },
   tabTextOn: { color: color.foreground, fontWeight: '600' },
   switch: { ...text.sm, color: color.muted, textAlign: 'center' },
-  link: { color: color.primary, fontWeight: '600' },
+  link: { color: color.foreground, fontWeight: '600', textDecorationLine: 'underline', textDecorationColor: color.primary },
 
-  intro: { width: '46%', maxWidth: 640, backgroundColor: color.primary, paddingHorizontal: 56, paddingVertical: 48, justifyContent: 'space-between', gap: 32 },
-  headline: { ...text.h1, fontSize: 34, lineHeight: 44, color: color.primaryFg },
-  lead: { ...text.body, fontWeight: '400', color: onPrimary, maxWidth: 460 },
-  preview: { backgroundColor: color.surface, borderRadius: radius.lg, paddingHorizontal: 20, paddingVertical: 14, maxWidth: 460 },
+  // The intro panel: a soft accent wash beside the white form.
+  intro: { width: '46%', maxWidth: 640, backgroundColor: color.primaryLight, paddingHorizontal: 56, paddingVertical: 48, justifyContent: 'space-between', gap: 32 },
+  headline: { ...text.h1, fontSize: 40, lineHeight: 48, letterSpacing: -1.2, color: color.foreground },
+  lead: { ...text.body, color: color.soft, maxWidth: 460 },
+  preview: { backgroundColor: color.surface, borderRadius: radius.lg, boxShadow: shadowModal, paddingHorizontal: 20, paddingVertical: 14, maxWidth: 460 },
   previewHead: { ...text.meta, fontWeight: '600', color: color.muted, marginBottom: 4 },
-  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: color.border },
-  previewTick: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: color.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: rule.hair, borderBottomColor: color.border },
+  previewTick: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: color.fieldEdge, alignItems: 'center', justifyContent: 'center' },
   previewTitle: { ...text.sm, flex: 1, color: color.foreground },
   previewDone: { color: color.muted, textDecorationLine: 'line-through' },
-  previewMeta: { ...text.xs, color: color.muted },
-  feature: { flexDirection: 'row', gap: 14, maxWidth: 460 },
-  featureIcon: { width: 36, height: 36, borderRadius: radius.ctl, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
-  featureTitle: { ...text.smMedium, fontWeight: '600', color: color.primaryFg },
-  featureBody: { ...text.meta, color: onPrimary },
-  foot: { ...text.xs, color: onPrimary },
+  previewMeta: { ...text.xs, color: color.muted, fontVariant: ['tabular-nums'] },
+  features: { maxWidth: 460, gap: 14 },
+  feature: { gap: 2 },
+  featureTitle: { ...text.smMedium, fontWeight: '600', color: color.foreground },
+  featureBody: { ...text.meta, color: color.muted },
+  foot: { ...text.xs, color: color.muted },
 });

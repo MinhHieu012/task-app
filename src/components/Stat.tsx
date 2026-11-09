@@ -1,68 +1,56 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { type IconName, useWide } from '@/components/ui';
-import { color, radius, text } from '@/constants/theme';
+import { color, radius, rule, text } from '@/constants/theme';
 
-/** Row of number cards (Figma dashboard). Phones get compact cards: label and number only. */
+/** The day's figures as one line on a sheet: columns split by hairlines, no icon tiles. */
 export function StatRow({ children }: { children: ReactNode }) {
-  const wide = useWide();
-  return <View style={[s.row, !wide && { gap: 8 }]}>{children}</View>;
+  return <View style={s.row}>{children}</View>;
 }
 
-export function Stat({ icon, label, n, tone, foot, pad = true }: { icon: IconName; label: string; n: number | string; tone?: string; foot: ReactNode; pad?: boolean }) {
+// `icon` stays in the props for the callers; this material sets figures without icon tiles.
+export function Stat({ label, n, tone, foot, pad = true }: { icon: IconName; label: string; n: number | string; tone?: string; foot: ReactNode; pad?: boolean }) {
   const wide = useWide();
   const value = typeof n === 'number' && pad ? String(n).padStart(2, '0') : String(n);
-  if (!wide) {
-    return (
-      <View style={[s.stat, s.narrow]}>
-        <Text style={s.labelNarrow} numberOfLines={2}>{label}</Text>
-        <Text style={[s.n, s.nNarrow, tone && { color: tone }]}>{value}</Text>
-      </View>
-    );
-  }
   return (
-    <View style={s.stat}>
-      <View style={s.top}>
-        <View style={s.icon}><Ionicons name={icon} size={18} color={color.soft} /></View>
-        <Text style={s.label}>{label}</Text>
-        <Text style={[s.n, tone && { color: tone }]}>{value}</Text>
-      </View>
-      <View style={s.foot}>{foot}</View>
+    <View style={[s.stat, !wide && s.narrow]}>
+      <Text style={[s.label, !wide && s.labelNarrow]} numberOfLines={2}>{label}</Text>
+      <Text style={[s.n, !wide && s.nNarrow, tone && { color: tone }]}>{value}</Text>
+      {wide && <View style={s.foot}>{foot}</View>}
     </View>
   );
 }
 
-/** Small bar chart, last value highlighted. Bars instead of the Figma line: no chart library in the app. */
+/** Small bar chart, last value in the accent. Bars instead of a line: no chart library in the app. */
 export function Bars({ values, label, height = 28 }: { values: number[]; label: string; height?: number }) {
   const max = Math.max(...values, 1);
   return (
     <View style={[s.bars, { height }]} accessibilityLabel={`${label}: ${values.join(', ')}`}>
       {values.map((v, i) => (
-        <View key={i} style={[s.bar, { height: 4 + (v / max) * (height - 4) }, i === values.length - 1 && { backgroundColor: color.success }]} />
+        <View key={i} style={[s.bar, { height: 4 + (v / max) * (height - 4) }, i === values.length - 1 && { backgroundColor: color.primary }]} />
       ))}
     </View>
   );
 }
 
-/** Text styles for a card footer: muted line with bold numbers. */
+/** Text styles for a figure's foot line: muted with the numbers in ink. */
 export const statText = StyleSheet.create({
-  foot: { ...text.meta, color: color.muted, flexShrink: 1 },
+  foot: { ...text.meta, color: color.muted, flexShrink: 1, fontVariant: ['tabular-nums'] },
   b: { fontWeight: '600', color: color.foreground },
 });
 
 const s = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 24 },
-  stat: { flex: 1, minWidth: 0, backgroundColor: color.surface, borderRadius: radius.lg, paddingVertical: 20, paddingHorizontal: 24, gap: 16 },
-  narrow: { paddingVertical: 12, paddingHorizontal: 12, gap: 4 },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  icon: { width: 36, height: 36, borderRadius: 18, backgroundColor: color.background, alignItems: 'center', justifyContent: 'center' },
-  label: { ...text.sm, fontSize: 15, flex: 1, color: color.soft },
-  labelNarrow: { ...text.xs, color: color.soft },
-  n: { ...text.h1, lineHeight: 32, color: color.foreground, fontVariant: ['tabular-nums'] },
-  nNarrow: { fontSize: 22, lineHeight: 28 },
-  foot: { borderTopWidth: 1, borderTopColor: color.border, paddingTop: 14, minHeight: 47, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  row: { flexDirection: 'row', backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
+  stat: { flex: 1, minWidth: 0, paddingVertical: 18, paddingHorizontal: 24, gap: 6, borderRightWidth: rule.hair, borderRightColor: color.border },
+  // Phones: a label may wrap to two lines in one column and not the next; pinning the figure to the
+  // bottom keeps the figures on one baseline across the row.
+  narrow: { paddingVertical: 12, paddingHorizontal: 12, gap: 2, justifyContent: 'space-between' },
+  label: { ...text.sm, color: color.muted },
+  labelNarrow: { ...text.xs },
+  n: { fontFamily: text.h1.fontFamily, fontSize: 40, lineHeight: 44, fontWeight: '600', letterSpacing: -1.2, color: color.foreground, fontVariant: ['tabular-nums'] },
+  nNarrow: { fontSize: 24, lineHeight: 30, letterSpacing: -0.5 },
+  foot: { paddingTop: 10, marginTop: 4, borderTopWidth: rule.hair, borderTopColor: color.border, minHeight: 41, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
-  bar: { width: 6, borderRadius: 3, backgroundColor: color.primaryLight },
+  bar: { width: 6, borderRadius: 3, backgroundColor: color.chartBar },
 });

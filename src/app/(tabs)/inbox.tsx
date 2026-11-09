@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
 import { active, Button, Empty, EmptyState, InfoLine, Screen, TextLink } from '@/components/ui';
-import { color, projectColor, radius, text } from '@/constants/theme';
+import { color, projectColor, rule, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -25,7 +25,7 @@ export default function Inbox() {
   const aside = (
     <>
       <View>
-        <Text style={s.title}>Tổng quan</Text>
+        <View style={s.head}><Text style={s.title}>Tổng quan</Text></View>
         <InfoLine icon="file-tray-outline" label="Trong Hộp thư" n={open.length} />
         <InfoLine icon="alert-circle-outline" label="Quá hạn" n={over} tone={over ? color.danger : undefined} />
         <InfoLine icon="sunny-outline" label="Có hạn hôm nay" n={dueToday} />
@@ -33,7 +33,7 @@ export default function Inbox() {
       </View>
       <View>
         <View style={s.head}>
-          <Text style={[s.title, { marginBottom: 0 }]}>Project</Text>
+          <Text style={s.title}>Project</Text>
           <TextLink label="Quản lý" onPress={() => router.navigate('/projects')} />
         </View>
         <Text style={s.hint}>Bấm một việc rồi chọn project trong panel để chuyển việc ra khỏi Hộp thư.</Text>
@@ -56,7 +56,7 @@ export default function Inbox() {
   return (
     <Screen
       title="Hộp thư"
-      sub={`Việc chưa thuộc project nào${loaded ? ` · ${open.length} việc` : ''}`}
+      sub={`Việc chưa thuộc project nào${loaded ? `, ${open.length} việc` : ''}`}
       footer={<QuickAdd placeholder="Thêm vào Hộp thư…" />}
       aside={sel?.id ? undefined : aside}
       maxWidth={100000}
@@ -79,11 +79,12 @@ export default function Inbox() {
 }
 
 const s = StyleSheet.create({
-  title: { ...text.h2, color: color.foreground, marginBottom: 8 },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  hint: { ...text.meta, color: color.muted, marginBottom: 12 },
-  project: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 40, paddingHorizontal: 10, marginHorizontal: -10, borderRadius: radius.md },
-  dot: { width: 10, height: 10, borderRadius: 3 },
+  title: { ...text.h2, color: color.foreground },
+  // Aside heads sit on a light firm rule; the lines under them are hairlines.
+  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  hint: { ...text.meta, color: color.muted, marginTop: 6, marginBottom: 8 },
+  project: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 40, borderBottomWidth: rule.hair, borderBottomColor: color.border },
+  dot: { width: 10, height: 10, borderRadius: 5 },
   projectName: { ...text.sm, flex: 1, color: color.foreground },
-  count: { ...text.xs, color: color.muted, fontVariant: ['tabular-nums'] },
+  count: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
 });

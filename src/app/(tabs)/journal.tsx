@@ -6,7 +6,7 @@ import { QuickAdd } from '@/components/QuickAdd';
 import { Stat, StatRow, statText } from '@/components/Stat';
 import { TaskGroup } from '@/components/TaskRow';
 import { Badge, Card, EmptyState, Screen, useWide, webEase } from '@/components/ui';
-import { color, radius, text } from '@/constants/theme';
+import { color, rule, text } from '@/constants/theme';
 import { fmtDay, fromIso, toIso, today } from '@/lib/dates';
 import { dayCounts, groupByProject, monthCounts } from '@/lib/journal';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -96,7 +96,7 @@ export default function Journal() {
           icon="calendar-outline"
           label="Ngày có làm việc"
           n={active}
-          foot={<Text style={statText.foot}>Trên <Text style={statText.b}>{days.length}</Text> ngày · trung bình <Text style={statText.b}>{avg}</Text> việc/ngày</Text>}
+          foot={<Text style={statText.foot}>Trên <Text style={statText.b}>{days.length}</Text> ngày, trung bình <Text style={statText.b}>{avg}</Text> việc/ngày</Text>}
         />
         <Stat
           icon="alert-circle-outline"
@@ -175,14 +175,16 @@ const s = StyleSheet.create({
   cols: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
   calCol: { width: 380 },
   dayCol: { flex: 1, minWidth: 0, gap: 16 },
-  dayHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingHorizontal: 4 },
-  dayTitle: { ...text.h2, color: color.foreground },
+  dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingBottom: 10, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  dayTitle: { ...text.h2, color: color.foreground, fontVariant: ['tabular-nums'] },
   badges: { flexDirection: 'row', gap: 6 },
-  legend: { ...text.meta, color: color.muted },
+  legend: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
+  // The month's one chart, set large: bars stand on a baseline rule.
   chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   col: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 },
-  barArea: { height: 120, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
-  bar: { width: '100%', maxWidth: 18, borderRadius: radius.sm },
+  barArea: { height: 140, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  bar: { width: '100%', maxWidth: 18, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   miss: { width: 5, height: 5, borderRadius: 3 },
-  tick: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, color: color.muted },
+  // Fixed width wider than a phone's day column, centred on it, so two-digit days are not cut.
+  tick: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, width: 28, textAlign: 'center', color: color.muted, fontVariant: ['tabular-nums'] },
 });

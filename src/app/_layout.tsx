@@ -12,25 +12,42 @@ import { Notifier } from '@/components/Notifier';
 import { color, duration, easeCss, font } from '@/constants/theme';
 import { useSession } from '@/lib/supabase';
 
-// Web: thin scrollbars that show only while the pointer is over the scrolling area.
-// Every Pressable renders as a focusable element ([tabindex]), so one rule eases all hover/press/focus
-// colour and scale changes instead of a transition style on each call site. Native swaps instantly on press.
+// Web: the page's one stylesheet. It opens with the Hallmark stamp (the design decisions, read by sloplint),
+// declares the tokens at :root from theme.ts, and holds what React Native styles cannot: scrollbars, focus
+// rings, transitions and reduced motion. Every Pressable renders as a focusable element ([tabindex]), so one
+// rule eases all hover/press/focus colour changes instead of a transition style on each call site.
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   const css = document.createElement('style');
-  css.textContent = `
+  css.textContent = `/* Hallmark · shape: app screen · genre: editorial · theme: Almanac (deal 1/3, seed personal-task-manager-daily-4a2a·e795f77a·2026-11-09·r0) · redesign: full
+ * nav: kept shell (icon rail + top bar wide, bottom tabs narrow) · signature: the day's tasks as one sheet of lines · states: loading, empty, full, error (toasts)
+ * axes: light/sans/chromatic-terracotta (softened by request: the slate, ink and square corners read cold) · posture: warm · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S3 R5 V4 · weakest: S, a task list reads like any task list; set the lists as a printed ledger (firm rule, hairline lines, tabular times) instead of floating cards */
+/* Hallmark · dropped add, folder-outline, onPrimary · Ionicons names on the old project cards and a colour constant on sign-in, read as a field and a handler; no field or handler was removed */
+/* Hallmark · waive 64/fonts: one family, Be Vietnam Pro, for every role · the theme's Hanken/Newsreader/Plex lack full Vietnamese glyphs and the owner keeps this face */
+    :root {
+      --color-paper: ${color.background}; --color-sheet: ${color.surface}; --color-ink: ${color.foreground};
+      --color-muted: ${color.muted}; --color-rule: ${color.border}; --color-accent: ${color.primary};
+      --color-focus: ${color.ringFocus}; --color-scrollbar: ${color.scrollbar};
+      --font-body: "${font}", ui-sans-serif, system-ui, sans-serif;
+    }
+    html, body { overflow-x: clip; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-body); }
+    ::selection { background: var(--color-accent); color: var(--color-sheet); }
     * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
-    *:hover { scrollbar-color: rgba(35,35,96,0.22) transparent; }
-    [tabindex] { transition: background-color ${duration.fast}ms ${easeCss}, border-color ${duration.fast}ms ${easeCss}, box-shadow ${duration.fast}ms ${easeCss}, opacity ${duration.fast}ms ${easeCss}, transform ${duration.press}ms ${easeCss}; }
-    /* Keyboard focus ring in the accent colour instead of the browser's black outline (kept for a11y). */
-    [tabindex]:focus-visible { outline: 2px solid ${color.primary}; outline-offset: 2px; }
+    *:hover { scrollbar-color: var(--color-scrollbar) transparent; }
+    [tabindex] { transition: background-color ${duration.fast}ms ${easeCss}, border-color ${duration.fast}ms ${easeCss}, box-shadow ${duration.fast}ms ${easeCss}, opacity ${duration.fast}ms ${easeCss}; }
+    /* Keyboard focus ring in the accent, instant (no transition on outline). Text inputs are left out:
+       Field draws the ring on its whole box, and a second outline on the bare <input> doubled it. */
+    [tabindex]:not(input):not(textarea):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    input:focus-visible, textarea:focus-visible { outline: none; }
+    [aria-disabled="true"], :disabled { cursor: not-allowed; }
     /* Chrome paints autofilled inputs light blue with !important; a never-ending transition delay keeps the
-       input transparent so the field box colour (grey, white when focused) shows through. */
+       input transparent so the field box colour (the sheet) shows through. */
     input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
-      -webkit-text-fill-color: ${color.foreground}; caret-color: ${color.foreground};
+      -webkit-text-fill-color: var(--color-ink); caret-color: var(--color-ink);
       transition: background-color 0s 600000s, color 0s 600000s;
     }
-    /* Reduce motion: keep colour/opacity fades, drop the press scale (the only movement here). */
-    @media (prefers-reduced-motion: reduce) { [tabindex] { transition-property: background-color, border-color, box-shadow, opacity; } }
+    /* Reduce motion: no transitions at all; state still changes, instantly. */
+    @media (prefers-reduced-motion: reduce) { [tabindex] { transition: none; } }
   `;
   document.head.appendChild(css);
 }

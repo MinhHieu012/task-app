@@ -6,7 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
 import { TaskForm } from '@/components/TaskForm';
 import { FadeIn, type IconName, useWide } from '@/components/ui';
-import { color, duration, radius, text } from '@/constants/theme';
+import { color, duration, radius, rule, text } from '@/constants/theme';
 import { useReminders } from '@/lib/reminders';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -19,7 +19,7 @@ const tab = (title: string, icon: IconName, badge?: number) => ({
     <Text style={{ ...text.xs, fontWeight: focused ? '600' : '500', color: c as string }}>{title}</Text>
   ),
   tabBarBadge: badge || undefined,
-  tabBarBadgeStyle: { backgroundColor: color.danger, color: '#fff', fontFamily: text.xs.fontFamily, fontSize: 10, fontWeight: '600' as const },
+  tabBarBadgeStyle: { backgroundColor: color.danger, color: color.primaryFg, fontFamily: text.xs.fontFamily, fontSize: 10, fontWeight: '600' as const },
 });
 const icon = (label: string) => NAV.find((n) => n.label === label)!.icon;
 
@@ -40,7 +40,9 @@ export default function TabLayout() {
         tabBarActiveTintColor: color.primary,
         tabBarInactiveTintColor: color.muted,
         tabBarLabelPosition: 'below-icon',
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.border, height: 64, paddingTop: 6, paddingBottom: 8 },
+        // The tab bar would otherwise sit between the footer input and the keyboard on Android.
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, borderTopWidth: rule.bar, height: 64, paddingTop: 6, paddingBottom: 8 },
       }}
     >
       <Tabs.Screen name="index" options={tab('Hôm nay', icon('Hôm nay'), over)} />
@@ -97,7 +99,7 @@ const s = StyleSheet.create({
   main: { flex: 1, minWidth: 0 },
   body: { flex: 1, flexDirection: 'row' },
   // Same width as Today's aside, which steps aside while a task is open.
-  panel: { width: 360, backgroundColor: color.surface },
+  panel: { width: 360, backgroundColor: color.surface, borderLeftWidth: rule.hair, borderLeftColor: color.border },
   head: { flexDirection: 'row', alignItems: 'center', paddingTop: 20, paddingLeft: 28, paddingRight: 20 },
   crumb: { ...text.meta, color: color.muted, flex: 1 },
   close: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },

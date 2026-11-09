@@ -7,7 +7,7 @@ import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
 import { endDay, TaskGroup } from '@/components/TaskRow';
 import { active, Button, Empty, EmptyState, Screen, TextLink } from '@/components/ui';
-import { color, radius, text } from '@/constants/theme';
+import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -82,23 +82,26 @@ export default function Today() {
                 key={w}
                 onPress={() => router.navigate('/upcoming')}
                 accessibilityLabel={`${SHORT[fromIso(w).getDay()]} ${fmtDay(w)}: ${n} việc`}
-                style={(st) => [s.wd, !on && active(st) && { backgroundColor: color.secondary }, on && s.wdOn]}
+                style={(st) => [s.wd, active(st) && { backgroundColor: color.itemHover }, on && s.wdOn]}
               >
-                <Text style={[s.wdDay, on && s.wdOnText]}>{SHORT[fromIso(w).getDay()]}</Text>
-                <Text style={[s.wdNum, on && { color: color.primaryFg }]}>{w.slice(8)}</Text>
-                <Text style={[s.wdCount, on && s.wdOnText]}>{n || ''}</Text>
+                <Text style={s.wdDay}>{SHORT[fromIso(w).getDay()]}</Text>
+                <Text style={s.wdNum}>{w.slice(8)}</Text>
+                <Text style={s.wdCount}>{n || ''}</Text>
               </Pressable>
             );
           })}
         </View>
         {next && (
           <View style={s.next}>
-            <Text style={s.nextLabel}>Việc kế tiếp · {WEEKDAY[fromIso(next.due_date!).getDay()]} {fmtDay(next.due_date!)}</Text>
+            <View style={s.nextHead}>
+              <Text style={s.nextLabel}>Việc kế tiếp</Text>
+              <Text style={s.nextLabel}>{WEEKDAY[fromIso(next.due_date!).getDay()]} {fmtDay(next.due_date!)}</Text>
+            </View>
             <Text style={s.nextTitle} numberOfLines={2}>{next.title}</Text>
             <View style={s.nextMeta}>
-              <Ionicons name="time-outline" size={14} color={color.primaryFg} />
+              <Ionicons name="time-outline" size={14} color={color.muted} />
               <Text style={s.nextLabel}>
-                {[next.due_time?.slice(0, 5), next.project_id ? names.get(next.project_id) : 'Hộp thư'].filter(Boolean).join(' · ')}
+                {[next.due_time?.slice(0, 5), next.project_id ? names.get(next.project_id) : 'Hộp thư'].filter(Boolean).join(', ')}
               </Text>
             </View>
           </View>
@@ -111,7 +114,7 @@ export default function Today() {
         </View>
         {done.map((t, i) => (
           <View key={t.id} style={[s.mini, i === done.length - 1 && { borderBottomWidth: 0 }]}>
-            <View style={s.ok}><Ionicons name="checkmark" size={16} color={color.success} /></View>
+            <Ionicons name="checkmark" size={16} color={color.success} />
             <View style={s.miniBody}>
               <Text style={s.miniTitle} numberOfLines={1}>{t.title}</Text>
               <Text style={s.miniTime}>{new Date(t.completed_at!).toTimeString().slice(0, 5)}</Text>
@@ -126,7 +129,7 @@ export default function Today() {
   return (
     <Screen
       title="Hôm nay"
-      sub={`${WEEKDAY[fromIso(day).getDay()]}, ${fmtDay(day)}${loaded ? ` · ${open.length} việc` : ''}`}
+      sub={`${WEEKDAY[fromIso(day).getDay()]}, ${fmtDay(day)}${loaded ? `, ${open.length} việc` : ''}`}
       footer={<QuickAdd defaults={{ due_date: day }} placeholder="Thêm việc cho hôm nay…" />}
       aside={sel?.id ? undefined : aside}
       maxWidth={100000}
@@ -170,22 +173,22 @@ export default function Today() {
 
 const s = StyleSheet.create({
   groups: { gap: 28 },
-  asideHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  asideHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   asideTitle: { ...text.h2, color: color.foreground },
-  week: { flexDirection: 'row', gap: 6 },
-  wd: { flex: 1, alignItems: 'center', gap: 2, paddingTop: 10, paddingBottom: 8, borderRadius: radius.md, backgroundColor: color.background },
-  wdOn: { backgroundColor: color.primary },
-  wdOnText: { color: color.primaryFg },
-  wdDay: { ...text.xs, fontSize: 11, lineHeight: 14, color: color.muted },
-  wdNum: { ...text.base, fontSize: 15, lineHeight: 20, color: color.foreground },
-  wdCount: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, fontWeight: '600', color: color.primary },
-  next: { marginTop: 16, borderRadius: 14, backgroundColor: color.primary, paddingVertical: 16, paddingHorizontal: 18, gap: 4 },
-  nextLabel: { ...text.xs, color: color.primaryFg },
-  nextTitle: { ...text.base, lineHeight: 22, color: color.primaryFg },
+  // The week as a strip of seven cells; tomorrow sits in a soft accent wash.
+  week: { flexDirection: 'row', gap: 4, marginTop: 8 },
+  wd: { flex: 1, alignItems: 'center', gap: 2, paddingTop: 10, paddingBottom: 8, borderRadius: radius.md },
+  wdOn: { backgroundColor: color.primaryLight },
+  wdDay: { ...text.xs, color: color.muted },
+  wdNum: { ...text.base, lineHeight: 22, color: color.foreground, fontVariant: ['tabular-nums'] },
+  wdCount: { ...text.xs, height: 16, fontWeight: '600', color: color.primary, fontVariant: ['tabular-nums'] },
+  next: { marginTop: 16, padding: 16, gap: 4, borderRadius: radius.lg, backgroundColor: color.background },
+  nextHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  nextLabel: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
+  nextTitle: { ...text.base, fontSize: 18, lineHeight: 24, color: color.foreground },
   nextMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  mini: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: color.border },
-  ok: { width: 28, height: 28, borderRadius: 14, backgroundColor: color.successBg, alignItems: 'center', justifyContent: 'center' },
-  miniBody: { flex: 1, minWidth: 0 },
-  miniTitle: { ...text.sm, color: color.foreground },
-  miniTime: { ...text.xs, color: color.muted },
+  mini: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: rule.hair, borderBottomColor: color.border },
+  miniBody: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', gap: 12 },
+  miniTitle: { ...text.sm, color: color.foreground, flex: 1 },
+  miniTime: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
 });

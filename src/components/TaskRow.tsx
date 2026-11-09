@@ -4,7 +4,7 @@ import { type ComponentProps, useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { active, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
-import { color, type Priority, radius, text } from '@/constants/theme';
+import { color, type Priority, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
 import { Selection } from '@/lib/selection';
 import { ok, type Project, type Subtask, supabase, type Task, useRows } from '@/lib/supabase';
@@ -82,8 +82,8 @@ function M({ icon, children, tone }: { icon?: Icon; children: string; tone?: 'ov
   );
 }
 
-/** One task as a white card row (Figma "Task" row).
- *  timeCol: Today's layout, a left column with "Bắt đầu 9:00" or "Hạn 02/11 · Trễ 3 ngày".
+/** One task as a line on the group's sheet.
+ *  timeCol: Today's layout, a left column with "Bắt đầu 9:00" or "Hạn 02/11" over "Trễ 3 ngày".
  *  compact: narrow columns (Sắp tới), no priority tag. */
 export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
   task: Task; project?: string; hideDate?: boolean; timeCol?: boolean; compact?: boolean; subs?: string;
@@ -119,7 +119,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
     timeCol && !side && !over && range && <M key="start" icon="time-outline">{range}</M>,
     project !== undefined && <M key="p" icon={project ? 'folder-outline' : 'file-tray-outline'}>{project || 'Hộp thư'}</M>,
     !timeCol && !hideDate && !done && task.due_date && (
-      <M key="d" icon="calendar-clear-outline" tone={over ? 'over' : undefined}>{[dayName(task.due_date), range].filter(Boolean).join(' · ')}</M>
+      <M key="d" icon="calendar-clear-outline" tone={over ? 'over' : undefined}>{[dayName(task.due_date), range].filter(Boolean).join(', ')}</M>
     ),
     !timeCol && !hideDate && !done && !task.due_date && <M key="nd">Chưa có hạn</M>,
     (hideDate || side) && range && range.includes('–') && <M key="t" icon="time-outline">{range}</M>,
@@ -134,7 +134,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
   return (
     <Pressable
       onPress={() => (sel ? sel.select(selected ? null : task.id) : router.push({ pathname: '/task/[id]', params: { id: task.id } }))}
-      style={(st) => [s.row, active(st) && { borderColor: color.borderStrong }, selected && s.selected]}
+      style={(st) => [s.row, active(st) && { backgroundColor: color.itemHover }, selected && s.selected]}
     >
       {side ? (
         <View style={s.timeCol}>
@@ -174,7 +174,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs }: {
   );
 }
 
-/** Heading with count, then one card per task. Skeleton rows while loading. */
+/** Heading with count, then the tasks as lines on one sheet. Skeleton rows while loading. */
 export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeCol, compact, loading }: {
   title: string; tasks: Task[]; projects?: Project[]; over?: boolean; hideDate?: boolean; empty?: string; timeCol?: boolean; compact?: boolean; loading?: boolean;
 }) {
@@ -206,7 +206,7 @@ export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeC
                 />
               </FadeIn>
             ))}
-        {!loading && !tasks.length && empty && (compact ? <View style={s.emptyBox}><Empty>{empty}</Empty></View> : <Empty>{empty}</Empty>)}
+        {!loading && !tasks.length && empty && <View style={s.emptyBox}><Empty>{empty}</Empty></View>}
       </View>
     </View>
   );
@@ -225,12 +225,13 @@ function SkeletonRow() {
 }
 
 const s = StyleSheet.create({
-  rows: { gap: 12 },
-  emptyBox: { borderRadius: radius.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.borderStrong },
-  row: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: 'transparent' },
-  selected: { borderColor: color.primary, boxShadow: `0 0 0 3px ${color.ringFocus}` },
-  timeCol: { width: 184, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 20, borderRightWidth: 1, borderRightColor: color.border },
-  timeL: { ...text.meta, fontWeight: '500', color: color.foreground, marginBottom: 2 },
+  // The group is one white sheet with soft corners; hairlines between the lines.
+  rows: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
+  emptyBox: { paddingHorizontal: 16 },
+  row: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: rule.hair, borderBottomColor: color.border },
+  selected: { backgroundColor: color.primaryLight },
+  timeCol: { width: 184, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 20, borderRightWidth: rule.hair, borderRightColor: color.border },
+  timeL: { ...text.meta, fontWeight: '500', color: color.foreground, marginBottom: 2, fontVariant: ['tabular-nums'] },
   tickCol: { paddingLeft: 20, paddingVertical: 16, justifyContent: 'center' },
   tickColNarrow: { paddingLeft: 14, paddingVertical: 14, justifyContent: 'flex-start' },
   body: { flex: 1, minWidth: 0, paddingVertical: 16, paddingHorizontal: 20, justifyContent: 'center', gap: 6 },
@@ -239,6 +240,6 @@ const s = StyleSheet.create({
   done: { color: color.muted, textDecorationLine: 'line-through' },
   meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 },
   m: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-  mText: { ...text.meta, flexShrink: 1 },
+  mText: { ...text.meta, flexShrink: 1, fontVariant: ['tabular-nums'] },
   side: { width: 148, paddingVertical: 16, paddingHorizontal: 20, alignItems: 'flex-end', justifyContent: 'center' },
 });

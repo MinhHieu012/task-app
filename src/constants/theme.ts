@@ -1,83 +1,93 @@
-// Tokens from the Figma reference (Octom task app), chosen in the wireframe "A+B" (2026-11-05).
-// Muted, red, green and amber are a step darker than the Figma file so text passes 4.5:1. Change the accent here only.
-// Be Vietnam Pro: close to the Figma geometric sans and has full Vietnamese glyphs (DM Sans has none). Loaded in src/app/_layout.tsx.
+// Hallmark redesign (2026-11-09), softened the same day: Almanac's structure (ruled sheets, tables, tabular
+// figures) in a warmer material. Cream stock, white sheets, warm ink, soft rounded corners, light rules, one
+// terracotta accent for the primary action and the current selection only. The slate/ink/square version read cold.
+// Every text colour passes 4.5:1 on the sheet; priority 2 and 4 text sits a step darker than their marks.
+// Be Vietnam Pro stays the one family: it has full Vietnamese glyphs (DM Sans broke them). Loaded in src/app/_layout.tsx.
 export const font = 'Be Vietnam Pro';
 
 export const color = {
-  primary: '#5051f9',
-  primaryHover: '#4243e0',
+  primary: '#b04a24', // terracotta accent
+  primaryHover: '#963c1b',
   primaryFg: '#ffffff',
-  primaryLight: '#edecfe',
-  ringFocus: 'rgba(80,81,249,0.14)',
+  primaryLight: '#fdeee6', // selection wash
+  ringFocus: '#b04a24', // focus ring, drawn as an outline
 
-  background: '#f3f4f8',
-  surface: '#ffffff',
-  rail: '#fbfaff',
-  field: '#f3f6fa',
-  foreground: '#232360',
-  soft: '#4b5577',
-  muted: '#5d6880',
-  border: '#eceef3',
-  borderStrong: '#e1e4ec',
-  itemHover: '#f3f4f8',
-  secondary: '#e7e8ec',
-  secondaryHover: '#dbdce2',
-  buttonHover: '#f3f4f8',
-  ghostHover: 'rgba(35,35,96,0.05)',
-  chip: 'rgba(35,35,96,0.05)',
-  chipHover: 'rgba(35,35,96,0.10)',
-  chipText: 'rgba(35,35,96,0.75)',
-  backdrop: 'rgba(0,0,0,0.4)',
-  skeleton: '#e9ebf1',
-  chartBar: '#dcdbfe',
-  chartBarHover: '#c9c8fd',
+  background: '#f6f3ee', // cream stock
+  surface: '#ffffff', // the sheet
+  rail: '#efeae2',
+  field: '#ffffff',
+  foreground: '#23211d', // warm ink
+  soft: '#3f3b35',
+  muted: '#6b645a',
+  border: '#ebe5db', // hairline rule
+  borderStrong: '#ddd5c8', // the rule under a head
+  fieldEdge: '#948b7e', // input edge, 3:1 on the sheet
+  itemHover: '#f6f1ea',
+  secondary: '#efeae2',
+  secondaryHover: '#e6dfd4',
+  buttonHover: '#f6f1ea',
+  ghostHover: '#f3eee6',
+  chip: '#f3eee6',
+  chipHover: '#ebe5db',
+  chipText: '#3f3b35',
+  backdrop: 'rgba(35,33,29,0.4)',
+  skeleton: '#efeae2',
+  chartBar: '#e9b8a2', // a tint of the accent, so data reads while the selected day stays the strongest
+  chartBarHover: '#d99476',
+  scrollbar: 'rgba(35,33,29,0.22)',
 
-  danger: '#c8283a',
-  dangerBg: '#ffecee',
-  dangerBgHover: '#ffdfe3',
-  error: '#c8283a',
-  errorRing: 'rgba(200,40,58,0.12)',
-  errorText: '#c8283a',
-  errorBg: '#ffecee',
-  errorStrong: '#a51d2d',
-  successBg: '#e6f6ec',
-  success: '#0e7a3e',
-  warningBg: '#fff1e7',
-  warning: '#c2410c',
-  infoBg: '#e4f4ff',
-  neutralBg: '#f3f4f8',
-  neutral: '#4b5577',
+  danger: '#b42318',
+  dangerBg: '#fdecea',
+  dangerBgHover: '#fadcd8',
+  error: '#b42318',
+  errorRing: '#b42318',
+  errorText: '#b42318',
+  errorBg: '#fdecea',
+  errorStrong: '#912018',
+  successBg: '#e5f4ea',
+  success: '#1f7a45',
+  warningBg: '#fdf1dc',
+  warning: '#9a5b00',
+  infoBg: '#e6eef9',
+  neutralBg: '#f3eee6',
+  neutral: '#3f3b35',
 } as const;
 
-// Priority scale: ticks, choice dots and the priority tag.
-export const priority = { 1: '#c8003a', 2: '#b45309', 3: '#155dfc', 4: '#8a93a6' } as const;
-export const priorityBg = { 1: '#ffecee', 2: '#fff1e7', 3: '#e4f4ff', 4: '#f3f4f8' } as const;
-export const priorityText = { 1: '#c8003a', 2: '#b45309', 3: '#155dfc', 4: '#5d6880' } as const;
+// Priority scale: ticks, choice marks and the priority tag.
+export const priority = { 1: '#b42318', 2: '#b26a00', 3: '#2563b0', 4: '#8a8378' } as const;
+export const priorityBg = { 1: '#fdecea', 2: '#fdf1dc', 3: '#e6eef9', 4: '#f3eee6' } as const;
+export const priorityText = { 1: '#b42318', 2: '#9a5b00', 3: '#2563b0', 4: '#6b645a' } as const;
 export type Priority = keyof typeof priority;
 
-export const radius = { sm: 8, ctl: 10, md: 12, lg: 16, full: 9999 } as const;
+// Soft corners: controls 10, sheets 14. `full` for round ticks, pills and the avatar.
+export const radius = { sm: 6, ctl: 10, md: 12, lg: 14, full: 9999 } as const;
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24 } as const;
+// Two rule weights: a hairline between rows, a slightly firmer light line under a head.
+export const rule = { hair: 1, bar: 2 } as const;
 
+// Heads one weight (600), tightened; body at 16. Figures use tabular numerals (`num`).
 export const text = {
-  h1: { fontFamily: font, fontSize: 28, lineHeight: 36, fontWeight: '700' },
-  h2: { fontFamily: font, fontSize: 18, lineHeight: 28, fontWeight: '600' },
-  xl: { fontFamily: font, fontSize: 20, lineHeight: 28, fontWeight: '600' },
-  lg: { fontFamily: font, fontSize: 18, lineHeight: 28, fontWeight: '600' },
+  h1: { fontFamily: font, fontSize: 30, lineHeight: 38, fontWeight: '600', letterSpacing: -0.6 },
+  h2: { fontFamily: font, fontSize: 18, lineHeight: 26, fontWeight: '600', letterSpacing: -0.2 },
+  xl: { fontFamily: font, fontSize: 20, lineHeight: 28, fontWeight: '600', letterSpacing: -0.3 },
+  lg: { fontFamily: font, fontSize: 18, lineHeight: 26, fontWeight: '600' },
   base: { fontFamily: font, fontSize: 16, lineHeight: 24, fontWeight: '600' },
-  body: { fontFamily: font, fontSize: 15, lineHeight: 22, fontWeight: '500' },
+  body: { fontFamily: font, fontSize: 16, lineHeight: 24, fontWeight: '400' },
   sm: { fontFamily: font, fontSize: 14, lineHeight: 20 },
   smMedium: { fontFamily: font, fontSize: 14, lineHeight: 20, fontWeight: '500' },
   meta: { fontFamily: font, fontSize: 13, lineHeight: 18 },
   xs: { fontFamily: font, fontSize: 12, lineHeight: 16 },
 } as const;
+export const num = { fontVariant: ['tabular-nums'] } as { fontVariant: ['tabular-nums'] };
 
-// Motion: one set of durations (ms) for the whole app. Enter = ease-out, exit = ease-in (see `motion` in ui.tsx).
+// Motion is state only: colour and opacity, short. Enter = ease-out, exit = ease-in (see `animate` in ui.tsx).
 export const duration = { press: 120, fast: 150, base: 200, modal: 220, panel: 260, toast: 300 } as const;
 export const easeCss = 'cubic-bezier(0.33, 1, 0.68, 1)'; // web CSS transitions, same curve as Easing.out(Easing.cubic)
 
-export const shadowModal = '0 20px 25px -5px rgba(35,35,96,0.1), 0 8px 10px -6px rgba(35,35,96,0.1)';
-export const shadowPrimary = '0 6px 16px rgba(80,81,249,0.28)';
+// One soft shadow for things that float above the page (dialogs, toasts); sheets stay flat.
+export const shadowModal = '0 12px 32px rgba(35,33,29,0.12)';
+export const shadowPrimary = 'none';
 
-// Project marks, picked by the project's position in the name-sorted list.
-export const projectColors = ['#5051f9', '#e8590c', '#0e7a3e', '#1a96e6', '#c8283a', '#7c3aed'] as const;
+// Project marks, picked by the project's position in the name-sorted list. All >= 3:1 on the sheet.
+export const projectColors = ['#b04a24', '#b26a00', '#1f7a45', '#2563b0', '#8e3b6e', '#6b645a'] as const;
 export const projectColor = (i: number) => projectColors[i % projectColors.length];

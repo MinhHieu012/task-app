@@ -4,7 +4,7 @@ import { Animated, StyleSheet, Text, useWindowDimensions, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { animate, ConfirmModal, ease, IconButton, type IconName, reducedMotion } from '@/components/ui';
-import { color, duration, radius, shadowModal, text } from '@/constants/theme';
+import { color, duration, radius, rule, shadowModal, text } from '@/constants/theme';
 import { answer, dismissToast, notifyStore, type Toast, type Tone } from '@/lib/notify';
 
 const look: Record<Tone, { icon: IconName; fg: string; bg: string }> = {
@@ -42,7 +42,7 @@ export function Notifier() {
 function ToastCard({ toast: t, fromRight }: { toast: Toast; fromRight: boolean }) {
   const [v] = useState(() => new Animated.Value(0));
   const [leaving, setLeaving] = useState(false);
-  const { icon, fg, bg } = look[t.tone];
+  const { icon, fg } = look[t.tone];
 
   // Slides in from off-screen (past the right edge on wide screens: card 380 + gap 24; above the top on phones),
   // ease-out with no overshoot; leaves the same way (ease-in), then drops out of the store. The fade finishes in
@@ -66,7 +66,7 @@ function ToastCard({ toast: t, fromRight }: { toast: Toast; fromRight: boolean }
       aria-live={t.tone === 'error' ? 'assertive' : 'polite'}
       style={[s.toast, { opacity: reducedMotion() ? v : opacity, transform: [fromRight ? { translateX: shift } : { translateY: shift }] }]}
     >
-      <View style={[s.icon, { backgroundColor: bg }]}><Ionicons name={icon} size={20} color={fg} /></View>
+      <View style={s.icon}><Ionicons name={icon} size={20} color={fg} /></View>
       <View style={s.body}>
         <Text style={s.title}>{t.title}</Text>
         {!!t.message && <Text style={s.message}>{t.message}</Text>}
@@ -86,9 +86,9 @@ const s = StyleSheet.create({
   stackWide: { right: 24, width: 380 },
   toast: {
     width: '100%', maxWidth: 380, flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    padding: 12, paddingLeft: 14, borderRadius: radius.md, backgroundColor: color.surface, boxShadow: shadowModal,
+    padding: 12, paddingLeft: 14, backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, boxShadow: shadowModal,
   },
-  icon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 24, height: 32, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, minWidth: 0, paddingTop: 5 },
   title: { ...text.smMedium, color: color.foreground },
   message: { ...text.meta, color: color.muted, marginTop: 2 },

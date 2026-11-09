@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
 import { Button, Empty, EmptyState, Field, InfoLine, Screen, useWide } from '@/components/ui';
-import { color, projectColor, text } from '@/constants/theme';
+import { color, projectColor, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, today } from '@/lib/dates';
 import { confirmAction } from '@/lib/notify';
 import { Selection } from '@/lib/selection';
@@ -82,7 +82,7 @@ export default function ProjectScreen() {
     <Screen
       back
       title={project?.name ?? ''}
-      sub={loaded ? `${open.length} việc đang mở · ${done.length} đã xong tuần này` : undefined}
+      sub={loaded ? `${open.length} việc đang mở, ${done.length} đã xong tuần này` : undefined}
       footer={<QuickAdd defaults={{ project_id: id }} placeholder={`Thêm việc vào ${project?.name ?? 'project'}…`} />}
       aside={sel?.id ? undefined : aside}
       maxWidth={100000}
@@ -130,14 +130,15 @@ export default function ProjectScreen() {
 }
 
 const s = StyleSheet.create({
-  title: { ...text.h2, color: color.foreground, marginBottom: 8 },
-  pctRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
-  pct: { ...text.h1, color: color.foreground },
-  meta: { ...text.meta, color: color.muted },
-  track: { height: 8, borderRadius: 4, backgroundColor: color.background, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4 },
-  next: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: color.border },
+  // Aside heads sit on a light firm rule; the lines under them are hairlines.
+  title: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
+  pctRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 8, marginBottom: 10 },
+  pct: { ...text.h1, fontSize: 40, lineHeight: 44, letterSpacing: -1.2, color: color.foreground, fontVariant: ['tabular-nums'] },
+  meta: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
+  track: { height: 6, borderRadius: 3, backgroundColor: color.secondary, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: 3 },
+  next: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   nextTitle: { ...text.sm, flex: 1, color: color.foreground },
-  nextDate: { ...text.meta, fontWeight: '500', color: color.soft },
-  danger: { alignItems: 'flex-start', paddingTop: 20, borderTopWidth: 1, borderTopColor: color.border },
+  nextDate: { ...text.meta, fontWeight: '500', color: color.soft, fontVariant: ['tabular-nums'] },
+  danger: { alignItems: 'flex-start', paddingTop: 20, borderTopWidth: rule.hair, borderTopColor: color.border },
 });
