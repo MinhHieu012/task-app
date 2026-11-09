@@ -41,3 +41,16 @@ yarn-error.*
 /android
 
 .vercel
+
+# editors
+.idea/
+.vscode/
+
+# Supabase CLI state (linked project ref, pooler URL)
+supabase/.temp/
+
+# Hallmark design-review artifacts (screenshots, logs)
+.hallmark/
+
+# Claude Code per-user settings
+.claude/settings.local.json
