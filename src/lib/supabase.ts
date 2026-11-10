@@ -101,8 +101,10 @@ const AUTH_ERRORS: Record<string, string> = {
 
 /** Where an auth email or OAuth round trip comes back to; it must be in Supabase's Redirect URLs, else Supabase
  *  silently sends the user to the Site URL (the web app) instead. Native: the bare scheme, not Linking.createURL,
- *  which adds the dev server host (taskapp://192.168.1.5:8081/) and so never matched the list. */
-export const authRedirect = (path: string) => (Platform.OS === 'web' ? `${window.location.origin}${path}` : `taskapp://${path.replace(/^\//, '')}`);
+ *  which adds the dev server host (taskapp://192.168.x.x:8081/). Supabase also rejects any non-loopback IP host,
+ *  so Expo Go over the LAN (exp://192.168.x.x) can never sign in with Google: use a development build. */
+export const authRedirect = (path: string) =>
+  Platform.OS === 'web' ? `${window.location.origin}${path}` : `taskapp://${path.replace(/^\//, '')}`;
 
 /** Google sign-in (`link` false) or linking Google to the signed-in account (`link` true), so it can sign in
  *  later. Web leaves the page for Google and comes back to `path`; the client trades the ?code= itself
