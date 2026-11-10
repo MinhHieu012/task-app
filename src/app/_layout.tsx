@@ -6,10 +6,13 @@ import {
 } from '@expo-google-fonts/be-vietnam-pro';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+import { Launch } from '@/components/Launch';
 import { Notifier } from '@/components/Notifier';
 import { color, dark, duration, easeCss, font } from '@/constants/theme';
 import { getLang, setLang } from '@/lib/i18n';
@@ -19,6 +22,10 @@ import { useSession } from '@/lib/supabase';
 // The native root view sits under every screen and showed white through gaps while scrolling/animating
 // in dark mode. Theme is fixed at startup (a change reloads), so setting it once is enough.
 SystemUI.setBackgroundColorAsync(color.background);
+
+// Keep the native splash until the font is in, then hand over to <Launch> (same background), which waits for
+// the session. Called at module scope, not awaited (expo-splash-screen docs).
+SplashScreen.preventAutoHideAsync();
 
 // Before the first render; strings are translated as they render (see i18n.ts).
 setLang(getPref('lang'));
@@ -107,9 +114,15 @@ export default function RootLayout() {
       ],
     },
   ]);
-  if (session === undefined || (!fontsLoaded && !fontError)) return null;
+  const fontsReady = fontsLoaded || !!fontError;
+  useEffect(() => {
+    if (fontsReady) SplashScreen.hide();
+  }, [fontsReady]);
+  if (!fontsReady) return null;
   return (
     <ThemeProvider value={navTheme}>
+    {/* Mounted once the session is known, so the guards never flash sign-in for a signed-in user. */}
+    {session !== undefined && (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
@@ -121,6 +134,9 @@ export default function RootLayout() {
       <Stack.Screen name="reset-password" />
       <Stack.Screen name="design-system" />
     </Stack>
+    )}
+    {/* Phones only: web has no splash and opens straight into the page. */}
+    {Platform.OS !== 'web' && <Launch ready={session !== undefined} />}
     <Notifier />
     <StatusBar style={dark ? 'light' : 'dark'} />
     </ThemeProvider>

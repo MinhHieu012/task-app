@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type IconName, useWide } from '@/components/ui';
@@ -49,7 +49,25 @@ export function AuthShell({ title, sub, children }: { title: string; sub?: strin
   );
 }
 
-function Logo({ light }: { light?: boolean }) {
+/** A static "Today" sheet with three sample tasks: the sign-in intro and the mobile launch screen. */
+export function PreviewCard({ style }: { style?: ViewStyle }) {
+  return (
+    <View style={[s.preview, style]} aria-hidden>
+      <Text style={s.previewHead}>{tr('Hôm nay')}</Text>
+      {PREVIEW.map(([title, meta, done], i) => (
+        <View key={title} style={[s.previewRow, i === PREVIEW.length - 1 && { borderBottomWidth: 0 }]}>
+          <View style={[s.previewTick, done && { backgroundColor: color.success, borderColor: color.success }]}>
+            {done && <Ionicons name="checkmark" size={12} color={color.surface} />}
+          </View>
+          <Text style={[s.previewTitle, done && s.previewDone]} numberOfLines={1}>{tr(title)}</Text>
+          <Text style={[s.previewMeta, i === 2 && { color: color.danger }]}>{tr(meta)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function Logo({ light }: { light?: boolean }) {
   return (
     <View style={s.brand}>
       <View style={[s.mark, light && { backgroundColor: color.surface }]}>
@@ -74,18 +92,7 @@ function Intro() {
         </View>
 
         {/* Short screens drop the preview so the panel never overflows. */}
-        <View style={[s.preview, height < 820 && { display: 'none' }]} aria-hidden>
-          <Text style={s.previewHead}>{tr('Hôm nay')}</Text>
-          {PREVIEW.map(([title, meta, done], i) => (
-            <View key={title} style={[s.previewRow, i === PREVIEW.length - 1 && { borderBottomWidth: 0 }]}>
-              <View style={[s.previewTick, done && { backgroundColor: color.success, borderColor: color.success }]}>
-                {done && <Ionicons name="checkmark" size={12} color={color.surface} />}
-              </View>
-              <Text style={[s.previewTitle, done && s.previewDone]} numberOfLines={1}>{tr(title)}</Text>
-              <Text style={[s.previewMeta, i === 2 && { color: color.danger }]}>{tr(meta)}</Text>
-            </View>
-          ))}
-        </View>
+        <PreviewCard style={height < 820 ? { display: 'none' } : undefined} />
 
         {/* What the app does, as a short definition list (no icon tiles). */}
         <View style={s.features}>

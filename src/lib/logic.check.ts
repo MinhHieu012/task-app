@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { ACCENTS, accentTokens, contrast, DARK_SURFACE, DEFAULT_ACCENT, neutral } from './accent.ts';
-import { fmtDate, fromIso, localDay, monthGrid, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
+import { dayTitle, fmtDate, fromIso, greeting, localDay, monthGrid, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
@@ -225,7 +225,15 @@ assert.equal(tr('Mỗi {n} ngày', { n: 3 }), 'Mỗi 3 ngày');
 setLang('en');
 assert.equal(tr('Mỗi {n} ngày', { n: 3 }), 'Every 3 days');
 assert.equal(tr('chưa dịch'), 'chưa dịch');
+// Splash / top bar: day title and greeting follow the language.
+assert.equal(dayTitle('2026-11-10'), 'Tuesday, 10/11');
+assert.equal(greeting(9), 'Good morning');
 setLang('vi');
+assert.equal(dayTitle('2026-11-10'), 'Thứ Ba, 10/11');
+assert.equal(greeting(4), 'Chào buổi tối');
+assert.equal(greeting(5), 'Chào buổi sáng');
+assert.equal(greeting(12), 'Chào buổi chiều');
+assert.equal(greeting(18), 'Chào buổi tối');
 // Every quoted Vietnamese string in the app (tr keys and the constants translated at render) has an English entry.
 const missing: string[] = [];
 const scan = (dir: string): void => {

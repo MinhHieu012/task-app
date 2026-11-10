@@ -1,4 +1,6 @@
 // Dates travel as "YYYY-MM-DD" strings (Postgres `date`), always in device-local time.
+import { tr } from './i18n.ts';
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -22,6 +24,14 @@ export function fmtDay(iso: string) {
   const [y, m, d] = iso.split('-');
   return y === String(new Date().getFullYear()) ? `${d}/${m}` : `${d}/${m}/${y}`;
 }
+
+const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+/** "Thứ Ba, 10/11" in the app's language. */
+export const dayTitle = (iso: string) => `${tr(WEEKDAY[fromIso(iso).getDay()])}, ${fmtDay(iso)}`;
+
+/** Greeting for an hour of the day: morning 5–11, afternoon 12–17, evening otherwise. */
+export const greeting = (hour: number) =>
+  hour >= 5 && hour < 12 ? tr('Chào buổi sáng') : hour >= 12 && hour < 18 ? tr('Chào buổi chiều') : tr('Chào buổi tối');
 
 /** "DD/MM/YYYY", always with the year (report dates, read back long after). */
 export const fmtDate = (iso: string) => iso.split('-').reverse().join('/');
