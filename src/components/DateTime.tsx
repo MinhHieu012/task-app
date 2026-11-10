@@ -29,7 +29,7 @@ export function DateField({ label, value, onChange, error, hint, base }: {
         trailing={<IconButton icon="calendar-outline" label={tr('Chọn ngày')} onPress={() => setOpen(true)} />}
       />
       {open && (
-        <Popup onClose={() => setOpen(false)}>
+        <Popup title={tr('Chọn ngày')} onClose={() => setOpen(false)}>
           <Calendar
             selected={picked}
             start={picked ?? base ?? today()}
@@ -56,7 +56,7 @@ export function TimeField({ label, value, onChange, error }: { label?: string; v
         trailing={<IconButton icon="time-outline" label={tr('Chọn giờ')} onPress={() => setOpen(true)} />}
       />
       {open && (
-        <Popup onClose={() => setOpen(false)}>
+        <Popup title={tr('Chọn giờ')} onClose={() => setOpen(false)}>
           <Clock value={value} onChange={onChange} onClose={() => setOpen(false)} />
         </Popup>
       )}
@@ -64,12 +64,18 @@ export function TimeField({ label, value, onChange, error }: { label?: string; v
   );
 }
 
-function Popup({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+function Popup({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} accessibilityLabel={tr('Đóng')}>
         {/* Swallows taps so a tap inside the card doesn't close it. */}
-        <Pressable style={s.card} onPress={() => {}}>{children}</Pressable>
+        <Pressable style={s.card} onPress={() => {}}>
+          <View style={s.bar}>
+            <Text style={s.barTitle}>{title}</Text>
+            <IconButton icon="close" label={tr('Đóng')} onPress={onClose} />
+          </View>
+          {children}
+        </Pressable>
       </Pressable>
     </Modal>
   );
@@ -143,6 +149,8 @@ function Clock({ value, onChange, onClose }: { value: string; onChange: (v: stri
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: color.backdrop, justifyContent: 'center', alignItems: 'center', padding: 16 },
   card: { width: '100%', maxWidth: 340, backgroundColor: color.surface, borderRadius: radius.lg, padding: 16, boxShadow: shadowModal },
+  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginRight: -4 },
+  barTitle: { ...text.base, fontWeight: '600', color: color.foreground },
   gap: { gap: 8 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...text.base, color: color.foreground },
