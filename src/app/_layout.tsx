@@ -7,6 +7,7 @@ import {
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { Platform } from 'react-native';
 
 import { Notifier } from '@/components/Notifier';
@@ -14,6 +15,10 @@ import { color, dark, duration, easeCss, font } from '@/constants/theme';
 import { getLang, setLang } from '@/lib/i18n';
 import { getPref } from '@/lib/prefs';
 import { useSession } from '@/lib/supabase';
+
+// The native root view sits under every screen and showed white through gaps while scrolling/animating
+// in dark mode. Theme is fixed at startup (a change reloads), so setting it once is enough.
+SystemUI.setBackgroundColorAsync(color.background);
 
 // Before the first render; strings are translated as they render (see i18n.ts).
 setLang(getPref('lang'));
