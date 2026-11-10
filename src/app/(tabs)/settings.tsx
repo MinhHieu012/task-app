@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { createElement, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
+import { GoogleLogo } from '@/components/GoogleLogo';
 import { Avatar, Button, Card, Choices, Field, InfoLine, Screen, useWide } from '@/components/ui';
 import { color, dark, radius, rule, text } from '@/constants/theme';
 import { accentTokens, ACCENTS, DEFAULT_ACCENT, isHex } from '@/lib/accent';
@@ -109,7 +110,7 @@ function GoogleLine({ identities }: { identities: UserIdentity[] }) {
   return (
     <View style={s.google}>
       <View style={s.googleHead}>
-        <Ionicons name="logo-google" size={18} color={color.muted} />
+        <GoogleLogo />
         <View style={s.info}>
           <Text style={s.email}>{tr('Tài khoản Google')}</Text>
           <Text style={s.meta}>

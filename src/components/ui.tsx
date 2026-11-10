@@ -89,8 +89,9 @@ const btn: Record<Variant, { bg: string; bgActive: string; fg: string; border?: 
   danger: { bg: color.dangerBg, bgActive: color.dangerBgHover, fg: color.danger },
 };
 
-export function Button({ title, icon, onPress, variant = 'outline', disabled, loading, style }: {
-  title: string; icon?: IconName; onPress?: () => void; variant?: Variant; disabled?: boolean; loading?: boolean; style?: ViewStyle;
+export function Button({ title, icon, leading, onPress, variant = 'outline', disabled, loading, style }: {
+  // leading: a picture in place of the icon, for a brand logo that must keep its own colours.
+  title: string; icon?: IconName; leading?: ReactNode; onPress?: () => void; variant?: Variant; disabled?: boolean; loading?: boolean; style?: ViewStyle;
 }) {
   const v = btn[variant];
   return (
@@ -108,6 +109,7 @@ export function Button({ title, icon, onPress, variant = 'outline', disabled, lo
       ]}
     >
       {icon && <Ionicons name={icon} size={16} color={v.fg} style={loading && st.hidden} />}
+      {leading && <View style={loading && st.hidden}>{leading}</View>}
       <Text style={[st.btnText, { color: v.fg }, loading && st.hidden]}>{title}</Text>
       {loading && <ActivityIndicator color={v.fg} size="small" style={StyleSheet.absoluteFill} />}
     </Pressable>

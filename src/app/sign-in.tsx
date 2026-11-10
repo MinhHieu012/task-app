@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/AuthShell';
+import { GoogleLogo } from '@/components/GoogleLogo';
 import { animate, Button, FadeIn, Field, IconButton, reducedMotion, TextLink } from '@/components/ui';
 import { color, duration, rule, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
@@ -146,7 +147,7 @@ export default function SignIn() {
             <View style={s.line} />
           </View>
           {/* Signs in, or makes the account on first use: one button for both tabs. */}
-          <Button title={tr('Tiếp tục với Google')} icon="logo-google" onPress={() => google(false)} />
+          <Button title={tr('Tiếp tục với Google')} leading={<GoogleLogo />} onPress={() => google(false)} />
         </>
       )}
 
