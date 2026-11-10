@@ -9,7 +9,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { Launch } from '@/components/Launch';
@@ -23,8 +23,8 @@ import { useSession } from '@/lib/supabase';
 // in dark mode. Theme is fixed at startup (a change reloads), so setting it once is enough.
 SystemUI.setBackgroundColorAsync(color.background);
 
-// Keep the native splash until the font is in, then hand over to <Launch> (same background), which waits for
-// the session. Called at module scope, not awaited (expo-splash-screen docs).
+// Keep the native splash until the font and the session are in (see RootLayout). Called at module scope, not
+// awaited (expo-splash-screen docs).
 SplashScreen.preventAutoHideAsync();
 
 // Before the first render; strings are translated as they render (see i18n.ts).
@@ -101,29 +101,45 @@ const navTheme = {
   },
 };
 
+// Android has the font built into the app (expo-font plugin in app.json), so it is there on the first frame;
+// iOS and web still load it at startup.
+const FONTS = Platform.OS === 'android' ? [] : [
+  {
+    fontFamily: font,
+    fontDefinitions: [
+      { path: BeVietnamPro_400Regular, weight: 400, style: 'normal' as const },
+      { path: BeVietnamPro_500Medium, weight: 500, style: 'normal' as const },
+      { path: BeVietnamPro_600SemiBold, weight: 600, style: 'normal' as const },
+      { path: BeVietnamPro_700Bold, weight: 700, style: 'normal' as const },
+    ],
+  },
+];
+
+// How long the native splash may wait for the session before <Launch> takes over.
+const SPLASH_MS = 600;
+
 export default function RootLayout() {
   const session = useSession();
   // One family, four faces: styles pick a face with fontWeight (SDK 58 fonts guide).
-  const [fontsLoaded, fontError] = useFonts([
-    {
-      fontFamily: font,
-      fontDefinitions: [
-        { path: BeVietnamPro_400Regular, weight: 400, style: 'normal' },
-        { path: BeVietnamPro_500Medium, weight: 500, style: 'normal' },
-        { path: BeVietnamPro_600SemiBold, weight: 600, style: 'normal' },
-        { path: BeVietnamPro_700Bold, weight: 700, style: 'normal' },
-      ],
-    },
-  ]);
+  const [fontsLoaded, fontError] = useFonts(FONTS);
   const fontsReady = fontsLoaded || !!fontError;
+  const ready = session !== undefined;
+  // The splash stays up while the stored session is read (usually a few ms), so the first screen shows
+  // directly; only a slow read (a token refresh over a bad network) brings up <Launch>.
+  const [slow, setSlow] = useState(false);
   useEffect(() => {
-    if (fontsReady) SplashScreen.hide();
-  }, [fontsReady]);
+    const t = setTimeout(() => setSlow(true), SPLASH_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const splashDone = fontsReady && (ready || slow);
+  useEffect(() => {
+    if (splashDone) SplashScreen.hide();
+  }, [splashDone]);
   if (!fontsReady) return null;
   return (
     <ThemeProvider value={navTheme}>
     {/* Mounted once the session is known, so the guards never flash sign-in for a signed-in user. */}
-    {session !== undefined && (
+    {ready && (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
@@ -136,8 +152,8 @@ export default function RootLayout() {
       <Stack.Screen name="design-system" />
     </Stack>
     )}
-    {/* Phones only: web has no splash and opens straight into the page. */}
-    {Platform.OS !== 'web' && <Launch ready={session !== undefined} />}
+    {/* Phones only, and only when the session is slow: web has no splash and opens straight into the page. */}
+    {Platform.OS !== 'web' && splashDone && <Launch ready={ready} />}
     <Notifier />
     <StatusBar style={dark ? 'light' : 'dark'} />
     </ThemeProvider>

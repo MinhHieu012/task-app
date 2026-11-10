@@ -9,32 +9,24 @@ import { color, dark, duration, radius, rule, text } from '@/constants/theme';
 import { dayTitle, greeting, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 
-// Long enough to read as a screen rather than a flicker when the session comes back instantly.
-const MIN_MS = 900;
-
-/** Mobile launch screen over the app while the session loads, after the native splash (same background, so
- *  the hand-off doesn't show). Text, accent and light/dark follow Settings, which the native splash can't.
- *  Fades out once `ready` and shown for MIN_MS, then unmounts. */
+/** Mobile launch screen over the app when the session is slow to load (mounted once the native splash gives up
+ *  waiting). Text, accent and light/dark follow Settings, which the native splash can't. Mounted when already
+ *  `ready`, it renders nothing; otherwise it fades out once `ready`, then unmounts. */
 export function Launch({ ready }: { ready: boolean }) {
   const { top, bottom } = useSafeAreaInsets();
   const [v] = useState(() => new Animated.Value(1));
-  const [minDone, setMinDone] = useState(false);
-  const [gone, setGone] = useState(false);
+  const [gone, setGone] = useState(ready);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinDone(true), MIN_MS);
-    return () => clearTimeout(t);
-  }, []);
-  useEffect(() => {
-    if (!ready || !minDone) return;
+    if (!ready || gone) return;
     const a = animate(v, 0, duration.base, ease.in);
     a.start(({ finished }) => finished && setGone(true));
     return () => a.stop();
-  }, [ready, minDone, v]);
+  }, [ready, gone, v]);
 
   if (gone) return null;
   return (
-    <Animated.View style={[s.root, { opacity: v }]} pointerEvents={ready && minDone ? 'none' : 'auto'}>
+    <Animated.View style={[s.root, { opacity: v }]} pointerEvents={ready ? 'none' : 'auto'}>
       <View style={[s.top, { top: top + 24 }]}>
         <View style={s.pill}>
           <Ionicons name="calendar-clear-outline" size={14} color={color.muted} />
