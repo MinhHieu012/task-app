@@ -71,7 +71,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   `;
   document.head.appendChild(css);
 
-  // Tab icon in the chosen accent: the static assets/favicon.png (default terracotta) shows until this
+  // Tab icon in the chosen accent: the static assets/favicon.png (the default sea blue) shows until this
   // runs. Changing the accent reloads the app, so drawing it once at startup keeps it in sync.
   // Same mark as assets/mark.png (scripts drew it on a 512 grid): the back tick whole, the front tick cut by a
   // tile-coloured stroke along the back one, so the two ticks never merge.
