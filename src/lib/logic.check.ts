@@ -290,8 +290,8 @@ assert.equal(accentTokens('red').primary, DEFAULT_ACCENT);
 // Dark theme: every preset reads as text on the dark sheet.
 for (const { hex } of ACCENTS) assert.ok(contrast(accentTokens(hex, true).primary, DARK_SURFACE) >= 4.5, `dark ${hex}`);
 assert.match(accentTokens('#2563B0').light, /^#[0-9a-f]{6}$/);
-// Neutrals: untouched under the default accent; under every preset the inks keep their contrast on the sheet.
-assert.equal(neutral('#f6f3ee', DEFAULT_ACCENT), '#f6f3ee');
+// Neutrals: untouched under terracotta (what they were tuned for); under every preset the inks keep their contrast on the sheet.
+assert.equal(neutral('#f6f3ee', '#b04a24'), '#f6f3ee'); // tuned for terracotta: unchanged there
 assert.notEqual(neutral('#f6f3ee', '#2563b0'), '#f6f3ee');
 for (const { hex } of ACCENTS) {
   const a = accentTokens(hex).primary;

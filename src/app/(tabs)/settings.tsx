@@ -25,7 +25,7 @@ export default function Settings() {
   const current = (getPref('accent') ?? DEFAULT_ACCENT).toLowerCase();
   const [hex, setHex] = useState(current);
   const [lang, setLangPick] = useState<Lang>(getLang());
-  const theme0 = (getPref('theme') ?? 'system') as Theme;
+  const theme0 = (getPref('theme') ?? 'light') as Theme; // the same default as theme.ts
   const [theme, setTheme] = useState<Theme>(theme0);
   const accent = accentTokens(isHex(hex) ? hex : current).primary; // what the app will really use (light picks get darkened)
   const dirty = lang !== getLang() || accent !== current || theme !== theme0;

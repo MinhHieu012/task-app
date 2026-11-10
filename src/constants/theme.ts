@@ -11,8 +11,8 @@ import { getPref } from '@/lib/prefs';
 export const font = 'Be Vietnam Pro';
 
 // Light / dark / system, from Settings. Like the accent it is read once before any StyleSheet is built, so
-// 'system' follows the OS theme as of launch (a switch while the app runs shows after the next start).
-const mode = getPref('theme') ?? 'system';
+// Light until the user picks otherwise. 'system' follows the OS theme as of launch (a switch while the app runs shows after the next start).
+const mode = getPref('theme') ?? 'light';
 export const dark = mode === 'dark' || (mode === 'system' && Appearance.getColorScheme() === 'dark');
 /** Light value, or its dark-theme twin. */
 const d = <T,>(light: T, night: T) => (dark ? night : light);
