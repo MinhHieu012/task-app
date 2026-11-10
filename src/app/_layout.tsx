@@ -5,7 +5,7 @@ import {
   BeVietnamPro_700Bold,
 } from '@expo-google-fonts/be-vietnam-pro';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
 
@@ -71,6 +71,23 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.head.appendChild(icon);
 }
 
+// Navigation paints each screen's container (and the cross-fade behind it) in its own theme, light by default.
+// A screen's first visit showed that light background for a frame in dark mode; later visits reuse the
+// mounted screen, so only the first flashed. Give navigation our tokens instead.
+const navTheme = {
+  ...(dark ? DarkTheme : DefaultTheme),
+  dark,
+  colors: {
+    ...(dark ? DarkTheme : DefaultTheme).colors,
+    background: color.background,
+    card: color.surface,
+    text: color.foreground,
+    border: color.border,
+    primary: color.primary,
+    notification: color.danger,
+  },
+};
+
 export default function RootLayout() {
   const session = useSession();
   // One family, four faces: styles pick a face with fontWeight (SDK 58 fonts guide).
@@ -87,7 +104,7 @@ export default function RootLayout() {
   ]);
   if (session === undefined || (!fontsLoaded && !fontError)) return null;
   return (
-    <>
+    <ThemeProvider value={navTheme}>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
@@ -101,6 +118,6 @@ export default function RootLayout() {
     </Stack>
     <Notifier />
     <StatusBar style={dark ? 'light' : 'dark'} />
-    </>
+    </ThemeProvider>
   );
 }
