@@ -144,11 +144,14 @@ export function Avatar({ size = 40, onPress }: { size?: number; onPress?: () => 
   );
 }
 
-/* Text link: ink with an accent underline; the underline turns ink on hover */
-export function TextLink({ label, onPress }: { label: string; onPress: () => void }) {
+/* Text link: accent text with a chevron (or a leading icon), no underline; a soft accent pill on hover/press.
+   Pulled out by its padding so the text still lines up with what sits beside it. */
+export function TextLink({ label, onPress, icon }: { label: string; onPress: () => void; icon?: IconName }) {
   return (
-    <Pressable onPress={onPress} hitSlop={8} accessibilityRole="link">
-      {(s) => <Text style={[st.link, active(s) && { textDecorationColor: color.foreground }]}>{label}</Text>}
+    <Pressable onPress={onPress} hitSlop={6} accessibilityRole="link" style={(s) => [st.link, active(s) && { backgroundColor: color.primaryLight }]}>
+      {icon && <Ionicons name={icon} size={14} color={color.primary} />}
+      <Text style={st.linkText}>{label}</Text>
+      {!icon && <Ionicons name="chevron-forward" size={14} color={color.primary} />}
     </Pressable>
   );
 }
@@ -342,12 +345,13 @@ export function Screen({ title, sub, back, right, footer, wideFooter, aside, chi
 }
 
 /* Group heading: 18px, count beside it; overdue is red with an alert icon */
-export function GroupTitle({ title, count, over }: { title: string; count?: number; over?: boolean }) {
+export function GroupTitle({ title, count, over, action }: { title: string; count?: number; over?: boolean; action?: ReactNode }) {
   return (
     <View style={st.groupHead}>
       {over && <Ionicons name="alert-circle" size={20} color={color.danger} />}
       <Text style={[st.groupTitle, over && { color: color.danger }]}>{title}</Text>
       {!!count && <Text style={st.groupCount}>{count}</Text>}
+      {action && <View style={st.groupAction}>{action}</View>}
     </View>
   );
 }
@@ -497,7 +501,8 @@ export const st = StyleSheet.create({
   avatarText: { fontFamily: font, fontWeight: '600', color: color.primary },
   iconBtn: { borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   iconBtnSurface: { borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.fieldEdge, backgroundColor: color.surface },
-  link: { ...text.meta, fontWeight: '500', color: color.foreground, textDecorationLine: 'underline', textDecorationColor: color.primary },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 2, marginHorizontal: -8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full },
+  linkText: { ...text.meta, fontWeight: '600', color: color.primary },
 
   badge: { alignSelf: 'flex-start', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { ...text.xs, fontWeight: '500', fontVariant: ['tabular-nums'] },
@@ -550,6 +555,7 @@ export const st = StyleSheet.create({
   groupHead: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 8 },
   groupTitle: { ...text.h2, color: color.foreground },
   groupCount: { ...text.meta, fontWeight: '500', color: color.muted, fontVariant: ['tabular-nums'] },
+  groupAction: { marginLeft: 'auto', alignSelf: 'center' },
 
   line: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   lineLabel: { ...text.sm, flex: 1, color: color.soft },

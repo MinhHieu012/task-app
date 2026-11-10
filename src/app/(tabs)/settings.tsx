@@ -9,8 +9,10 @@ import { accentTokens, ACCENTS, DEFAULT_ACCENT, isHex } from '@/lib/accent';
 import { fmtDay, localDay } from '@/lib/dates';
 import { getLang, type Lang, LANGS, tr } from '@/lib/i18n';
 import { getPref, restart, setPref } from '@/lib/prefs';
-import { toast } from '@/lib/notify';
-import { ok, supabase, useSession } from '@/lib/supabase';
+import { confirmAction, toast } from '@/lib/notify';
+import type { UserIdentity } from '@supabase/supabase-js';
+
+import { google, ok, supabase, useSession } from '@/lib/supabase';
 type Theme = 'light' | 'dark' | 'system';
 
 export default function Settings() {
@@ -53,6 +55,7 @@ export default function Settings() {
             {user && <Text style={s.meta}>{tr('Tham gia từ {date}', { date: fmtDay(localDay(new Date(user.created_at))) })}</Text>}
           </View>
         </View>
+        <GoogleLine identities={user?.identities ?? []} />
         <Button title={tr('Đăng xuất')} icon="log-out-outline" variant="danger" onPress={signOut} loading={busy} style={s.out} />
       </Card>
 
@@ -83,6 +86,52 @@ export default function Settings() {
         <Button title={tr('Áp dụng')} variant="primary" disabled={!dirty} onPress={apply} />
       </View>
     </Screen>
+  );
+}
+
+/** The Google accounts that sign in to this account, each with Gỡ (unlink); Liên kết adds one more. */
+function GoogleLine({ identities }: { identities: UserIdentity[] }) {
+  const [busy, setBusy] = useState('');
+  const googles = identities.filter((i) => i.provider === 'google');
+
+  const unlink = async (i: UserIdentity) => {
+    const email = i.identity_data?.email ?? '';
+    if (!(await confirmAction(tr('Gỡ liên kết {email}?', { email }), tr('Tài khoản Google này sẽ không đăng nhập vào đây được nữa. Dữ liệu của bạn vẫn giữ nguyên.'), tr('Gỡ liên kết')))) return;
+    setBusy(i.identity_id);
+    // Supabase refuses to remove the last way in (single_identity_not_deletable).
+    if (ok(await supabase.auth.unlinkIdentity(i))) {
+      await supabase.auth.refreshSession(); // the user's identity list updates only with a new session
+      toast(tr('Đã gỡ {email}.', { email }), tr('Đã gỡ liên kết'), 'success');
+    }
+    setBusy('');
+  };
+
+  return (
+    <View style={s.google}>
+      <View style={s.googleHead}>
+        <Ionicons name="logo-google" size={18} color={color.muted} />
+        <View style={s.info}>
+          <Text style={s.email}>{tr('Tài khoản Google')}</Text>
+          <Text style={s.meta}>
+            {googles.length ? tr('Đăng nhập được bằng các tài khoản Google này.') : tr('Chưa liên kết. Liên kết để lần sau đăng nhập bằng Google.')}
+          </Text>
+        </View>
+        <Button
+          title={googles.length ? tr('Liên kết thêm') : tr('Liên kết')}
+          icon="link-outline"
+          loading={busy === 'link'}
+          disabled={!!busy}
+          onPress={async () => { setBusy('link'); await google(true, '/settings'); setBusy(''); }}
+        />
+      </View>
+      {googles.map((i) => (
+        <View key={i.identity_id} style={s.linkedRow}>
+          <Ionicons name="checkmark-circle" size={16} color={color.success} />
+          <Text style={[s.meta, s.info]}>{i.identity_data?.email}</Text>
+          <Button title={tr('Gỡ')} icon="unlink-outline" variant="ghost" loading={busy === i.identity_id} disabled={!!busy} onPress={() => unlink(i)} />
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -247,6 +296,9 @@ const s = StyleSheet.create({
   half: { flex: 1, minWidth: 0 },
   applyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  google: { gap: 4, marginTop: 20, paddingTop: 16, borderTopWidth: rule.hair, borderTopColor: color.border },
+  googleHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  linkedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 30 },
   info: { flex: 1, minWidth: 0 },
   email: { ...text.smMedium, color: color.foreground },
   meta: { ...text.meta, color: color.muted, marginTop: 2 },

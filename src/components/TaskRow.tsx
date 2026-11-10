@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { type ComponentProps, useContext, useState } from 'react';
+import { type ComponentProps, type ReactNode, useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { active, Badge, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
 import { color, type Priority, radius, rule, text } from '@/constants/theme';
-import { addDays, fmtDay, fromIso, localDay, nextDue, today } from '@/lib/dates';
+import { addDays, fmtDay, fromIso, localDay, nextDue, nextMonday, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
+import { toast } from '@/lib/notify';
 import { Selection } from '@/lib/selection';
 import { fmtSpan, spanLength, subStatus } from '@/lib/subtasks';
 import { ok, type Project, refresh, type Subtask, supabase, type Task, useRows } from '@/lib/supabase';
@@ -37,6 +38,23 @@ export async function toggleDone(t: Task) {
     }));
   }
   return ok(await tasks.update(done).eq('id', t.id));
+}
+
+/** Moves open tasks to new start days (`to` per task) on the server, ends and subtasks along, then offers an undo
+ *  that puts each one back on its own old day. Returns true on success. */
+export async function moveTasks(tasks: Task[], to: (t: Task) => string, title: string, message: string) {
+  const move = async (pairs: [string, string][]) => {
+    const res = await supabase.rpc('move_tasks', { p_ids: pairs.map((p) => p[0]), p_days: pairs.map((p) => p[1]) });
+    if (!ok(res)) return false;
+    refresh('tasks');
+    refresh('subtasks');
+    return true;
+  };
+  const moved = tasks.filter((t) => t.due_date);
+  if (!(await move(moved.map((t) => [t.id, to(t)])))) return false;
+  const back = moved.map((t): [string, string] => [t.id, t.due_date!]);
+  toast(message, title, 'success', { label: tr('Hoàn tác'), run: () => move(back) });
+  return true;
 }
 
 function dayName(d: string) {
@@ -101,6 +119,12 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs = [] }
   const late = over ? tr('Trễ {n} ngày', { n: daysBetween(last!, day) }) : '';
   const range = timeRange(task);
   const side = wide && timeCol;
+  // Due today or overdue: one tap pushes it to tomorrow or next Monday.
+  const snooze = !done && !!task.due_date && task.due_date <= day;
+  const push = (to: string, label: string) => {
+    setBusy(true);
+    moveTasks([task], () => to, tr('Đã dời việc'), tr('“{name}” chuyển sang {day}.', { name: task.title, day: label })).finally(() => setBusy(false));
+  };
 
   const tick = (
     <Tick
@@ -144,7 +168,37 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs = [] }
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={color.muted} />
       </Pressable>
     ),
+    ...(task.tags ?? []).map((tag) => (
+      // Its own press target, like the subtask toggle: opens search on that tag.
+      <Pressable
+        key={`#${tag}`}
+        onPress={() => router.navigate({ pathname: '/search', params: { q: `#${tag}` } })}
+        hitSlop={6}
+        accessibilityRole="link"
+        accessibilityLabel={tr('Xem việc có nhãn {tag}', { tag })}
+        style={(st) => [s.tag, active(st) && { backgroundColor: color.itemHover }]}
+      >
+        <Text style={s.tagText}>#{tag}</Text>
+      </Pressable>
+    )),
     task.note && <M key="n" icon="document-text-outline">{task.note}</M>,
+    ...(snooze
+      ? ([[addDays(day, 1), tr('Mai'), tr('ngày mai')], [nextMonday(day), tr('Tuần sau'), tr('thứ Hai tuần sau')]] as const).map(([to, label, said]) => (
+          // Own press targets inside the row, like the tags.
+          <Pressable
+            key={`to:${label}`}
+            onPress={() => push(to, said)}
+            disabled={busy}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={tr('Dời sang {day}', { day: said })}
+            style={(st) => [s.snooze, active(st) && { backgroundColor: color.itemHover }]}
+          >
+            <Ionicons name="arrow-forward" size={12} color={color.muted} />
+            <Text style={s.snoozeText}>{label}</Text>
+          </Pressable>
+        ))
+      : []),
   ].filter(Boolean);
 
   const selected = sel?.id === task.id;
@@ -257,8 +311,8 @@ function SubLine({ sub, now, wide, last }: { sub: Subtask; now: string; wide: bo
 }
 
 /** Heading with count, then the tasks as lines on one sheet. Skeleton rows while loading. */
-export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeCol, compact, loading }: {
-  title: string; tasks: Task[]; projects?: Project[]; over?: boolean; hideDate?: boolean; empty?: string; timeCol?: boolean; compact?: boolean; loading?: boolean;
+export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeCol, compact, loading, action }: {
+  title: string; tasks: Task[]; projects?: Project[]; over?: boolean; hideDate?: boolean; empty?: string; timeCol?: boolean; compact?: boolean; loading?: boolean; action?: ReactNode;
 }) {
   const names = projects && new Map(projects.map((p) => [p.id, p.name]));
   // ponytail: one query + realtime channel per group; fine at a few groups per screen.
@@ -267,7 +321,7 @@ export function TaskGroup({ title, tasks, projects, over, hideDate, empty, timeC
   const subs = (id: string) => subtasks.filter((x) => x.task_id === id);
   return (
     <View>
-      <GroupTitle title={title} count={loading ? 0 : tasks.length} over={over} />
+      <GroupTitle title={title} count={loading ? 0 : tasks.length} over={over} action={action} />
       <View style={s.rows}>
         {loading
           ? [0, 1, 2].map((i) => <SkeletonRow key={i} />)
@@ -326,6 +380,10 @@ const s = StyleSheet.create({
   when: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   whenWide: { width: 240 },
   length: { ...text.xs, color: color.muted, paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.sm, backgroundColor: color.neutralBg, fontVariant: ['tabular-nums'] },
+  snooze: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.sm, borderWidth: rule.hair, borderColor: color.border, backgroundColor: color.surface },
+  snoozeText: { ...text.meta, color: color.muted },
+  tag: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.sm, backgroundColor: color.primaryLight },
+  tagText: { ...text.meta, color: color.primary },
   badgeCol: { width: 96, alignItems: 'flex-end' },
   selected: { backgroundColor: color.primaryLight },
   timeCol: { width: 184, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 20, borderRightWidth: rule.hair, borderRightColor: color.border },

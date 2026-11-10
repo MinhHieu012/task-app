@@ -1,17 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { ReportNudge } from '@/components/Report';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
-import { endDay, TaskGroup } from '@/components/TaskRow';
-import { active, Avatar, Button, Empty, EmptyState, Screen, TextLink, useWide } from '@/components/ui';
+import { endDay, moveTasks, TaskGroup } from '@/components/TaskRow';
+import { active, Avatar, Button, Empty, EmptyState, IconButton, Screen, TextLink, useWide } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
-import { reportStatus } from '@/lib/reports';
+import { reportStats, reportStatus } from '@/lib/reports';
 import { Selection } from '@/lib/selection';
 import { type Project, type Report, type Task, useRows } from '@/lib/supabase';
 
@@ -31,7 +31,11 @@ export default function Today() {
   const past = Array.from({ length: 7 }, (_, i) => addDays(day, i - 6)); // last 7 days, today last
   const [recent] = useRows<Task>('tasks', (q) => q.gte('completed_day', past[0]).lte('completed_day', day).order('completed_at'), `done7:${day}`);
   const [projects] = useRows<Project>('projects');
-  const [reports, , reportLoaded] = useRows<Report>('daily_reports', (q) => q.eq('day', day), `rep:${day}`);
+  // Today's report, plus the days before it for the on-time streak (ponytail: a streak caps at 120 days, as in Journal).
+  const [reports, , reportLoaded] = useRows<Report>('daily_reports', (q) => q.gte('day', addDays(day, -120)).lte('day', day), `rep120:${day}`);
+  const report = reports.find((r) => r.day === day);
+  const { ontimeStreak } = reportStats([], reports, null);
+  const [moving, setMoving] = useState(false);
   const week = Array.from({ length: 7 }, (_, i) => addDays(day, i + 1));
   const [soon] = useRows<Task>(
     'tasks',
@@ -47,6 +51,12 @@ export default function Today() {
   const vsYesterday = perDay[6] - perDay[5];
   const oldest = over.length ? Math.max(...over.map((t) => daysBetween(endDay(t)!, day))) : 0;
   const names = new Map(projects.map((p) => [p.id, p.name]));
+
+  const moveOverdue = async () => {
+    setMoving(true);
+    await moveTasks(over, () => day, tr('Đã dời việc quá hạn'), tr('{n} việc giờ có hạn hôm nay.', { n: over.length }));
+    setMoving(false);
+  };
 
   const list = !loaded ? (
     <TaskGroup title={tr('Hôm nay')} tasks={[]} loading />
@@ -65,7 +75,16 @@ export default function Today() {
     </EmptyState>
   ) : (
     <View style={s.groups}>
-      {over.length > 0 && <TaskGroup title={tr('Quá hạn')} over tasks={over} projects={projects} timeCol />}
+      {over.length > 0 && (
+        <TaskGroup
+          title={tr('Quá hạn')}
+          over
+          tasks={over}
+          projects={projects}
+          timeCol
+          action={<Button title={tr('Dời sang hôm nay')} icon="arrow-forward" onPress={moveOverdue} loading={moving} />}
+        />
+      )}
       <TaskGroup title={tr('Hôm nay')} tasks={due} projects={projects} timeCol empty={tr('Không còn việc nào có hạn hôm nay.')} />
     </View>
   );
@@ -138,7 +157,14 @@ export default function Today() {
       footer={<QuickAdd defaults={{ due_date: day }} placeholder={tr('Thêm việc cho hôm nay…')} />}
       aside={sel?.id ? undefined : aside}
       // Wide screens reach settings from the rail.
-      right={!wide && <View style={s.me}><Avatar onPress={() => router.navigate('/settings')} /></View>}
+      right={
+        !wide && (
+          <View style={s.me}>
+            <IconButton icon="search-outline" label={tr('Tìm kiếm')} surface size={40} onPress={() => router.navigate('/search')} />
+            <Avatar onPress={() => router.navigate('/settings')} />
+          </View>
+        )
+      }
       maxWidth={100000}
     >
       <StatRow>
@@ -173,7 +199,7 @@ export default function Today() {
           }
         />
       </StatRow>
-      {reportLoaded && <ReportNudge day={day} report={reports[0]} status={reportStatus(day, reports[0], day)} />}
+      {reportLoaded && <ReportNudge day={day} report={report} status={reportStatus(day, report, day)} streak={ontimeStreak} />}
       {list}
     </Screen>
   );
@@ -181,7 +207,7 @@ export default function Today() {
 
 const s = StyleSheet.create({
   // The header row aligns to the bottom; the avatar sits level with the title instead.
-  me: { alignSelf: 'flex-start' },
+  me: { alignSelf: 'flex-start', flexDirection: 'row', gap: 8 },
   groups: { gap: 28 },
   asideHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   asideTitle: { ...text.h2, color: color.foreground },

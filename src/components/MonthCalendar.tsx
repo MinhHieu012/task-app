@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { color, radius, text } from '@/constants/theme';
+import { color, radius, rule, text } from '@/constants/theme';
 import { today, toIso } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import type { Status } from '@/lib/reports';
@@ -51,7 +51,7 @@ export function MonthCalendar({ year, month, selected, counts, missed, reports =
               accessibilityRole="button"
               accessibilityState={{ selected: on, disabled: future }}
               accessibilityLabel={tr('{date}: {n} việc xong', { date: `${d.slice(8)}/${d.slice(5, 7)}`, n }) + (mark ? `, ${tr(mark[1])}` : '')}
-              style={({ pressed }) => [s.cell, s.day, pressed && { backgroundColor: color.itemHover }, on && { backgroundColor: color.primary }]}
+              style={({ pressed }) => [s.cell, s.day, d === now && !on && s.todayCell, pressed && { backgroundColor: color.itemHover }, on && { backgroundColor: color.primary }]}
             >
               <Text style={[s.n, future && s.future, d === now && s.today, on && { color: color.primaryFg }]}>{Number(d.slice(8))}</Text>
               <Text style={[s.cnt, on && { color: color.primaryFg }]}>{!future && n ? n : ''}</Text>
@@ -100,7 +100,9 @@ const s = StyleSheet.create({
   cell: { width: '14.2857%', height: 48 },
   day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   n: { ...text.sm, color: color.foreground, fontVariant: ['tabular-nums'] },
-  today: { fontWeight: '700', textDecorationLine: 'underline' },
+  // Today: an accent ring and accent figure (the selected day fills instead).
+  today: { fontWeight: '700', color: color.primary },
+  todayCell: { borderWidth: rule.bar, borderColor: color.primary },
   future: { color: color.muted, opacity: 0.5 },
   cnt: { fontFamily: text.xs.fontFamily, fontSize: 11, lineHeight: 16, minHeight: 16, fontWeight: '600', color: color.success, fontVariant: ['tabular-nums'] },
   mark: { position: 'absolute', bottom: 3, width: 14, height: 3, borderRadius: 2 },

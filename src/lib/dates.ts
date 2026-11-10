@@ -117,3 +117,29 @@ export function spanRange(span: Span, todayIso = today(), n = 0): [string, strin
   const from = toIso(start);
   return [from > tomorrow ? from : tomorrow, toIso(end)];
 }
+
+/** Stats screen periods: the week (Monday to Sunday) or calendar month around `anchor`, both ends inclusive. */
+export type Period = 'week' | 'month';
+export function periodRange(kind: Period, anchor: string): [string, string] {
+  const a = fromIso(anchor);
+  if (kind === 'month') return [toIso(new Date(a.getFullYear(), a.getMonth(), 1)), toIso(new Date(a.getFullYear(), a.getMonth() + 1, 0))];
+  const mon = addDays(anchor, -((a.getDay() + 6) % 7));
+  return [mon, addDays(mon, 6)];
+}
+
+/** The same kind of period `n` steps away: its first day. */
+export const shiftPeriod = (kind: Period, anchor: string, n: number) => {
+  const [from] = periodRange(kind, anchor);
+  const f = fromIso(from);
+  return kind === 'week' ? addDays(from, 7 * n) : toIso(new Date(f.getFullYear(), f.getMonth() + n, 1));
+};
+
+/** Every day from `from` to `to`, inclusive. */
+export function daysIn(from: string, to: string) {
+  const out: string[] = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+
+/** "Tuần sau": the Monday after `iso` (a week on when `iso` is itself a Monday). */
+export const nextMonday = (iso: string) => addDays(iso, 7 - ((fromIso(iso).getDay() + 6) % 7));

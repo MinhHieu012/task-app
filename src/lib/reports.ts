@@ -23,7 +23,8 @@ export function reportStatus(day: string, report: Pick<Report, 'late'> | undefin
   return 'missing';
 }
 
-/** Counts over `days`, plus the run of consecutive reported days ending today (or yesterday while today is pending). */
+/** Counts over `days`, plus runs of consecutive days ending today (or yesterday while today has no report yet):
+ *  `streak` counts any report, `ontimeStreak` only reports in by the deadline (a late one breaks it). */
 export function reportStats(days: string[], reports: Pick<Report, 'day' | 'late'>[], since: string | null, now = new Date()) {
   const by = new Map(reports.map((r) => [r.day, r]));
   const count = { ontime: 0, late: 0, missing: 0 };
@@ -31,14 +32,13 @@ export function reportStats(days: string[], reports: Pick<Report, 'day' | 'late'
     const st = reportStatus(d, by.get(d), since, now);
     if (st === 'ontime' || st === 'late' || st === 'missing') count[st]++;
   }
-  let d = localDay(now);
-  if (!by.has(d)) d = addDays(d, -1);
-  let streak = 0;
-  while (by.has(d)) {
-    streak++;
-    d = addDays(d, -1);
-  }
-  return { ...count, streak };
+  const start = by.has(localDay(now)) ? localDay(now) : addDays(localDay(now), -1);
+  const run = (keep: (r: Pick<Report, 'late'>) => boolean) => {
+    let n = 0;
+    for (let d = start; by.has(d) && keep(by.get(d)!); d = addDays(d, -1)) n++;
+    return n;
+  };
+  return { ...count, streak: run(() => true), ontimeStreak: run((r) => !r.late) };
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&${({ '&': 'amp', '<': 'lt', '>': 'gt', '"': 'quot', "'": '#39' } as Record<string, string>)[c]};`);
@@ -60,7 +60,7 @@ export function draftHtml(groups: { name: string; items: Pick<Task, 'title'>[] }
 
 /** Case- and accent-insensitive: "bao cao" finds "Báo cáo". */
 // Per character, so a folded string keeps the original's indexes (snippet relies on it).
-const fold = (s: string) => s.replace(/[^\u0000-\u007f]/g, (c) => (/[đĐ]/.test(c) ? 'd' : c.normalize('NFD')[0])).toLowerCase();
+export const fold = (s: string) => s.replace(/[^\u0000-\u007f]/g, (c) => (/[đĐ]/.test(c) ? 'd' : c.normalize('NFD')[0])).toLowerCase();
 export const matches = (body: string, q: string) => fold(body).includes(fold(q.trim()));
 
 /** A short excerpt around the first match (or the start). */

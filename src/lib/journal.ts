@@ -1,5 +1,6 @@
 import { today, toIso } from './dates.ts';
 import type { Project, Task } from './supabase.ts';
+import { tagCounts } from './tags.ts';
 
 export const INBOX = 'Hộp thư';
 
@@ -31,4 +32,23 @@ export function monthCounts(rows: Task[], year: number, month: number) {
   for (let d = 1; d <= days; d++) counts[toIso(new Date(year, month - 1, d))] = 0;
   for (const t of rows) if (t.completed_day && t.completed_day in counts) counts[t.completed_day]++;
   return counts;
+}
+
+/** Figures for a run of days (Stats screen): done per day, missed (R12), the share of due tasks done on time
+ *  (null with nothing due yet), and what got done by project and by tag, biggest first. */
+export function periodStats(rows: Task[], days: string[], projects: Project[], todayIso = today()) {
+  const inRange = new Set(days);
+  const done = rows.filter((t) => t.completed_day && inRange.has(t.completed_day));
+  const perDay = days.map((d) => done.filter((t) => t.completed_day === d).length);
+  const missed = days.reduce((n, d) => n + dayCounts(rows, d, todayIso).missed, 0);
+  const due = rows.filter((t) => t.due_date && inRange.has(t.due_date) && t.due_date < todayIso).length;
+  return {
+    perDay,
+    done: done.length,
+    missed,
+    due,
+    rate: due ? (due - missed) / due : null,
+    byProject: groupByProject(done, projects).map((g) => ({ id: g.id, name: g.name, n: g.items.length })).sort((a, b) => b.n - a.n),
+    byTag: tagCounts(done),
+  };
 }

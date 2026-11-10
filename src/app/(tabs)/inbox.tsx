@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
-import { active, Button, Empty, EmptyState, InfoLine, Screen, TextLink } from '@/components/ui';
+import { active, Button, Empty, EmptyState, IconButton, InfoLine, Screen, TextLink, useWide } from '@/components/ui';
 import { color, projectColor, rule, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -14,6 +14,7 @@ import { type Project, type Task, useRows } from '@/lib/supabase';
 export default function Inbox() {
   const day = today();
   const sel = useContext(Selection);
+  const wide = useWide();
   const [open, , loaded] = useRows<Task>('tasks', (q) =>
     q.is('completed_at', null).is('project_id', null).order('due_date', { nullsFirst: false }).order('due_time', { nullsFirst: false }).order('priority').order('created_at'),
   );
@@ -60,6 +61,7 @@ export default function Inbox() {
       sub={tr('Việc chưa thuộc project nào') + (loaded ? tr(', {n} việc', { n: open.length }) : '')}
       footer={<QuickAdd placeholder={tr('Thêm vào Hộp thư…')} />}
       aside={sel?.id ? undefined : aside}
+      right={!wide && <IconButton icon="search-outline" label={tr('Tìm kiếm')} surface size={40} onPress={() => router.navigate('/search')} />}
       maxWidth={100000}
     >
       {!loaded ? (

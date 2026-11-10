@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import RichView from '@/components/dom/RichView';
 import type { Palette } from '@/components/dom/RichEditor';
 import { Badge, Button, Card, TextLink } from '@/components/ui';
-import { color, text } from '@/constants/theme';
+import { color, radius, text } from '@/constants/theme';
 import { fmtDate, localDay } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { DEADLINE, type Status } from '@/lib/reports';
@@ -65,14 +65,27 @@ export function ReportCard({ day, report, status }: { day: string; report?: Repo
   );
 }
 
-/** Today: a reminder line until today's report is in (web has no notifications). */
-export function ReportNudge({ day, report, status }: { day: string; report?: Report; status: Status }) {
+/** The run of on-time reports, as a small flame chip. */
+function Streak({ n }: { n: number }) {
+  if (!n) return null;
+  return (
+    <View style={s.streak} accessibilityLabel={tr('Chuỗi nộp đúng hạn: {n} ngày', { n })}>
+      <Ionicons name="flame" size={14} color={color.primary} />
+      <Text style={s.streakText}>{tr('{n} ngày đúng hạn', { n })}</Text>
+    </View>
+  );
+}
+
+/** Today: a reminder line until today's report is in (web has no notifications), with the on-time streak.
+ *  Once past the deadline the streak is already lost, so it is not shown. */
+export function ReportNudge({ day, report, status, streak = 0 }: { day: string; report?: Report; status: Status; streak?: number }) {
   const open = () => router.push({ pathname: '/report/[day]', params: { day } });
   if (report) {
     return (
       <View style={[s.nudge, s.nudgeDone]}>
         <Ionicons name="document-text-outline" size={18} color={color.success} />
         <Text style={s.nudgeText}>{tr('Đã nộp báo cáo hôm nay lúc {time}.', { time: timeOf(report.submitted_at) })}</Text>
+        <Streak n={streak} />
         <TextLink label={tr('Xem')} onPress={open} />
       </View>
     );
@@ -84,6 +97,7 @@ export function ReportNudge({ day, report, status }: { day: string; report?: Rep
       <Text style={s.nudgeText}>
         {late ? tr('Đã quá {time}: báo cáo hôm nay vẫn nộp được nhưng sẽ tính là trễ.', { time: DEADLINE }) : tr('Báo cáo ngày: hạn {time} tối nay.', { time: DEADLINE })}
       </Text>
+      {!late && <Streak n={streak} />}
       <Button title={tr('Viết báo cáo')} variant="primary" onPress={open} />
     </View>
   );
@@ -99,4 +113,6 @@ const s = StyleSheet.create({
   nudgeLate: { backgroundColor: color.dangerBg },
   nudgeDone: { backgroundColor: color.successBg },
   nudgeText: { ...text.sm, color: color.foreground, flex: 1, minWidth: 180 },
+  streak: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full, backgroundColor: color.surface },
+  streakText: { ...text.xs, fontWeight: '600', color: color.primary, fontVariant: ['tabular-nums'] },
 });

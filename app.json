@@ -33,9 +33,13 @@
           "image": "./assets/splash-logo.png",
           "imageWidth": 160,
           "backgroundColor": "#f9f1ed",
-          "dark": { "image": "./assets/splash-logo-dark.png", "backgroundColor": "#1a1815" }
+          "dark": {
+            "image": "./assets/splash-logo-dark.png",
+            "backgroundColor": "#1a1815"
+          }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "scheme": "taskapp",
     "experiments": {

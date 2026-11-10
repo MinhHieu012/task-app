@@ -7,9 +7,10 @@ import { Button, Card, Choices, Field } from '@/components/ui';
 import { color, priority, text } from '@/constants/theme';
 import { fromIso, parseDate, parseTime } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
-import { confirmAction } from '@/lib/notify';
+import { confirmAction, toast } from '@/lib/notify';
 import { spanError } from '@/lib/subtasks';
-import { ok, type Project, type Subtask, supabase, type Task } from '@/lib/supabase';
+import { ok, type Project, refresh, type Subtask, supabase, type Task, useKnownTags } from '@/lib/supabase';
+import { fmtTags, parseTags } from '@/lib/tags';
 
 type Kind = '' | 'daily' | 'weekly' | 'monthly' | 'every';
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -25,6 +26,11 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
   const [k0, arg0 = ''] = (task.repeat ?? '').split(':');
   const [title, setTitle] = useState(task.title);
   const [note, setNote] = useState(task.note ?? '');
+  const [tags, setTags] = useState(fmtTags(task.tags));
+  // Tags already in use, to pick instead of retyping.
+  const picked = parseTags(tags);
+  const known = [...new Set([...useKnownTags(), ...picked])];
+  const pick = (t: string) => setTags(fmtTags(picked.includes(t) ? picked.filter((x) => x !== t) : [...picked, t]));
   const [prio, setPrio] = useState(task.priority);
   const [projectId, setProjectId] = useState(task.project_id ?? '');
   const [date, setDate] = useState(ddmmyyyy(task.due_date));
@@ -66,7 +72,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
       : kind === 'every' ? `every:${everyN.trim()}`
       : kind || null;
     const patch = {
-      title: title.trim(), note: note.trim() || null, priority: prio, project_id: projectId || null, due_date: due, due_time: at, end_date: end && endDue, end_time: end, repeat,
+      title: title.trim(), note: note.trim() || null, priority: prio, project_id: projectId || null, tags: parseTags(tags), due_date: due, due_time: at, end_date: end && endDue, end_time: end, repeat,
     };
     setBusy(true);
     // Subtasks must stay inside the parent's span, so a new span can't leave one outside.
@@ -85,9 +91,22 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
   };
 
   const remove = async () => {
-    const msg = tr('“{name}” sẽ bị xoá vĩnh viễn, không thể khôi phục.', { name: task.title }) + (task.completed_at ? ' ' + tr('Mục này cũng mất khỏi nhật ký.') : '');
+    const msg = tr('“{name}” sẽ bị xoá. Bạn có vài giây để hoàn tác.', { name: task.title }) + (task.completed_at ? ' ' + tr('Mục này cũng mất khỏi nhật ký.') : '');
     if (!(await confirmAction(tr('Xoá việc này?'), msg))) return;
-    if (ok(await supabase.from('tasks').delete().eq('id', id))) onDone();
+    // Kept for the undo: the row and its subtasks go back with the same ids, so nothing else needs to change.
+    const subs = await supabase.from('subtasks').select('*').eq('task_id', id);
+    if (!ok(subs) || !ok(await supabase.from('tasks').delete().eq('id', id))) return;
+    refresh('tasks');
+    onDone();
+    toast(tr('“{name}” đã bị xoá.', { name: task.title }), tr('Đã xoá việc'), 'success', {
+      label: tr('Hoàn tác'),
+      run: async () => {
+        if (!ok(await supabase.from('tasks').insert(task))) return;
+        if (subs.data?.length) ok(await supabase.from('subtasks').insert(subs.data));
+        refresh('tasks');
+        refresh('subtasks');
+      },
+    });
   };
 
   return (
@@ -97,6 +116,10 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
           {/* Multiline so a long title wraps; Enter still just finishes it (no newlines in a title). */}
           <Field label={tr('Tên việc')} value={title} onChangeText={(v) => setTitle(v.replace(/\n/g, ' '))} multiline submitBehavior="blurAndSubmit" style={s.titleInput} error={errors.title} />
           <Field label={tr('Ghi chú')} value={note} onChangeText={setNote} multiline style={s.note} placeholder={tr('Không bắt buộc')} />
+          <View style={s.group}>
+            <Field label={tr('Nhãn')} value={tags} onChangeText={setTags} placeholder="#nhà #gấp" hint={tr('Chọn nhãn có sẵn bên dưới, hoặc gõ nhãn mới cách nhau bằng dấu cách. Ở ô thêm nhanh, gõ #nhãn ngay trong tên việc.')} autoCapitalize="none" autoCorrect={false} />
+            {known.length > 0 && <Choices value={picked} onChange={pick} options={known.map((t) => ({ value: t, label: `#${t}` }))} />}
+          </View>
           <View style={s.group}>
             <Text style={s.label}>{tr('Ưu tiên')}</Text>
             <Choices

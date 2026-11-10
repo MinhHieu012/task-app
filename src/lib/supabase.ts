@@ -3,10 +3,13 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type PostgrestFilterBuilder, type Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { AppState, Platform } from 'react-native';
 
 import { tr } from './i18n';
 import { showError } from './notify';
+import { tagCounts } from './tags';
 
 export type Project = { id: string; name: string; created_at: string };
 export type Task = {
@@ -23,6 +26,7 @@ export type Task = {
   completed_at: string | null;
   completed_day: string | null;
   recurring_copy: boolean;
+  tags: string[]; // lowercase, without '#'
   created_at: string;
 };
 export type Report = {
@@ -36,6 +40,7 @@ export type Report = {
   submitted_at: string;
   updated_at: string;
 };
+export type JournalNote = { id: string; day: string; body: string; updated_at: string };
 export type Subtask ={ id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
 
 export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, process.env.EXPO_PUBLIC_SUPABASE_KEY!, {
@@ -88,7 +93,45 @@ const AUTH_ERRORS: Record<string, string> = {
   over_request_rate_limit: 'Thử quá nhiều lần. Đợi một lúc rồi thử lại.',
   otp_expired: 'Link đã hết hạn hoặc được mở trên máy khác. Gửi lại link từ màn đăng nhập.',
   signup_disabled: 'Hiện chưa mở đăng ký tài khoản mới.',
+  identity_already_exists: 'Tài khoản Google này đã gắn với một tài khoản khác.',
+  manual_linking_disabled: 'Chưa bật liên kết tài khoản trong Supabase (Allow manual linking).',
+  provider_disabled: 'Chưa bật đăng nhập Google trong Supabase.',
+  access_denied: 'Bạn đã huỷ đăng nhập Google.',
+  single_identity_not_deletable: 'Đây là cách đăng nhập duy nhất của tài khoản nên chưa gỡ được.',
 };
+
+/** Google sign-in (`link` false) or linking Google to the signed-in account (`link` true), so it can sign in
+ *  later. Web leaves the page for Google and comes back to `path`; the client trades the ?code= itself
+ *  (detectSessionInUrl). Native opens an auth browser and trades the code here. Same-email accounts are
+ *  linked by Supabase on its own; `link` is for a Google account with another email. */
+export async function google(link: boolean, path = '/') {
+  const web = Platform.OS === 'web';
+  const redirectTo = web ? `${window.location.origin}${path}` : Linking.createURL(path);
+  const options = { redirectTo, skipBrowserRedirect: !web };
+  const res = link ? await supabase.auth.linkIdentity({ provider: 'google', options }) : await supabase.auth.signInWithOAuth({ provider: 'google', options });
+  if (!ok(res) || web || !res.data.url) return;
+  const back = await WebBrowser.openAuthSessionAsync(res.data.url, redirectTo);
+  if (back.type !== 'success') return; // closed by the user
+  const q = urlParams(back.url);
+  const code = q.get('code');
+  if (code) ok(await supabase.auth.exchangeCodeForSession(code));
+  else authUrlError(back.url);
+  if (link) supabase.auth.refreshSession(); // the new identity shows in the user only after a refresh
+}
+
+const urlParams = (url: string) => new URLSearchParams(url.split(/[?#]/).slice(1).join('&'));
+/** Supabase reports a failed OAuth round trip in the URL it sends back (error_code=…), not as a thrown error. */
+const authUrlError = (url: string) => {
+  const q = urlParams(url);
+  const code = q.get('error_code') ?? q.get('error');
+  if (code) ok({ error: { code, message: q.get('error_description') ?? code } });
+};
+// Web: the redirect back from Google lands as a fresh page load. Later, so tr and the toasts are ready.
+if (Platform.OS === 'web' && typeof window !== 'undefined' && /[?&#]error/.test(window.location.href)) {
+  const url = window.location.href;
+  window.history.replaceState(null, '', window.location.pathname); // a reload must not show it again
+  setTimeout(() => authUrlError(url));
+}
 
 /** Surfaces a Supabase error on web and native; returns true on success. */
 export function ok({ error }: { error: { message: string; code?: string } | null }) {
@@ -148,4 +191,11 @@ export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q
   }, [load, table]);
 
   return [rows ?? [], load, rows !== undefined] as const; // [rows, reload, loaded]
+}
+
+/** Tags already in use, most used first (task form chips, quick add suggestions). Done copies of recurring tasks
+ *  are skipped so one task doesn't count many times. ponytail: reads every tagged task; a tags view if that grows. */
+export function useKnownTags() {
+  const [tagged] = useRows<Task>('tasks', (q) => q.neq('tags', '{}'), 'tagged');
+  return tagCounts(tagged.filter((t) => !t.recurring_copy)).map(([t]) => t);
 }

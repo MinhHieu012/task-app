@@ -1,13 +1,13 @@
 import * as Linking from 'expo-linking';
-import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/AuthShell';
-import { Button, Field, IconButton, TextLink } from '@/components/ui';
-import { color, rule, text } from '@/constants/theme';
+import { animate, Button, FadeIn, Field, IconButton, reducedMotion, TextLink } from '@/components/ui';
+import { color, duration, rule, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
 import { toast } from '@/lib/notify';
-import { ok, supabase } from '@/lib/supabase';
+import { google, ok, supabase } from '@/lib/supabase';
 
 type Mode = 'in' | 'up' | 'forgot';
 
@@ -21,6 +21,17 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const up = mode === 'up';
   const forgot = mode === 'forgot';
+
+  // The tab bar's underline slides to the chosen tab (jumps under reduce motion: it is movement).
+  const [tabsWidth, setTabsWidth] = useState(0);
+  const [bar] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const to = up ? tabsWidth / 2 : 0;
+    if (reducedMotion()) return bar.setValue(to);
+    const a = animate(bar, to, duration.base);
+    a.start();
+    return () => a.stop();
+  }, [up, tabsWidth, bar]);
 
   const errors = {
     email: !email.trim() ? tr('Nhập email.') : !/^\S+@\S+\.\S+$/.test(email.trim()) ? tr('Email chưa đúng dạng.') : undefined,
@@ -67,20 +78,23 @@ export default function SignIn() {
       title={forgot ? tr('Quên mật khẩu') : up ? tr('Tạo tài khoản') : tr('Chào mừng trở lại')}
       sub={forgot ? tr('Nhập email của bạn, mình gửi link để đặt mật khẩu mới.') : up ? tr('Vài giây là xong, không cần thẻ thanh toán.') : tr('Đăng nhập để xem việc của hôm nay.')}
     >
-      {!forgot && <View style={s.tabs} accessibilityRole="tablist">
+      {!forgot && <View style={s.tabs} accessibilityRole="tablist" onLayout={(e) => setTabsWidth(e.nativeEvent.layout.width)}>
         {(['in', 'up'] as Mode[]).map((m) => (
           <Pressable
             key={m}
             onPress={() => switchMode(m)}
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === m }}
-            style={[s.tab, mode === m && s.tabOn]}
+            style={s.tab}
           >
             <Text style={[s.tabText, mode === m && s.tabTextOn]}>{m === 'in' ? tr('Đăng nhập') : tr('Đăng ký')}</Text>
           </Pressable>
         ))}
+        <Animated.View style={[s.bar, { transform: [{ translateX: bar }] }]} />
       </View>}
 
+      {/* Keyed by mode: the form fades and rises in on each switch. Values live up here, so nothing typed is lost. */}
+      <FadeIn key={mode} style={s.form}>
       <View style={{ gap: 16 }}>
         <Field
           label="Email"
@@ -125,24 +139,40 @@ export default function SignIn() {
 
       <Button title={forgot ? tr('Gửi link đặt lại') : up ? tr('Tạo tài khoản') : tr('Đăng nhập')} variant="primary" onPress={submit} loading={busy} disabled={busy} />
 
-      <Text style={s.switch}>
-        {forgot ? tr('Nhớ ra rồi? ') : up ? tr('Đã có tài khoản? ') : tr('Chưa có tài khoản? ')}
-        <Text style={s.link} onPress={() => switchMode(mode === 'in' ? 'up' : 'in')} accessibilityRole="link">
-          {mode === 'in' ? tr('Tạo tài khoản') : tr('Đăng nhập')}
-        </Text>
-      </Text>
+      {!forgot && (
+        <>
+          <View style={s.or}>
+            <View style={s.line} />
+            <Text style={s.switch}>{tr('hoặc')}</Text>
+            <View style={s.line} />
+          </View>
+          {/* Signs in, or makes the account on first use: one button for both tabs. */}
+          <Button title={tr('Tiếp tục với Google')} icon="logo-google" onPress={() => google(false)} />
+        </>
+      )}
+
+      <View style={s.switchRow}>
+        <Text style={s.switch}>{forgot ? tr('Nhớ ra rồi? ') : up ? tr('Đã có tài khoản? ') : tr('Chưa có tài khoản? ')}</Text>
+        {/* The shared link, so it hovers like "Quên mật khẩu?". */}
+        <TextLink label={mode === 'in' ? tr('Tạo tài khoản') : tr('Đăng nhập')} onPress={() => switchMode(mode === 'in' ? 'up' : 'in')} />
+      </View>
+      </FadeIn>
     </AuthShell>
   );
 }
 
 const s = StyleSheet.create({
-  // Sign in / sign up: a ruled tab row, the current tab underlined in ink.
+  // Sign in / sign up: a ruled tab row, the current tab underlined in ink by a bar that slides between them.
   tabs: { flexDirection: 'row', borderBottomWidth: rule.hair, borderBottomColor: color.border },
-  tab: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderBottomWidth: rule.bar, borderBottomColor: 'transparent', marginBottom: -rule.hair },
-  tabOn: { borderBottomColor: color.borderStrong },
+  tab: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center' },
+  bar: { position: 'absolute', left: 0, bottom: -rule.hair, width: '50%', height: rule.bar, backgroundColor: color.borderStrong },
+  // The shell spaces its children; the faded block keeps that spacing inside.
+  form: { gap: 24 },
   tabText: { ...text.smMedium, color: color.muted },
   tabTextOn: { color: color.foreground, fontWeight: '600' },
   forgot: { alignSelf: 'flex-end', marginTop: -6 },
-  switch: { ...text.sm, color: color.muted, textAlign: 'center' },
-  link: { color: color.foreground, fontWeight: '600', textDecorationLine: 'underline', textDecorationColor: color.primary },
+  switchRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 4 },
+  switch: { ...text.sm, color: color.muted },
+  or: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: -8 },
+  line: { flex: 1, height: rule.hair, backgroundColor: color.border },
 });

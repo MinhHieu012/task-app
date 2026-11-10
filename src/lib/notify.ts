@@ -4,7 +4,9 @@
 import { tr } from './i18n.ts';
 
 export type Tone = 'error' | 'success' | 'info';
-export type Toast = { id: number; tone: Tone; title: string; message: string };
+/** A button on the toast, e.g. "Hoàn tác"; pressing it runs `run` and closes the toast. */
+export type ToastAction = { label: string; run: () => unknown };
+export type Toast = { id: number; tone: Tone; title: string; message: string; action?: ToastAction };
 type Ask = { title: string; message: string; confirmText: string; resolve: (ok: boolean) => void };
 // `ask` outlives `asking` so the dialog keeps its text while it animates out.
 type State = { toasts: Toast[]; ask: Ask | null; asking: boolean };
@@ -27,8 +29,8 @@ export const notifyStore = {
 
 let nextId = 0;
 /** Shows a toast; the newest three stay on screen. It closes itself (see Notifier) or via its close button. */
-export function toast(message: string, title: string, tone: Tone = 'info') {
-  emit({ toasts: [...state.toasts, { id: ++nextId, tone, title, message }].slice(-3) });
+export function toast(message: string, title: string, tone: Tone = 'info', action?: ToastAction) {
+  emit({ toasts: [...state.toasts, { id: ++nextId, tone, title, message, action }].slice(-3) });
 }
 export const dismissToast = (id: number) => emit({ toasts: state.toasts.filter((t) => t.id !== id) });
 
