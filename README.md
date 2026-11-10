@@ -1,5 +1,7 @@
 # Việc & Nhật ký
 
+Tiếng Việt · [English](README.en.md)
+
 Ứng dụng quản lý công việc cá nhân kèm nhật ký hằng ngày. Chạy trên iOS, Android và web (web có bố cục rộng từ 1024px). Giao diện tiếng Việt, có bản tiếng Anh.
 
 ## Tính năng
