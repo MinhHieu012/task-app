@@ -521,7 +521,8 @@ export const st = StyleSheet.create({
 
   card: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, paddingVertical: 20, paddingHorizontal: 24 },
   cardFlush: { paddingHorizontal: 0, paddingVertical: 16 },
-  cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 },
+  // Wraps: on a phone a long title (Báo cáo ngày + badge) and its action do not fit one line.
+  cardHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', columnGap: 12, rowGap: 8, marginBottom: 16 },
   cardHeadFlush: { paddingHorizontal: 20, marginBottom: 6 },
   cardBodyFlush: { paddingHorizontal: 8 },
   cardTitle: { ...text.h2, color: color.foreground, flexShrink: 1 },

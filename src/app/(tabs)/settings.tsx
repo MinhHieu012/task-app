@@ -7,7 +7,7 @@ import { GoogleLogo } from '@/components/GoogleLogo';
 import { Avatar, Button, Card, Choices, Field, InfoLine, Screen, useWide } from '@/components/ui';
 import { color, dark, radius, rule, text } from '@/constants/theme';
 import { accentTokens, ACCENTS, DEFAULT_ACCENT, isHex } from '@/lib/accent';
-import { fmtDay, localDay } from '@/lib/dates';
+import { localDay } from '@/lib/dates';
 import { getLang, type Lang, LANGS, tr } from '@/lib/i18n';
 import { getPref, restart, setPref } from '@/lib/prefs';
 import { confirmAction, toast } from '@/lib/notify';
@@ -53,7 +53,7 @@ export default function Settings() {
           <Avatar size={48} />
           <View style={s.info}>
             <Text style={s.email} numberOfLines={1}>{user?.email}</Text>
-            {user && <Text style={s.meta}>{tr('Tham gia từ {date}', { date: fmtDay(localDay(new Date(user.created_at))) })}</Text>}
+            {user && <Text style={s.meta}>{tr('Tham gia từ {date}', { date: localDay(new Date(user.created_at)).split('-').reverse().join('/') } /* always with the year: a join date is read years later */)}</Text>}
           </View>
         </View>
         <GoogleLine identities={user?.identities ?? []} />
@@ -108,30 +108,34 @@ function GoogleLine({ identities }: { identities: UserIdentity[] }) {
   };
 
   return (
+    // Stacked, so it reads on a phone: title, a line of help, the linked accounts as rows, then the button.
     <View style={s.google}>
       <View style={s.googleHead}>
         <GoogleLogo />
-        <View style={s.info}>
-          <Text style={s.email}>{tr('Tài khoản Google')}</Text>
-          <Text style={s.meta}>
-            {googles.length ? tr('Đăng nhập được bằng các tài khoản Google này.') : tr('Chưa liên kết. Liên kết để lần sau đăng nhập bằng Google.')}
-          </Text>
-        </View>
-        <Button
-          title={googles.length ? tr('Liên kết thêm') : tr('Liên kết')}
-          icon="link-outline"
-          loading={busy === 'link'}
-          disabled={!!busy}
-          onPress={async () => { setBusy('link'); await google(true, '/settings'); setBusy(''); }}
-        />
+        <Text style={s.email}>{tr('Tài khoản Google')}</Text>
       </View>
-      {googles.map((i) => (
-        <View key={i.identity_id} style={s.linkedRow}>
-          <Ionicons name="checkmark-circle" size={16} color={color.success} />
-          <Text style={[s.meta, s.info]}>{i.identity_data?.email}</Text>
-          <Button title={tr('Gỡ')} icon="unlink-outline" variant="ghost" loading={busy === i.identity_id} disabled={!!busy} onPress={() => unlink(i)} />
+      <Text style={s.meta}>
+        {googles.length ? tr('Đăng nhập được bằng các tài khoản Google này.') : tr('Chưa liên kết. Liên kết để lần sau đăng nhập bằng Google.')}
+      </Text>
+      {googles.length > 0 && (
+        <View style={s.linkedList}>
+          {googles.map((i, n) => (
+            <View key={i.identity_id} style={[s.linkedRow, n > 0 && s.linkedRule]}>
+              <Ionicons name="checkmark-circle" size={16} color={color.success} />
+              <Text style={[s.linkedEmail, s.info]} numberOfLines={1} ellipsizeMode="middle">{i.identity_data?.email}</Text>
+              <Button title={tr('Gỡ')} icon="unlink-outline" variant="ghost" loading={busy === i.identity_id} disabled={!!busy} onPress={() => unlink(i)} />
+            </View>
+          ))}
         </View>
-      ))}
+      )}
+      <Button
+        title={googles.length ? tr('Liên kết thêm') : tr('Liên kết')}
+        icon="link-outline"
+        loading={busy === 'link'}
+        disabled={!!busy}
+        onPress={async () => { setBusy('link'); await google(true, '/settings'); setBusy(''); }}
+        style={s.linkBtn}
+      />
     </View>
   );
 }
@@ -297,9 +301,13 @@ const s = StyleSheet.create({
   half: { flex: 1, minWidth: 0 },
   applyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  google: { gap: 4, marginTop: 20, paddingTop: 16, borderTopWidth: rule.hair, borderTopColor: color.border },
-  googleHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  linkedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 30 },
+  google: { gap: 6, marginTop: 20, paddingTop: 16, borderTopWidth: rule.hair, borderTopColor: color.border },
+  googleHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  linkedList: { marginTop: 8, borderRadius: radius.ctl, borderWidth: rule.hair, borderColor: color.border, paddingLeft: 12, paddingRight: 4 },
+  linkedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48 },
+  linkedRule: { borderTopWidth: rule.hair, borderTopColor: color.border },
+  linkedEmail: { ...text.sm, color: color.foreground },
+  linkBtn: { alignSelf: 'flex-start', marginTop: 8 },
   info: { flex: 1, minWidth: 0 },
   email: { ...text.smMedium, color: color.foreground },
   meta: { ...text.meta, color: color.muted, marginTop: 2 },
