@@ -196,6 +196,10 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
   label?: string; hint?: string; error?: string; right?: ReactNode; icon?: IconName; trailing?: ReactNode; boxStyle?: ViewStyle; ref?: Ref<ComponentRef<typeof TextInput>>;
 }) {
   const [focus, setFocus] = useState(false);
+  // Web textareas don't grow with their text (native ones do), so long titles hid behind a scrollbar: size to the content.
+  // ponytail: scrollHeight never shrinks, so the box stays tall after deleting text until remount; CSS field-sizing once Firefox has it.
+  const [h, setH] = useState(0);
+  const grow = Platform.OS === 'web' && props.multiline;
   return (
     <View style={st.field}>
       {label && <Text style={st.label}>{label}</Text>}
@@ -220,7 +224,8 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
             placeholderTextColor={color.muted}
             onFocus={(e) => { setFocus(true); props.onFocus?.(e); }}
             onBlur={(e) => { setFocus(false); props.onBlur?.(e); }}
-            style={[st.input, props.style]}
+            onContentSizeChange={grow ? (e) => { setH(e.nativeEvent.contentSize.height); props.onContentSizeChange?.(e); } : props.onContentSizeChange}
+            style={[st.input, props.style, grow && h > 0 && { height: h }]}
           />
           {trailing}
         </View>
@@ -492,7 +497,7 @@ export function Choices<T extends string | number>({ options, value, onChange, l
 }
 
 /* Validation message: keyed by its text at the call site, so each new error fades in instead of popping. */
-function ErrorText({ children }: { children: string }) {
+export function ErrorText({ children }: { children: string }) {
   return <FadeIn ms={duration.fast}><Text style={[st.hint, { color: color.errorText }]}>{children}</Text></FadeIn>;
 }
 

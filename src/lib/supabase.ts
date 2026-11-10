@@ -15,8 +15,9 @@ export type Project = { id: string; name: string; created_at: string };
 export type Task = {
   id: string;
   project_id: string | null;
-  title: string;
-  note: string | null;
+  title: string; // plain, one line: lists, toasts, reports, search
+  title_html: string | null; // the same title formatted, for the editor (see titleHtml)
+  note: string | null; // HTML (older rows: plain text)
   priority: number;
   due_date: string | null;
   due_time: string | null; // start time
@@ -41,7 +42,7 @@ export type Report = {
   updated_at: string;
 };
 export type JournalNote = { id: string; day: string; body: string; updated_at: string };
-export type Subtask ={ id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
+export type Subtask = { id: string; task_id: string; title: string; title_html: string | null; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
 
 // Native has no WebCrypto, so supabase-js fell back to a Math.random PKCE verifier sent as "plain" (the secret
 // in the sign-in URL). Fill the two calls it makes from expo-crypto, so the verifier is random and only its

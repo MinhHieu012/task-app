@@ -5,6 +5,7 @@ import fs from 'node:fs';
 
 import { ACCENTS, accentTokens, contrast, DARK_SURFACE, DEFAULT_ACCENT, neutral } from './accent.ts';
 import { daysIn, dayTitle, nextMonday, fmtDate, fromIso, greeting, localDay, monthGrid, nextDue, parseDate, parseTime, periodRange, shiftPeriod, spanRange, toIso } from './dates.ts';
+import { htmlToText, isHtml, textToHtml, titleHtml, titleText } from './html.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts, periodStats } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
@@ -65,6 +66,7 @@ const task = (t: Partial<Task>): Task => ({
   id: Math.random().toString(),
   project_id: null,
   title: 't',
+  title_html: null,
   note: null,
   priority: 4,
   due_date: null,
@@ -196,6 +198,16 @@ assert.equal(reportStatus('2026-11-08', { late: true }, '2026-11-05', at('2026-1
   assert.equal(reportStats(days, [...reps, { day: '2026-11-09', late: true }], '2026-11-05', at('2026-11-09', '22:00')).ontimeStreak, 0);
 }
 // Draft escapes task titles; search ignores case and Vietnamese marks.
+// Notes: HTML now, plain text before; both read back as text.
+assert.equal(isHtml('a < b'), false);
+assert.equal(textToHtml('a & b\n\nc'), '<p>a &amp; b</p><p><br></p><p>c</p>');
+assert.equal(textToHtml('<p>x</p>'), '<p>x</p>');
+assert.equal(htmlToText('<p>Mua <b>rau</b> &amp; thịt</p><ul><li>một</li><li>hai</li></ul><p><br></p>'), 'Mua rau & thịt\nmột\nhai');
+assert.equal(htmlToText('chữ thường\ncũ'), 'chữ thường\ncũ');
+assert.equal(titleText('<p>PR <b>#21</b>:</p><ul><li>Tag</li><li>Tìm  kiếm</li></ul>'), 'PR #21: Tag Tìm kiếm');
+assert.equal(titleHtml({ title: 'PR #21', title_html: '<p><b>PR</b> #21</p>' }), '<p><b>PR</b> #21</p>');
+assert.equal(titleHtml({ title: 'Đổi tên', title_html: '<p><b>PR</b> #21</p>' }), '<p>Đổi tên</p>'); // stale formatting dropped
+assert.equal(titleHtml({ title: 'a<b', title_html: null }), '<p>a&lt;b</p>');
 assert.equal(draftHtml([{ name: 'A&B', items: [{ title: '<script>x</script>' }] }], []).includes('<b>A&amp;B</b>: &lt;script&gt;x&lt;/script&gt;'), true);
 assert.ok(matches('Họp với khách về báo cáo', 'bao CAO'));
 assert.ok(matches('Đường dây', 'duong'));
@@ -218,6 +230,7 @@ assert.equal(fmtTags(['nhà', 'gấp']), '#nhà #gấp');
   const ts = [task({ title: 'Gửi báo cáo', tags: ['công-việc'] }), task({ title: 'Đi chợ', note: 'mua rau', tags: ['nhà'] }), task({ title: 'Dọn nhà', tags: ['nhà', 'gấp'] })];
   assert.deepEqual(searchTasks(ts, 'bao cao').map((t) => t.title), ['Gửi báo cáo']);
   assert.deepEqual(searchTasks(ts, 'RAU').map((t) => t.title), ['Đi chợ']); // the note counts
+  assert.deepEqual(searchTasks([task({ title: 'x', note: '<p><b>mua</b> rau</p>' })], 'mua rau').length, 1); // HTML note, tags ignored
   assert.deepEqual(searchTasks(ts, '#nha').map((t) => t.title), ['Đi chợ', 'Dọn nhà']); // tags fold accents too
   assert.deepEqual(searchTasks(ts, '#nhà #gấp').map((t) => t.title), ['Dọn nhà']);
   assert.deepEqual(searchTasks(ts, '#nhà chợ').map((t) => t.title), ['Đi chợ']);

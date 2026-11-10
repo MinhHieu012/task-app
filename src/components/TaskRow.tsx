@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { active, Badge, Empty, FadeIn, GroupTitle, PriorityTag, Skeleton, Tick, useWide } from '@/components/ui';
 import { color, type Priority, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, localDay, nextDue, nextMonday, today } from '@/lib/dates';
+import { htmlToText } from '@/lib/html';
 import { tr } from '@/lib/i18n';
 import { toast } from '@/lib/notify';
 import { Selection } from '@/lib/selection';
@@ -92,12 +93,12 @@ const timeRange = (t: Task) => {
 };
 
 type Icon = ComponentProps<typeof Ionicons>['name'];
-function M({ icon, children, tone }: { icon?: Icon; children: string; tone?: 'over' }) {
+function M({ icon, children, tone, lines }: { icon?: Icon; children: string; tone?: 'over'; lines?: number }) {
   const c = tone === 'over' ? color.danger : color.muted;
   return (
     <View style={s.m}>
       {icon && <Ionicons name={icon} size={14} color={c} />}
-      <Text style={[s.mText, { color: c }, tone && { fontWeight: '500' }]}>{children}</Text>
+      <Text style={[s.mText, { color: c }, tone && { fontWeight: '500' }]} numberOfLines={lines}>{children}</Text>
     </View>
   );
 }
@@ -181,7 +182,7 @@ export function TaskRow({ task, project, hideDate, timeCol, compact, subs = [] }
         <Text style={s.tagText}>#{tag}</Text>
       </Pressable>
     )),
-    task.note && <M key="n" icon="document-text-outline">{task.note}</M>,
+    task.note && <M key="n" icon="document-text-outline" lines={2}>{htmlToText(task.note)}</M>,
     ...(snooze
       ? ([[addDays(day, 1), tr('Mai'), tr('ngày mai')], [nextMonday(day), tr('Tuần sau'), tr('thứ Hai tuần sau')]] as const).map(([to, label, said]) => (
           // Own press targets inside the row, like the tags.

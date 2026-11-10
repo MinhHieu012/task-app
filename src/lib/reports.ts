@@ -1,5 +1,6 @@
 // Daily report rules: due by 21:00 local, late reports still count but are marked; stats and search. Pure (node-checked).
 import { addDays, fromIso, localDay } from './dates.ts';
+import { esc } from './html.ts';
 import { tr } from './i18n.ts';
 import type { Report, Task } from './supabase.ts';
 
@@ -40,8 +41,6 @@ export function reportStats(days: string[], reports: Pick<Report, 'day' | 'late'
   };
   return { ...count, streak: run(() => true), ontimeStreak: run((r) => !r.late) };
 }
-
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&${({ '&': 'amp', '<': 'lt', '>': 'gt', '"': 'quot', "'": '#39' } as Record<string, string>)[c]};`);
 
 /** Starting point for a new report: the day's done tasks by project, what slipped, and empty sections to fill in. */
 export function draftHtml(groups: { name: string; items: Pick<Task, 'title'>[] }[], missed: Pick<Task, 'title'>[]) {

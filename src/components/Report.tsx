@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import RichView from '@/components/dom/RichView';
-import type { Palette } from '@/components/dom/RichEditor';
+import type { EditorLabels, Palette } from '@/components/dom/RichEditor';
 import { Badge, Button, Card, TextLink } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
 import { fmtDate, localDay } from '@/lib/dates';
@@ -15,7 +15,15 @@ import type { Report } from '@/lib/supabase';
 /** Theme colours for the DOM components, which can't import the theme themselves on native. */
 export const palette: Palette = {
   fg: color.foreground, muted: color.muted, border: color.border, accent: color.primary, wash: color.primaryLight, surface: color.surface, hover: color.itemHover,
+  field: color.field, edge: color.fieldEdge, ring: color.ringFocus,
 };
+
+/** Toolbar labels for RichEditor; a function because tr() can't run at module level. */
+export const editorLabels = (placeholder: string): EditorLabels => ({
+  style: tr('Kiểu đoạn'), paragraph: tr('Đoạn văn'), heading: tr('Tiêu đề'), subheading: tr('Tiêu đề nhỏ'), quote: tr('Trích dẫn'),
+  bold: tr('Đậm'), italic: tr('Nghiêng'), underline: tr('Gạch chân'), strike: tr('Gạch ngang'), bullets: tr('Gạch đầu dòng'), numbers: tr('Danh sách số'),
+  undo: tr('Hoàn tác'), redo: tr('Làm lại'), clear: tr('Xoá định dạng'), placeholder,
+});
 
 const BADGE: Partial<Record<Status, [string, 'success' | 'warning' | 'error' | 'neutral']>> = {
   ontime: ['Đã nộp', 'success'],
