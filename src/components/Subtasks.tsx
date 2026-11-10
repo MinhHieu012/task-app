@@ -142,7 +142,7 @@ function Editor({ row, task, onClose, onSaved }: { row: Subtask; task: Task; onC
 
   return (
     <View style={s.editor}>
-      <Field label={tr('Tên việc con')} value={title} onChangeText={setTitle} />
+      <Field label={tr('Tên việc con')} value={title} onChangeText={(v) => setTitle(v.replace(/\n/g, ' '))} multiline submitBehavior="blurAndSubmit" style={s.titleInput} />
       <Text style={s.label}>{tr('Bắt đầu')}</Text>
       <View style={s.pair}>
         <View style={s.dateCol}><DateField value={startDate} onChange={setStartDate} base={base} /></View>
@@ -176,8 +176,11 @@ const s = StyleSheet.create({
   editor: { gap: 8, padding: 12, borderRadius: radius.ctl, backgroundColor: color.background },
   label: { ...text.meta, fontWeight: '500', color: color.soft, marginTop: 4 },
   pair: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  dateCol: { flex: 3, minWidth: 0 },
-  timeCol: { flex: 2, minWidth: 0 },
+  // Explicit basis 0: native sized 'flex: N' columns by content, so date and time came out lopsided.
+  dateCol: { flexGrow: 6, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  timeCol: { flexGrow: 5, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  // Long titles wrap instead of scrolling sideways out of view.
+  titleInput: { height: undefined, minHeight: 42, paddingTop: 10, paddingBottom: 10, textAlignVertical: 'top' },
   hint: { ...text.xs, color: color.muted },
   error: { ...text.meta, color: color.error },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },

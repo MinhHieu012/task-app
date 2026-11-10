@@ -23,6 +23,7 @@ export function DateField({ label, value, onChange, error, hint, base }: {
         value={value}
         onChangeText={onChange}
         placeholder="DD/MM/YYYY"
+        style={s.input}
         error={error}
         hint={hint}
         aria-label={label}
@@ -51,6 +52,7 @@ export function TimeField({ label, value, onChange, error }: { label?: string; v
         value={value}
         onChangeText={onChange}
         placeholder="HH:MM"
+        style={s.input}
         error={error}
         aria-label={label}
         trailing={<IconButton icon="time-outline" label={tr('Chọn giờ')} onPress={() => setOpen(true)} />}
@@ -118,6 +120,12 @@ function Calendar({ selected, start, onPick }: { selected: string | null; start:
 }
 
 function Clock({ value, onChange, onClose }: { value: string; onChange: (v: string) => void; onClose: () => void }) {
+  // Rows of 6 flex cells: six 16.6667% widths add up past 100% on Android and wrap at 5.
+  const rows = (cells: ReactNode[]) => (
+    <View>
+      {Array.from({ length: cells.length / 6 }, (_, r) => <View key={r} style={s.trow}>{cells.slice(r * 6, r * 6 + 6)}</View>)}
+    </View>
+  );
   const t = parseTime(value);
   const [h, m] = t ? t.split(':') : [null, null];
   const cell = (label: string, on: boolean, onPress: () => void) => (
@@ -134,10 +142,10 @@ function Clock({ value, onChange, onClose }: { value: string; onChange: (v: stri
   return (
     <View style={s.gap}>
       <Text style={s.label}>{tr('Giờ')}</Text>
-      <View style={s.grid}>{Array.from({ length: 24 }, (_, i) => cell(pad(i), h === pad(i), () => onChange(`${pad(i)}:${m ?? '00'}`)))}</View>
+      {rows(Array.from({ length: 24 }, (_, i) => cell(pad(i), h === pad(i), () => onChange(`${pad(i)}:${m ?? '00'}`))))}
       <Text style={s.label}>{tr('Phút')}</Text>
       {/* Picking the minute finishes the time, so it closes; odd minutes (09:07) are typed by hand. */}
-      <View style={s.grid}>{Array.from({ length: 12 }, (_, i) => cell(pad(i * 5), m === pad(i * 5), () => { onChange(`${h ?? '09'}:${pad(i * 5)}`); onClose(); }))}</View>
+      {rows(Array.from({ length: 12 }, (_, i) => cell(pad(i * 5), m === pad(i * 5), () => { onChange(`${h ?? '09'}:${pad(i * 5)}`); onClose(); })))}
       <View style={s.foot}>
         <Button title={tr('Xoá')} variant="ghost" onPress={() => { onChange(''); onClose(); }} />
         <Button title={tr('Xong')} variant="primary" onPress={onClose} />
@@ -158,7 +166,10 @@ const s = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   wd: { width: '14.2857%', textAlign: 'center', ...text.xs, color: color.muted, paddingVertical: 4 },
   cell: { width: '14.2857%', height: 40 },
-  tcell: { width: '16.6667%', height: 38 },
+  trow: { flexDirection: 'row' },
+  tcell: { flex: 1, height: 38 },
+  // Android's default TextInput padding scrolled "09:00" out of the narrow box.
+  input: { paddingLeft: 0, paddingRight: 0 },
   day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   on: { backgroundColor: color.primary },
   n: { ...text.sm, color: color.foreground, fontVariant: ['tabular-nums'] },
