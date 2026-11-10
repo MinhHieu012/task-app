@@ -60,6 +60,13 @@ export function nextDue(repeat: string, due: string, todayIso = today()) {
   throw new Error(`Unknown repeat: ${repeat}`);
 }
 
+/** Days of a month (1-based) as ISO strings, led by nulls so the 1st falls under its weekday (weeks start Monday). */
+export function monthGrid(year: number, month: number) {
+  const lead = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  const n = lastDayOf(year, month - 1);
+  return [...Array<null>(lead).fill(null), ...Array.from({ length: n }, (_, i) => toIso(new Date(year, month - 1, i + 1)))];
+}
+
 /** "DD/MM" or "DD/MM/YYYY" -> ISO date, or null when invalid. Without a year, the next such date from today. */
 export function parseDate(s: string, todayIso = today()) {
   const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);

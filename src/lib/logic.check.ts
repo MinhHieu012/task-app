@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { ACCENTS, accentTokens, contrast, DARK_SURFACE, DEFAULT_ACCENT, neutral } from './accent.ts';
-import { fmtDate, fromIso, localDay, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
+import { fmtDate, fromIso, localDay, monthGrid, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
 import { dayCounts, groupByProject, monthCounts } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
 import { draftHtml, isLate, matches, reportReminders, reportStats, reportStatus, snippet } from './reports.ts';
-import { parseWhen, spanError } from './subtasks.ts';
+import { fmtSpan, spanError, spanLength, subStatus } from './subtasks.ts';
 import type { Project, Task } from './supabase.ts';
 
 // 2026-11-02 is a Monday.
@@ -128,14 +128,31 @@ assert.equal(await first, false);
 assert.equal(await second, true);
 assert.equal(notifyStore.get().asking, false);
 
-// Subtask spans: parse "DD/MM HH:MM" against the parent's start day, and stay inside the parent.
-assert.deepEqual(parseWhen('', TUE), { date: null, time: null });
-assert.deepEqual(parseWhen('9:30', TUE), { date: TUE, time: '09:30' });
-assert.deepEqual(parseWhen('04/11 14:00', TUE), { date: WED, time: '14:00' });
-assert.deepEqual(parseWhen('02/11', TUE), { date: '2027-11-02', time: null }); // before the parent's day -> next year
-assert.equal(parseWhen('9:30', null), null); // a time needs a day
-assert.equal(parseWhen('25:00', TUE), null);
-assert.equal(parseWhen('a b c', TUE), null);
+// Subtask spans: shown as text, and must stay inside the parent.
+assert.equal(fmtSpan({ start_date: null, start_time: null, end_date: null, end_time: null }), '');
+assert.equal(fmtSpan({ start_date: TUE, start_time: '09:00:00', end_date: TUE, end_time: '10:30:00' }), '03/11 09:00 – 10:30');
+assert.equal(fmtSpan({ start_date: TUE, start_time: '22:00', end_date: WED, end_time: '02:00' }), '03/11 22:00 – 04/11 02:00');
+assert.equal(fmtSpan({ start_date: TUE, start_time: null, end_date: null, end_time: null }), '03/11');
+{
+  const sub = (start_time: string | null, end_time: string | null, end_date: string | null = null, done = false) => ({ start_date: TUE, start_time, end_date, end_time, done });
+  assert.equal(subStatus(sub('09:00', '10:00'), `${TUE} 10:01`), 'late');
+  assert.equal(subStatus(sub('09:00', '10:00'), `${TUE} 09:30`), 'now');
+  assert.equal(subStatus(sub('09:00', '10:00'), `${TUE} 08:59`), '');
+  assert.equal(subStatus(sub('09:00', '10:00', null, true), `${WED} 00:00`), '');
+  assert.equal(subStatus(sub(null, null), `${TUE} 23:00`), 'now'); // day only: open all day
+  assert.equal(spanLength(sub('09:00', '09:45')), '45 phút');
+  assert.equal(spanLength(sub('09:00', '10:30')), '1h30');
+  assert.equal(spanLength(sub('22:00', '02:00', WED)), '4h');
+  assert.equal(spanLength(sub('09:00', null)), '');
+}
+// monthGrid: Nov 2026 starts on a Sunday -> 6 blanks, 30 days.
+{
+  const g = monthGrid(2026, 11);
+  assert.equal(g.length, 36);
+  assert.equal(g[6], '2026-11-01');
+  assert.equal(g.at(-1), '2026-11-30');
+  assert.equal(monthGrid(2026, 2).filter(Boolean).length, 28);
+}
 {
   const parent = { due_date: MON, due_time: '09:00:00', end_date: TUE, end_time: '17:00:00' };
   const span = (start_date: string | null, start_time: string | null, end_date: string | null = null, end_time: string | null = null) =>

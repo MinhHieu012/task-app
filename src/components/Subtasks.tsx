@@ -1,15 +1,19 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Field, IconButton, Tick } from '@/components/ui';
-import { color, text } from '@/constants/theme';
+import { DateField, TimeField } from '@/components/DateTime';
+import { active, Button, Field, IconButton, Tick } from '@/components/ui';
+import { color, radius, text } from '@/constants/theme';
+import { fmtDate, parseDate, parseTime, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
-import { fmtWhen, parseWhen, spanError } from '@/lib/subtasks';
-import { ok, type Subtask, supabase, type Task } from '@/lib/supabase';
+import { fmtSpan, spanError } from '@/lib/subtasks';
+import { ok, refresh, type Subtask, supabase, type Task } from '@/lib/supabase';
 
 /** Adds one subtask; null on failure (the error is already shown). */
 export async function addSubtask(taskId: string, title: string) {
   const res = await supabase.from('subtasks').insert({ task_id: taskId, title }).select().single();
+  if (ok(res)) refresh('subtasks');
   return ok(res) ? (res.data as Subtask) : null;
 }
 
@@ -18,6 +22,7 @@ export async function addSubtask(taskId: string, title: string) {
 export function Subtasks({ task, draft: title, setDraft: setTitle }: { task: Task; draft: string; setDraft: (v: string) => void }) {
   const taskId = task.id;
   const [rows, setRows] = useState<Subtask[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const table = () => supabase.from('subtasks');
 
@@ -42,26 +47,47 @@ export function Subtasks({ task, draft: title, setDraft: setTitle }: { task: Tas
     const set = (done: boolean) => setRows((r) => r.map((x) => (x.id === row.id ? { ...x, done } : x)));
     set(!row.done);
     if (!ok(await table().update({ done: !row.done }).eq('id', row.id))) set(row.done);
+    else refresh('subtasks');
   };
 
   const remove = async (row: Subtask) => {
-    if (ok(await table().delete().eq('id', row.id))) setRows((r) => r.filter((x) => x.id !== row.id));
+    if (!ok(await table().delete().eq('id', row.id))) return;
+    setRows((r) => r.filter((x) => x.id !== row.id));
+    refresh('subtasks');
   };
 
   const done = rows.filter((r) => r.done).length;
   return (
     <View style={s.wrap}>
-      {rows.length > 0 && <Text style={s.count}>Xong {done}/{rows.length}</Text>}
-      {rows.map((r) => (
-        <View key={r.id} style={s.item}>
-          <View style={s.row}>
-            <Tick checked={r.done} onPress={() => toggle(r)} size={22} />
-            <Text style={[s.title, r.done && s.done]}>{r.title}</Text>
+      {rows.length > 0 && <Text style={s.count}>{tr('Xong {done}/{n}', { done, n: rows.length })}</Text>}
+      {rows.map((r) =>
+        editing === r.id ? (
+          <Editor
+            key={r.id}
+            row={r}
+            task={task}
+            onClose={() => setEditing(null)}
+            onSaved={(x) => { setRows((all) => all.map((y) => (y.id === x.id ? x : y))); setEditing(null); }}
+          />
+        ) : (
+          <View key={r.id} style={s.row}>
+            <View style={s.tick}><Tick checked={r.done} onPress={() => toggle(r)} size={22} /></View>
+            <Pressable
+              onPress={() => setEditing(r.id)}
+              accessibilityRole="button"
+              accessibilityLabel={tr('Sửa “{name}”', { name: r.title })}
+              style={(st) => [s.body, active(st) && { backgroundColor: color.itemHover }]}
+            >
+              <Text style={[s.title, r.done && s.done]}>{r.title}</Text>
+              <View style={s.when}>
+                <Ionicons name="time-outline" size={14} color={r.start_date ? color.soft : color.muted} />
+                <Text style={[s.whenText, !r.start_date && s.unset]}>{fmtSpan(r) || tr('Chưa đặt thời gian')}</Text>
+              </View>
+            </Pressable>
             <IconButton icon="close" label={tr('Xoá “{name}”', { name: r.title })} onPress={() => remove(r)} />
           </View>
-          <Times row={r} task={task} />
-        </View>
-      ))}
+        ),
+      )}
       <Field
         icon="add"
         value={title}
@@ -77,54 +103,85 @@ export function Subtasks({ task, draft: title, setDraft: setTitle }: { task: Tas
   );
 }
 
-/** Start/end inputs ("DD/MM HH:MM") of one subtask; saved when either loses focus, if valid and inside the parent. */
-function Times({ row, task }: { row: Subtask; task: Task }) {
-  const [start, setStart] = useState(fmtWhen(row.start_date, row.start_time));
-  const [end, setEnd] = useState(fmtWhen(row.end_date, row.end_time));
-  const [saved, setSaved] = useState([start, end].join('|'));
+const dmy = (iso: string | null) => (iso ? fmtDate(iso) : '');
+
+/** Inline edit of one subtask: title, start and end (date + time). Must fit inside the parent's span. */
+function Editor({ row, task, onClose, onSaved }: { row: Subtask; task: Task; onClose: () => void; onSaved: (x: Subtask) => void }) {
+  const [title, setTitle] = useState(row.title);
+  const [startDate, setStartDate] = useState(dmy(row.start_date));
+  const [startTime, setStartTime] = useState(row.start_time?.slice(0, 5) ?? '');
+  // End on the start day shows blank, like the parent's form.
+  const [endDate, setEndDate] = useState(row.end_date === row.start_date ? '' : dmy(row.end_date));
+  const [endTime, setEndTime] = useState(row.end_time?.slice(0, 5) ?? '');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const base = task.due_date ?? today();
 
   const save = async () => {
-    if ([start, end].join('|') === saved) return setError('');
-    // A bare time means the parent's start day; the end's bare time means the subtask's start day.
-    const a = parseWhen(start, task.due_date);
-    const b = a && parseWhen(end, a.date ?? task.due_date);
-    if (!a || !b) return setError(tr('Gõ DD/MM HH:MM, DD/MM hoặc HH:MM'));
-    const span = { start_date: a.date, start_time: a.time, end_date: b.date, end_time: b.time };
-    const e = spanError(task, span);
+    // A blank start day with a time means the parent's start day; a blank end day means the start day.
+    const sd = startDate.trim() ? parseDate(startDate, base) : startTime.trim() ? task.due_date : null;
+    const st = startTime.trim() ? parseTime(startTime) : null;
+    const ed = endDate.trim() ? parseDate(endDate, sd ?? base) : endTime.trim() ? sd : null;
+    const et = endTime.trim() ? parseTime(endTime) : null;
+    const e =
+      !title.trim() ? tr('Cần có tên việc')
+      : (startDate.trim() && !sd) || (endDate.trim() && !ed) ? tr('Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY')
+      : (startTime.trim() && !st) || (endTime.trim() && !et) ? tr('Giờ phải từ 00:00 đến 23:59')
+      : st && !sd ? tr('Việc cha chưa có ngày, nên việc con chưa đặt ngày được')
+      : spanError(task, { start_date: sd, start_time: st, end_date: ed, end_time: et });
     setError(e);
-    if (!e && ok(await supabase.from('subtasks').update(span).eq('id', row.id))) setSaved([start, end].join('|'));
+    if (e) return;
+    const patch = { title: title.trim(), start_date: sd, start_time: st, end_date: ed, end_time: et };
+    setBusy(true);
+    const res = await supabase.from('subtasks').update(patch).eq('id', row.id);
+    setBusy(false);
+    if (!ok(res)) return;
+    refresh('subtasks');
+    onSaved({ ...row, ...patch });
   };
 
-  const input = (value: string, set: (v: string) => void, label: string) => (
-    // Shares the row width, so both fit on a phone.
-    <View style={s.timeCol}>
-      <Field value={value} onChangeText={set} onBlur={save} onSubmitEditing={save} placeholder={label} aria-label={`${label} (DD/MM HH:MM)`} style={s.time} boxStyle={s.timeBox} />
-    </View>
-  );
   return (
-    <View style={s.times}>
-      <View style={s.timesRow}>
-        {input(start, setStart, tr('Bắt đầu'))}
-        <Text style={s.count}>{tr('đến')}</Text>
-        {input(end, setEnd, tr('Kết thúc'))}
+    <View style={s.editor}>
+      <Field label={tr('Tên việc con')} value={title} onChangeText={(v) => setTitle(v.replace(/\n/g, ' '))} multiline submitBehavior="blurAndSubmit" style={s.titleInput} />
+      <Text style={s.label}>{tr('Bắt đầu')}</Text>
+      <View style={s.pair}>
+        <View style={s.dateCol}><DateField value={startDate} onChange={setStartDate} base={base} /></View>
+        <View style={s.timeCol}><TimeField value={startTime} onChange={setStartTime} /></View>
       </View>
-      {!!error && <Text style={s.error}>{error}</Text>}
+      <Text style={s.label}>{tr('Kết thúc')}</Text>
+      <View style={s.pair}>
+        <View style={s.dateCol}><DateField value={endDate} onChange={setEndDate} base={parseDate(startDate, base) ?? base} /></View>
+        <View style={s.timeCol}><TimeField value={endTime} onChange={setEndTime} /></View>
+      </View>
+      {error ? <Text style={s.error}>{error}</Text> : <Text style={s.hint}>{tr('Ngày để trống = ngày của việc cha. Phải nằm trong thời gian của việc cha.')}</Text>}
+      <View style={s.actions}>
+        <Button title={tr('Huỷ')} variant="ghost" onPress={onClose} />
+        <Button title={tr('Lưu')} variant="primary" onPress={save} loading={busy} />
+      </View>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  item: { gap: 4 },
-  times: { paddingLeft: 34, gap: 4 },
-  timesRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  timeCol: { flex: 1, minWidth: 0 },
-  timeBox: { minHeight: 36, paddingLeft: 12 },
-  time: { height: 34, fontSize: 14 },
-  error: { ...text.meta, color: color.error },
   wrap: { gap: 8 },
   count: { ...text.meta, color: color.muted },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 36 },
-  title: { ...text.body, color: color.foreground, flex: 1, minWidth: 0 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  tick: { paddingTop: 10 },
+  body: { flex: 1, minWidth: 0, gap: 2, paddingVertical: 6, paddingHorizontal: 6, borderRadius: radius.sm },
+  title: { ...text.body, color: color.foreground },
   done: { color: color.muted, textDecorationLine: 'line-through' },
+  when: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  whenText: { ...text.meta, color: color.soft, fontVariant: ['tabular-nums'] },
+  unset: { color: color.muted },
+  editor: { gap: 8, padding: 12, borderRadius: radius.ctl, backgroundColor: color.background },
+  label: { ...text.meta, fontWeight: '500', color: color.soft, marginTop: 4 },
+  pair: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  // Explicit basis 0: native sized 'flex: N' columns by content, so date and time came out lopsided.
+  dateCol: { flexGrow: 6, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  timeCol: { flexGrow: 5, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  // Long titles wrap instead of scrolling sideways out of view.
+  titleInput: { height: undefined, minHeight: 42, paddingTop: 10, paddingBottom: 10, textAlignVertical: 'top' },
+  hint: { ...text.xs, color: color.muted },
+  error: { ...text.meta, color: color.error },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
 });

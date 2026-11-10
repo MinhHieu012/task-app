@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { DateField, TimeField } from '@/components/DateTime';
 import { addSubtask, Subtasks } from '@/components/Subtasks';
 import { Button, Card, Choices, Field } from '@/components/ui';
 import { color, priority, text } from '@/constants/theme';
@@ -93,7 +94,8 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     <>
       {box(
         <View style={s.form}>
-          <Field label={tr('Tên việc')} value={title} onChangeText={setTitle} error={errors.title} />
+          {/* Multiline so a long title wraps; Enter still just finishes it (no newlines in a title). */}
+          <Field label={tr('Tên việc')} value={title} onChangeText={(v) => setTitle(v.replace(/\n/g, ' '))} multiline submitBehavior="blurAndSubmit" style={s.titleInput} error={errors.title} />
           <Field label={tr('Ghi chú')} value={note} onChangeText={setNote} multiline style={s.note} placeholder={tr('Không bắt buộc')} />
           <View style={s.group}>
             <Text style={s.label}>{tr('Ưu tiên')}</Text>
@@ -113,41 +115,23 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
 
       {box(
         <View style={s.form}>
-          <Field
-            label={tr('Ngày bắt đầu')}
-            value={date}
-            onChangeText={setDate}
-            placeholder="DD/MM"
-            hint={tr('Gõ DD/MM hoặc DD/MM/YYYY')}
-            error={errors.date}
-            right={date ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setDate('')} /> : undefined}
-          />
-          <Field
-            label={tr('Giờ bắt đầu')}
-            value={time}
-            onChangeText={setTime}
-            placeholder="HH:MM"
-            error={errors.time}
-            right={time ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setTime('')} /> : undefined}
-          />
-          <Field
-            label={tr('Ngày kết thúc')}
-            value={endDate}
-            onChangeText={setEndDate}
-            placeholder="DD/MM"
-            hint={tr('Để trống nếu kết thúc cùng ngày bắt đầu')}
-            error={errors.endDate}
-            right={endDate ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setEndDate('')} /> : undefined}
-          />
-          <Field
-            label={tr('Giờ kết thúc')}
-            value={endTime}
-            onChangeText={setEndTime}
-            placeholder="HH:MM"
-            hint={tr('Không bắt buộc')}
-            error={errors.endTime}
-            right={endTime ? <Button title={tr('Bỏ')} variant="ghost" onPress={() => setEndTime('')} /> : undefined}
-          />
+          <View style={s.group}>
+            <Text style={s.label}>{tr('Bắt đầu')}</Text>
+            <View style={s.pair}>
+              <View style={s.dateCol}><DateField value={date} onChange={setDate} error={errors.date} /></View>
+              <View style={s.timeCol}><TimeField value={time} onChange={setTime} error={errors.time} /></View>
+            </View>
+          </View>
+          <View style={s.group}>
+            <Text style={s.label}>{tr('Kết thúc')}</Text>
+            <View style={s.pair}>
+              <View style={s.dateCol}>
+                <DateField value={endDate} onChange={setEndDate} error={errors.endDate} base={parseDate(date)} />
+              </View>
+              <View style={s.timeCol}><TimeField value={endTime} onChange={setEndTime} error={errors.endTime} /></View>
+            </View>
+            <Text style={s.hint}>{tr('Trống = cùng ngày bắt đầu')}</Text>
+          </View>
           <View style={s.group}>
             <Text style={s.label}>{tr('Lặp lại')}</Text>
             <Choices<Kind>
@@ -194,6 +178,13 @@ const s = StyleSheet.create({
   label: { ...text.meta, fontWeight: '500', color: color.soft },
   section: { ...text.h2, color: color.foreground, marginTop: 4 },
   muted: { ...text.sm, color: color.muted },
+  hint: { ...text.xs, color: color.muted },
+  pair: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  // Explicit basis 0: native sized 'flex: N' columns by content, so date and time came out lopsided.
+  dateCol: { flexGrow: 6, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  timeCol: { flexGrow: 5, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  // Long titles wrap instead of scrolling sideways out of view.
+  titleInput: { height: undefined, minHeight: 42, paddingTop: 10, paddingBottom: 10, textAlignVertical: 'top' },
   note: { height: 88, paddingTop: 12, textAlignVertical: 'top' },
   actions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingBottom: 24 },
   save: { minWidth: 120 },
