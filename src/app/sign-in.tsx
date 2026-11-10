@@ -1,13 +1,12 @@
-import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/AuthShell';
 import { animate, Button, FadeIn, Field, IconButton, reducedMotion, TextLink } from '@/components/ui';
 import { color, duration, rule, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
 import { toast } from '@/lib/notify';
-import { google, ok, supabase } from '@/lib/supabase';
+import { authRedirect, google, ok, supabase } from '@/lib/supabase';
 
 type Mode = 'in' | 'up' | 'forgot';
 
@@ -53,7 +52,7 @@ export default function SignIn() {
     setBusy(true);
     if (forgot) {
       // The link lands on /reset-password, signed in for recovery. Its URL must be in Supabase's redirect allow-list.
-      const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/reset-password` : Linking.createURL('/reset-password');
+      const redirectTo = authRedirect('/reset-password');
       if (ok(await supabase.auth.resetPasswordForEmail(creds.email, { redirectTo }))) {
         toast(tr('Mở link trong email để đặt mật khẩu mới.'), tr('Kiểm tra email'), 'success');
         switchMode('in');

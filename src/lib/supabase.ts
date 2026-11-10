@@ -3,7 +3,6 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type PostgrestFilterBuilder, type Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { AppState, Platform } from 'react-native';
 
@@ -100,13 +99,18 @@ const AUTH_ERRORS: Record<string, string> = {
   single_identity_not_deletable: 'Đây là cách đăng nhập duy nhất của tài khoản nên chưa gỡ được.',
 };
 
+/** Where an auth email or OAuth round trip comes back to; it must be in Supabase's Redirect URLs, else Supabase
+ *  silently sends the user to the Site URL (the web app) instead. Native: the bare scheme, not Linking.createURL,
+ *  which adds the dev server host (taskapp://192.168.1.5:8081/) and so never matched the list. */
+export const authRedirect = (path: string) => (Platform.OS === 'web' ? `${window.location.origin}${path}` : `taskapp://${path.replace(/^\//, '')}`);
+
 /** Google sign-in (`link` false) or linking Google to the signed-in account (`link` true), so it can sign in
  *  later. Web leaves the page for Google and comes back to `path`; the client trades the ?code= itself
  *  (detectSessionInUrl). Native opens an auth browser and trades the code here. Same-email accounts are
  *  linked by Supabase on its own; `link` is for a Google account with another email. */
 export async function google(link: boolean, path = '/') {
   const web = Platform.OS === 'web';
-  const redirectTo = web ? `${window.location.origin}${path}` : Linking.createURL(path);
+  const redirectTo = authRedirect(path);
   const options = { redirectTo, skipBrowserRedirect: !web };
   const res = link ? await supabase.auth.linkIdentity({ provider: 'google', options }) : await supabase.auth.signInWithOAuth({ provider: 'google', options });
   if (!ok(res) || web || !res.data.url) return;
