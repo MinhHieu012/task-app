@@ -3,8 +3,9 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type PostgrestFilterBuilder, type Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import * as ExpoCrypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
-import { AppState, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 
 import { tr } from './i18n';
 import { showError } from './notify';
@@ -41,6 +42,16 @@ export type Report = {
 };
 export type JournalNote = { id: string; day: string; body: string; updated_at: string };
 export type Subtask ={ id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
+
+// Native has no WebCrypto, so supabase-js fell back to a Math.random PKCE verifier sent as "plain" (the secret
+// in the sign-in URL). Fill the two calls it makes from expo-crypto, so the verifier is random and only its
+// SHA-256 leaves the device. Web has crypto already.
+if (Platform.OS !== 'web') {
+  const c = (globalThis.crypto ??= {} as Crypto);
+  c.getRandomValues ??= ExpoCrypto.getRandomValues as Crypto['getRandomValues'];
+  // @ts-expect-error a partial SubtleCrypto: supabase-js only calls digest('SHA-256', bytes)
+  c.subtle ??= { digest: (_alg: string, data: BufferSource) => ExpoCrypto.digest(ExpoCrypto.CryptoDigestAlgorithm.SHA256, data) };
+}
 
 export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, process.env.EXPO_PUBLIC_SUPABASE_KEY!, {
   auth: {
@@ -116,12 +127,20 @@ export async function google(link: boolean, path = '/') {
   const options = { redirectTo, skipBrowserRedirect: !web };
   const res = link ? await supabase.auth.linkIdentity({ provider: 'google', options }) : await supabase.auth.signInWithOAuth({ provider: 'google', options });
   if (!ok(res) || web || !res.data.url) return;
+  // Supabase sends the bare taskapp:// back as taskapp:?code=… (Go drops the empty authority), which the browser
+  // module does not see as its redirect, so it reports "dismiss" and the code was lost. The redirect is caught as
+  // a deep link instead, compared without the "//".
+  const bare = (u: string) => u.replace('://', ':');
+  let linked = '';
+  const sub = Linking.addEventListener('url', ({ url }) => { if (bare(url).startsWith(bare(redirectTo))) linked = url; });
   const back = await WebBrowser.openAuthSessionAsync(res.data.url, redirectTo);
-  if (back.type !== 'success') return; // closed by the user
-  const q = urlParams(back.url);
-  const code = q.get('code');
+  if (back.type !== 'success' && !linked) await new Promise((r) => setTimeout(r, 500)); // the link event may trail
+  sub.remove();
+  const url = back.type === 'success' ? back.url : linked;
+  if (!url) return; // closed by the user
+  const code = urlParams(url).get('code');
   if (code) ok(await supabase.auth.exchangeCodeForSession(code));
-  else authUrlError(back.url);
+  else authUrlError(url);
   if (link) supabase.auth.refreshSession(); // the new identity shows in the user only after a refresh
 }
 
