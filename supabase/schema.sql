@@ -13,8 +13,9 @@ create table tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   project_id uuid references projects on delete set null,
-  title text not null,
-  note text,
+  title text not null, -- plain, one line
+  title_html text, -- the same title formatted, for the editor
+  note text, -- HTML (older rows: plain text)
   priority int not null default 4 check (priority between 1 and 4),
   due_date date,
   due_time time, -- start time
@@ -44,6 +45,7 @@ create table subtasks (
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   task_id uuid not null references tasks on delete cascade,
   title text not null,
+  title_html text,
   done boolean not null default false,
   -- Start = start_date + start_time, end = end_date + end_time. Fitting inside the parent's span is checked in the app.
   start_date date,
@@ -79,8 +81,8 @@ begin
   if not found then raise exception 'task not found'; end if;
   if p_next_due is null or p_next_due <= t.due_date then raise exception 'invalid next due date'; end if;
 
-  insert into tasks (project_id, title, note, priority, due_date, due_time, end_date, end_time, completed_at, completed_day, recurring_copy, tags)
-  values (t.project_id, t.title, t.note, t.priority, t.due_date, t.due_time, t.end_date, t.end_time, p_completed_at, p_completed_day, true, t.tags);
+  insert into tasks (project_id, title, title_html, note, priority, due_date, due_time, end_date, end_time, completed_at, completed_day, recurring_copy, tags)
+  values (t.project_id, t.title, t.title_html, t.note, t.priority, t.due_date, t.due_time, t.end_date, t.end_time, p_completed_at, p_completed_day, true, t.tags);
 
   -- The end moves with the start, keeping the same span.
   update tasks set due_date = p_next_due, end_date = p_next_due + (end_date - due_date) where id = p_task_id;

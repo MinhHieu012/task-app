@@ -1,11 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DateField, TimeField } from '@/components/DateTime';
+import RichEditor from '@/components/dom/RichEditor';
+import { editorLabels, palette } from '@/components/Report';
 import { active, Button, Field, IconButton, Tick } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
 import { fmtDate, parseDate, parseTime, today } from '@/lib/dates';
+import { titleHtml, titleText } from '@/lib/html';
 import { tr } from '@/lib/i18n';
 import { fmtSpan, spanError } from '@/lib/subtasks';
 import { ok, refresh, type Subtask, supabase, type Task } from '@/lib/supabase';
@@ -107,7 +110,8 @@ const dmy = (iso: string | null) => (iso ? fmtDate(iso) : '');
 
 /** Inline edit of one subtask: title, start and end (date + time). Must fit inside the parent's span. */
 function Editor({ row, task, onClose, onSaved }: { row: Subtask; task: Task; onClose: () => void; onSaved: (x: Subtask) => void }) {
-  const [title, setTitle] = useState(row.title);
+  // A ref, like the task form: the editor is uncontrolled. Plain one-line title for the list, HTML to edit.
+  const title = useRef({ html: titleHtml(row), text: row.title });
   const [startDate, setStartDate] = useState(dmy(row.start_date));
   const [startTime, setStartTime] = useState(row.start_time?.slice(0, 5) ?? '');
   // End on the start day shows blank, like the parent's form.
@@ -124,14 +128,14 @@ function Editor({ row, task, onClose, onSaved }: { row: Subtask; task: Task; onC
     const ed = endDate.trim() ? parseDate(endDate, sd ?? base) : endTime.trim() ? sd : null;
     const et = endTime.trim() ? parseTime(endTime) : null;
     const e =
-      !title.trim() ? tr('Cần có tên việc')
+      !title.current.text ? tr('Cần có tên việc')
       : (startDate.trim() && !sd) || (endDate.trim() && !ed) ? tr('Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY')
       : (startTime.trim() && !st) || (endTime.trim() && !et) ? tr('Giờ phải từ 00:00 đến 23:59')
       : st && !sd ? tr('Việc cha chưa có ngày, nên việc con chưa đặt ngày được')
       : spanError(task, { start_date: sd, start_time: st, end_date: ed, end_time: et });
     setError(e);
     if (e) return;
-    const patch = { title: title.trim(), start_date: sd, start_time: st, end_date: ed, end_time: et };
+    const patch = { title: title.current.text, title_html: title.current.html, start_date: sd, start_time: st, end_date: ed, end_time: et };
     setBusy(true);
     const res = await supabase.from('subtasks').update(patch).eq('id', row.id);
     setBusy(false);
@@ -142,7 +146,16 @@ function Editor({ row, task, onClose, onSaved }: { row: Subtask; task: Task; onC
 
   return (
     <View style={s.editor}>
-      <Field label={tr('Tên việc con')} value={title} onChangeText={(v) => setTitle(v.replace(/\n/g, ' '))} multiline submitBehavior="blurAndSubmit" style={s.titleInput} />
+      <Text style={[s.label, { marginTop: 0 }]}>{tr('Tên việc con')}</Text>
+      <RichEditor
+        initial={titleHtml(row)}
+        palette={palette}
+        compact
+        minHeight={26}
+        labels={editorLabels(tr('Tên việc con'))}
+        onChange={async (html, body) => { title.current = { html, text: titleText(body) }; }}
+        dom={{ matchContents: true, scrollEnabled: false }}
+      />
       <Text style={s.label}>{tr('Bắt đầu')}</Text>
       <View style={s.pair}>
         <View style={s.dateCol}><DateField value={startDate} onChange={setStartDate} base={base} /></View>
@@ -179,8 +192,6 @@ const s = StyleSheet.create({
   // Explicit basis 0: native sized 'flex: N' columns by content, so date and time came out lopsided.
   dateCol: { flexGrow: 6, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   timeCol: { flexGrow: 5, flexShrink: 1, flexBasis: 0, minWidth: 0 },
-  // Long titles wrap instead of scrolling sideways out of view.
-  titleInput: { height: undefined, minHeight: 42, paddingTop: 10, paddingBottom: 10, textAlignVertical: 'top' },
   hint: { ...text.xs, color: color.muted },
   error: { ...text.meta, color: color.error },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },

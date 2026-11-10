@@ -1,11 +1,14 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { DateField, TimeField } from '@/components/DateTime';
+import RichEditor from '@/components/dom/RichEditor';
+import { editorLabels, palette } from '@/components/Report';
 import { addSubtask, Subtasks } from '@/components/Subtasks';
-import { Button, Card, Choices, Field } from '@/components/ui';
+import { Button, Card, Choices, ErrorText, Field } from '@/components/ui';
 import { color, priority, text } from '@/constants/theme';
 import { fromIso, parseDate, parseTime } from '@/lib/dates';
+import { titleHtml, titleText } from '@/lib/html';
 import { tr } from '@/lib/i18n';
 import { confirmAction, toast } from '@/lib/notify';
 import { spanError } from '@/lib/subtasks';
@@ -24,8 +27,10 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     bare ? <View style={s.form}>{title && <Text style={s.section}>{title}</Text>}{children}</View> : <Card title={title}>{children}</Card>;
   const id = task.id;
   const [k0, arg0 = ''] = (task.repeat ?? '').split(':');
-  const [title, setTitle] = useState(task.title);
-  const [note, setNote] = useState(task.note ?? '');
+  // Refs, not state: the editors are uncontrolled and re-rendering them per keystroke costs a WebView round trip on native.
+  // The title is kept twice: formatted to edit, plain (one line) for lists, toasts, reports and search.
+  const title = useRef({ html: titleHtml(task), text: task.title });
+  const note = useRef(task.note);
   const [tags, setTags] = useState(fmtTags(task.tags));
   // Tags already in use, to pick instead of retyping.
   const picked = parseTags(tags);
@@ -48,7 +53,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     const e: Record<string, string> = {};
     const due = date.trim() ? parseDate(date) : null;
     const at = time.trim() ? parseTime(time) : null;
-    if (!title.trim()) e.title = tr('Cần có tên việc');
+    if (!title.current.text) e.title = tr('Cần có tên việc');
     if (date.trim() && !due) e.date = tr('Ngày không hợp lệ, gõ DD/MM hoặc DD/MM/YYYY');
     if (time.trim() && !at) e.time = tr('Giờ phải từ 00:00 đến 23:59');
     if (at && !due && !e.date) e.time = tr('Đặt giờ thì cần có ngày');
@@ -72,7 +77,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
       : kind === 'every' ? `every:${everyN.trim()}`
       : kind || null;
     const patch = {
-      title: title.trim(), note: note.trim() || null, priority: prio, project_id: projectId || null, tags: parseTags(tags), due_date: due, due_time: at, end_date: end && endDue, end_time: end, repeat,
+      title: title.current.text, title_html: title.current.html, note: note.current, priority: prio, project_id: projectId || null, tags: parseTags(tags), due_date: due, due_time: at, end_date: end && endDue, end_time: end, repeat,
     };
     setBusy(true);
     // Subtasks must stay inside the parent's span, so a new span can't leave one outside.
@@ -113,9 +118,30 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     <>
       {box(
         <View style={s.form}>
-          {/* Multiline so a long title wraps; Enter still just finishes it (no newlines in a title). */}
-          <Field label={tr('Tên việc')} value={title} onChangeText={(v) => setTitle(v.replace(/\n/g, ' '))} multiline submitBehavior="blurAndSubmit" style={s.titleInput} error={errors.title} />
-          <Field label={tr('Ghi chú')} value={note} onChangeText={setNote} multiline style={s.note} placeholder={tr('Không bắt buộc')} />
+          <View style={s.group}>
+            <Text style={s.label}>{tr('Tên việc')}</Text>
+            <RichEditor
+              initial={titleHtml(task)}
+              palette={palette}
+              compact
+              minHeight={26}
+              labels={editorLabels(tr('Tên việc'))}
+              onChange={async (html, body) => { title.current = { html, text: titleText(body) }; }}
+              dom={{ matchContents: true, scrollEnabled: false }}
+            />
+            {errors.title && <ErrorText>{errors.title}</ErrorText>}
+          </View>
+          <View style={s.group}>
+            <Text style={s.label}>{tr('Ghi chú')}</Text>
+            <RichEditor
+              initial={task.note ?? ''}
+              palette={palette}
+              minHeight={120}
+              labels={editorLabels(tr('Không bắt buộc'))}
+              onChange={async (html, body) => { note.current = body.trim() ? html : null; }}
+              dom={{ matchContents: true, scrollEnabled: false }}
+            />
+          </View>
           <View style={s.group}>
             <Field label={tr('Nhãn')} value={tags} onChangeText={setTags} placeholder="#nhà #gấp" hint={tr('Chọn nhãn có sẵn bên dưới, hoặc gõ nhãn mới cách nhau bằng dấu cách. Ở ô thêm nhanh, gõ #nhãn ngay trong tên việc.')} autoCapitalize="none" autoCorrect={false} />
             {known.length > 0 && <Choices value={picked} onChange={pick} options={known.map((t) => ({ value: t, label: `#${t}` }))} />}
@@ -206,9 +232,6 @@ const s = StyleSheet.create({
   // Explicit basis 0: native sized 'flex: N' columns by content, so date and time came out lopsided.
   dateCol: { flexGrow: 6, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   timeCol: { flexGrow: 5, flexShrink: 1, flexBasis: 0, minWidth: 0 },
-  // Long titles wrap instead of scrolling sideways out of view.
-  titleInput: { height: undefined, minHeight: 42, paddingTop: 10, paddingBottom: 10, textAlignVertical: 'top' },
-  note: { height: 88, paddingTop: 12, textAlignVertical: 'top' },
   actions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingBottom: 24 },
   save: { minWidth: 120 },
 });

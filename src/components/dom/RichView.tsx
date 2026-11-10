@@ -10,8 +10,9 @@ export default function RichView({ html, palette }: { html: string; palette: Pal
   return (
     <div style={{ fontFamily: '"Be Vietnam Pro", system-ui, sans-serif', color: p.fg, fontSize: 15, lineHeight: 1.6 }}>
       <style>{`
+        .rv h2 { font-size: 18px; margin: 12px 0 2px; font-weight: 600; }
         .rv h3 { font-size: 16px; margin: 12px 0 2px; font-weight: 600; }
-        .rv h3:first-child { margin-top: 0; }
+        .rv > :first-child { margin-top: 0; }
         .rv p { margin: 0 0 4px; }
         .rv ul, .rv ol { margin: 0 0 4px; padding-left: 22px; }
         .rv blockquote { margin: 0 0 4px; padding-left: 12px; border-left: 3px solid ${p.border}; color: ${p.muted}; }

@@ -1,4 +1,5 @@
 // Tags (#nhà, #gấp) and task search. Pure (node-checked).
+import { htmlToText } from './html.ts';
 import { fold, matches } from './reports.ts';
 import type { Task } from './supabase.ts';
 
@@ -25,7 +26,7 @@ export function searchTasks(tasks: Task[], q: string) {
   if (!want.length && !rest) return [];
   return tasks.filter((t) => {
     const has = t.tags.map(fold);
-    return want.every((w) => has.includes(w)) && (!rest || matches(`${t.title}\n${t.note ?? ''}`, rest));
+    return want.every((w) => has.includes(w)) && (!rest || matches(`${t.title}\n${htmlToText(t.note ?? '')}`, rest));
   });
 }
 

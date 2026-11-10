@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import RichEditor from '@/components/dom/RichEditor';
-import { palette, ReportBadge, timeOf } from '@/components/Report';
+import { editorLabels, palette, ReportBadge, timeOf } from '@/components/Report';
 import { Button, InfoLine, Screen } from '@/components/ui';
 import { color, rule, text } from '@/constants/theme';
 import { fmtDate, localDay, today } from '@/lib/dates';
@@ -145,7 +145,7 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
       <RichEditor
         initial={initial}
         palette={palette}
-        labels={{ bold: tr('Đậm'), italic: tr('Nghiêng'), underline: tr('Gạch chân'), heading: tr('Tiêu đề'), bullets: tr('Gạch đầu dòng'), numbers: tr('Danh sách số'), placeholder: tr('Hôm nay bạn đã làm gì?') }}
+        labels={editorLabels(tr('Hôm nay bạn đã làm gì?'))}
         onChange={async (html, body) => { content.current = { html, text: body }; }}
         dom={{ matchContents: true, scrollEnabled: false }}
       />
