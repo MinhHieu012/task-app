@@ -1,28 +1,39 @@
-import { parseDate, parseTime } from './dates.ts';
 import { tr } from './i18n.ts';
 import type { Subtask, Task } from './supabase.ts';
 
-type When = { date: string | null; time: string | null };
 type Span = Pick<Subtask, 'start_date' | 'start_time' | 'end_date' | 'end_time'>;
 
-/** "DD/MM HH:MM", "DD/MM" or "HH:MM" -> date + time; null when invalid.
- *  A bare time takes `day`; a DD/MM without year is the next such date from `day` (the parent's start). */
-export function parseWhen(s: string, day: string | null): When | null {
-  const parts = s.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return { date: null, time: null };
-  if (parts.length > 2) return null;
-  const timePart = parts.find((p) => p.includes(':'));
-  const datePart = parts.find((p) => p.includes('/'));
-  if (parts.length !== Number(!!timePart) + Number(!!datePart)) return null;
-  const date = datePart ? parseDate(datePart, day ?? undefined) : day;
-  const time = timePart ? parseTime(timePart) : null;
-  if ((datePart && !date) || (timePart && !time) || (time && !date)) return null;
-  return { date, time };
-}
-
-/** Back to the input text: "DD/MM HH:MM". */
+/** "DD/MM HH:MM". */
 export const fmtWhen = (date: string | null, time: string | null) =>
   [date && date.slice(5).split('-').reverse().join('/'), time?.slice(0, 5)].filter(Boolean).join(' ');
+
+/** Read-only span: "10/11 09:00 – 10:30", "10/11 22:00 – 11/11 02:00", "10/11"; '' when unset. */
+export function fmtSpan(x: Span) {
+  if (!x.start_date) return '';
+  const start = fmtWhen(x.start_date, x.start_time);
+  const endDay = x.end_date ?? x.start_date;
+  const end = endDay === x.start_date ? x.end_time?.slice(0, 5) ?? '' : fmtWhen(endDay, x.end_time);
+  return end ? `${start} – ${end}` : start;
+}
+
+/** Where a subtask stands at `now` ("YYYY-MM-DD HH:MM"): late (end passed), now (inside its span), or '' (done, unset, later).
+ *  A missing start time is 00:00, a missing end the end of its last day. */
+export function subStatus(x: Span & { done: boolean }, now: string): 'late' | 'now' | '' {
+  if (x.done || !x.start_date) return '';
+  const start = `${x.start_date} ${x.start_time?.slice(0, 5) ?? '00:00'}`;
+  const end = `${x.end_date ?? x.start_date} ${x.end_time?.slice(0, 5) ?? '23:59'}`;
+  return end < now ? 'late' : start <= now ? 'now' : '';
+}
+
+/** Length of a timed span: "45 phút", "1h30", "2h"; '' without both times. Same arithmetic across days. */
+export function spanLength(x: Span) {
+  if (!x.start_date || !x.start_time || !x.end_time) return '';
+  const min = (d: string, t: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10), +t.slice(0, 2), +t.slice(3, 5)) / 60_000;
+  const m = min(x.end_date ?? x.start_date, x.end_time) - min(x.start_date, x.start_time);
+  if (m <= 0) return '';
+  if (m < 60) return tr('{n} phút', { n: m });
+  return `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}`;
+}
 
 const at = (date: string, time: string | null) => (time ? `${date} ${time.slice(0, 5)}` : date);
 

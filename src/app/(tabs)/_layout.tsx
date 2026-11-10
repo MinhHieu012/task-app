@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
@@ -89,9 +89,11 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [projects] = useRows<Project>('projects', (q) => q.order('name'));
   const task = rows[0];
   const project = projects.find((p) => p.id === task?.project_id)?.name ?? tr('Hộp thư');
+  // Wider than the screens' 360 aside: the form puts date + time side by side and edits subtasks inline.
+  const width = useWindowDimensions().width >= 1440 ? 560 : 480;
 
   return (
-    <FadeIn x={24} ms={duration.panel} style={s.panel}>
+    <FadeIn x={24} ms={duration.panel} style={{ ...s.panel, width }}>
       <View style={s.head}>
         <Text style={s.crumb}>{task ? project : loaded ? tr('Việc đã bị xoá') : ''}</Text>
         <Pressable onPress={onClose} accessibilityLabel={tr('Đóng')} style={(st) => [s.close, (st.pressed || (st as { hovered?: boolean }).hovered) && { backgroundColor: color.itemHover }]}>
@@ -109,8 +111,8 @@ const s = StyleSheet.create({
   row: { flex: 1, flexDirection: 'row', backgroundColor: color.background },
   main: { flex: 1, minWidth: 0 },
   body: { flex: 1, flexDirection: 'row' },
-  // Same width as Today's aside, which steps aside while a task is open.
-  panel: { width: 360, backgroundColor: color.surface, borderLeftWidth: rule.hair, borderLeftColor: color.border },
+  // Takes the place of the screen's aside, which steps aside while a task is open.
+  panel: { backgroundColor: color.surface, borderLeftWidth: rule.hair, borderLeftColor: color.border },
   head: { flexDirection: 'row', alignItems: 'center', paddingTop: 20, paddingLeft: 28, paddingRight: 20 },
   crumb: { ...text.meta, color: color.muted, flex: 1 },
   close: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
