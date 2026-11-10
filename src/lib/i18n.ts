@@ -196,6 +196,11 @@ export const en: Record<string, string> = {
   'Việc & Nhật ký': 'Tasks & Journal',
   'Biết hôm nay làm gì,': 'Know what to do today,',
   'nhớ hôm qua đã làm gì.': 'remember what you did yesterday.',
+  'Một nơi cho việc cần làm và nhật ký việc đã xong.': 'One place for your to-dos and a journal of what’s done.',
+  'Đang mở…': 'Opening…',
+  'Chào buổi sáng': 'Good morning',
+  'Chào buổi chiều': 'Good afternoon',
+  'Chào buổi tối': 'Good evening',
   'Một nơi cho việc cần làm và nhật ký việc đã xong, đồng bộ giữa web và điện thoại.': 'One place for your to-dos and a journal of what’s done, synced between web and phone.',
 
   // Task

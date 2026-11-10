@@ -5,7 +5,7 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { QuickAdd } from '@/components/QuickAdd';
 import { Avatar, type IconName } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
-import { fmtDay, fromIso, today } from '@/lib/dates';
+import { dayTitle, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
@@ -69,7 +69,6 @@ function RailItem({ icon, label, on, badge, onPress }: { icon: IconName; label: 
   );
 }
 
-const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
 /** Wide screens: a white top bar with the quick add box in the middle and today's date on the right. */
 export function TopBar() {
@@ -88,7 +87,7 @@ export function TopBar() {
       <View style={s.qa}><QuickAdd key={path} flat {...add} /></View>
       <View style={s.pill}>
         <Ionicons name="calendar-clear-outline" size={14} color={color.soft} />
-        <Text style={s.pillText}>{tr(WEEKDAY[fromIso(day).getDay()])}, {fmtDay(day)}</Text>
+        <Text style={s.pillText}>{dayTitle(day)}</Text>
       </View>
     </View>
   );

@@ -26,7 +26,16 @@
       "expo-router",
       "expo-notifications",
       "expo-font",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 160,
+          "backgroundColor": "#f9f1ed",
+          "dark": { "image": "./assets/splash-logo-dark.png", "backgroundColor": "#1a1815" }
+        }
+      ]
     ],
     "scheme": "taskapp",
     "experiments": {
