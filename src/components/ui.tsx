@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -156,6 +157,11 @@ export function TextLink({ label, onPress, icon }: { label: string; onPress: () 
       {!icon && <Ionicons name="chevron-forward" size={14} color={color.primary} />}
     </Pressable>
   );
+}
+
+/** The app's mark (two ticks), drawn in `tint`. One white image for every size and colour. */
+export function AppMark({ size, tint }: { size: number; tint: string }) {
+  return <Image source={require('../../assets/mark.png')} style={{ width: size, height: size, tintColor: tint }} accessibilityIgnoresInvertColors />;
 }
 
 /* Badge */

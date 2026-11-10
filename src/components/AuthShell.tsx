@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type IconName, useWide } from '@/components/ui';
+import { AppMark, type IconName, useWide } from '@/components/ui';
 import { color, radius, rule, shadowModal, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
 
@@ -71,7 +71,7 @@ export function Logo({ light }: { light?: boolean }) {
   return (
     <View style={s.brand}>
       <View style={[s.mark, light && { backgroundColor: color.surface }]}>
-        <Ionicons name="checkmark-done" size={22} color={light ? color.foreground : color.surface} />
+        <AppMark size={24} tint={light ? color.foreground : color.surface} />
       </View>
       <Text style={[s.brandName, light && { color: color.surface }]}>{tr('Việc & Nhật ký')}</Text>
     </View>

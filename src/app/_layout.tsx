@@ -73,8 +73,9 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 
   // Tab icon in the chosen accent: the static assets/favicon.png (default terracotta) shows until this
   // runs. Changing the accent reloads the app, so drawing it once at startup keeps it in sync.
-  // Same mark as the rail: Ionicons checkmark-done (512 grid), stroked a little heavier to read at 16px.
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="144" fill="${color.primary}"/><path transform="translate(77 77) scale(0.7)" d="M464 128L240 384l-96-96M144 384l-96-96M368 128L232 284" fill="none" stroke="${color.primaryFg}" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // Same mark as assets/mark.png (scripts drew it on a 512 grid): the back tick whole, the front tick cut by a
+  // tile-coloured stroke along the back one, so the two ticks never merge.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="144" fill="${color.primary}"/><g transform="translate(97 97) scale(0.62)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M236 330L266 360L444 150" stroke="${color.primaryFg}" stroke-width="46"/><path d="M70 270L160 360L338 150" stroke="${color.primary}" stroke-width="98"/><path d="M70 270L160 360L338 150" stroke="${color.primaryFg}" stroke-width="46"/></g></svg>`;
   document.querySelectorAll('link[rel~="icon"]').forEach((l) => l.remove());
   const icon = document.createElement('link');
   icon.rel = 'icon';

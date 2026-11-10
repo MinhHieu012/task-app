@@ -4,7 +4,7 @@ import { createElement, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { GoogleLogo } from '@/components/GoogleLogo';
-import { Avatar, Button, Card, Choices, Field, InfoLine, Screen, useWide } from '@/components/ui';
+import { AppMark, Avatar, Button, Card, Choices, Field, InfoLine, Screen, useWide } from '@/components/ui';
 import { color, dark, radius, rule, text } from '@/constants/theme';
 import { accentTokens, ACCENTS, DEFAULT_ACCENT, isHex } from '@/lib/accent';
 import { localDay } from '@/lib/dates';
@@ -244,7 +244,7 @@ function Preview({ hex }: { hex: string }) {
         <Text style={s.title}>{tr('Xem trước')}</Text>
         <View style={s.brand}>
           <View style={[s.icon, { backgroundColor: t.primary }]}>
-            <Ionicons name="checkmark-done" size={28} color={color.primaryFg} />
+            <AppMark size={32} tint={color.primaryFg} />
           </View>
           <View style={s.info}>
             <Text style={s.email}>{tr('Việc & Nhật ký')}</Text>

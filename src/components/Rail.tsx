@@ -3,7 +3,7 @@ import { type Href, router, usePathname } from 'expo-router';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 
 import { QuickAdd } from '@/components/QuickAdd';
-import { Avatar, type IconName } from '@/components/ui';
+import { AppMark, Avatar, type IconName } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { dayTitle, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -33,7 +33,7 @@ export function Rail() {
 
   return (
     <View style={s.rail}>
-      <View style={s.mark}><Ionicons name="checkmark-done" size={20} color={color.primaryFg} /></View>
+      <View style={s.mark}><AppMark size={22} tint={color.primaryFg} /></View>
       <View style={s.items}>
         {NAV.map((n) => (
           <RailItem key={n.label} icon={n.icon} label={tr(n.label)} on={n.match(path)} badge={n.href === '/' ? over : 0} onPress={() => router.navigate(n.href)} />
