@@ -1,8 +1,11 @@
 // The accent the user picks in Settings, and the tokens derived from it (theme.ts). Pure, so it is checked in node.
 
-export const DEFAULT_ACCENT = '#b04a24';
+/** Until the user picks one: Biển (sea blue). */
+export const DEFAULT_ACCENT = '#2563b0';
+/** The accent the warm neutrals were tuned for (terracotta); neutral() turns them from here. */
+const TUNED_FOR = '#b04a24';
 
-/** Suggested accents, all warm-leaning and readable with white text. `name` is a Vietnamese key for tr(). */
+/** Suggested accents, readable with white text. `name` is a Vietnamese key for tr(). */
 export const ACCENTS = [
   { hex: '#b04a24', name: 'Đất nung' },
   { hex: '#a8325a', name: 'Mận' },
@@ -51,10 +54,10 @@ const fromHsl = (h: number, s: number, l: number) => {
 };
 
 /** The warm neutrals (cream paper, rules, inks) were tuned for terracotta; under another accent they read yellow.
- *  Turn their hue by the accent's distance from the default, keeping saturation and lightness, so the default
- *  theme is unchanged and every other accent gets neutrals of its own family. */
+ *  Turn their hue by the accent's distance from terracotta, keeping saturation and lightness, so terracotta
+ *  is unchanged and every other accent gets neutrals of its own family. */
 export function neutral(hex: string, accent: string) {
-  const turn = hsl(accent)[0] - hsl(DEFAULT_ACCENT)[0];
+  const turn = hsl(accent)[0] - hsl(TUNED_FOR)[0];
   if (!turn) return hex;
   const [h, s, l] = hsl(hex);
   return fromHsl((h + turn + 360) % 360, s, l);

@@ -1,18 +1,20 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { DayChart } from '@/components/DayChart';
 import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar';
 import { QuickAdd } from '@/components/QuickAdd';
 import { ReportCard } from '@/components/Report';
 import { Stat, StatRow, statText } from '@/components/Stat';
 import { TaskGroup } from '@/components/TaskRow';
-import { Badge, Card, EmptyState, Screen, useWide, webEase } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, Field, Screen, useWide } from '@/components/ui';
 import { color, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, toIso, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
 import { dayCounts, groupByProject, monthCounts } from '@/lib/journal';
 import { reportStats, reportStatus, type Status } from '@/lib/reports';
-import { type Project, type Report, type Task, useRows } from '@/lib/supabase';
+import { type JournalNote, ok, type Project, refresh, type Report, supabase, type Task, useRows } from '@/lib/supabase';
 
 const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
@@ -85,6 +87,7 @@ export default function Journal() {
         </View>
       </View>
       <ReportCard day={day} report={byDay.get(day)} status={statuses[day] ?? 'none'} />
+      <DayNote key={day} day={day} />
       {wide && log}
       {loaded && !groups.length && (
         <EmptyState icon="book-outline" title={tr('Chưa ghi việc nào ngày này')}>
@@ -98,7 +101,14 @@ export default function Journal() {
   );
 
   return (
-    <Screen title={tr('Nhật ký')} sub={tr('Tháng {m}, {y}', { m: month, y: year })} maxWidth={100000} footer={wide ? undefined : log}>
+    <Screen
+      title={tr('Nhật ký')}
+      sub={tr('Tháng {m}, {y}', { m: month, y: year })}
+      // Wide screens reach the stats from the rail.
+      right={!wide && <Button title={tr('Thống kê')} icon="stats-chart-outline" onPress={() => router.navigate('/stats')} />}
+      maxWidth={100000}
+      footer={wide ? undefined : log}
+    >
       <StatRow>
         <Stat
           icon="checkmark-done-outline"
@@ -123,10 +133,10 @@ export default function Journal() {
           icon="document-text-outline"
           label={tr('Báo cáo đúng hạn')}
           n={rep.ontime}
-          foot={<Text style={statText.foot}><Text style={statText.b}>{rep.late}</Text> {tr('trễ')}, <Text style={[statText.b, rep.missing > 0 && { color: color.danger }]}>{rep.missing}</Text> {tr('thiếu')}, {tr('chuỗi')} <Text style={statText.b}>{tr('{n} ngày', { n: rep.streak })}</Text></Text>}
+          foot={<Text style={statText.foot}><Text style={statText.b}>{rep.late}</Text> {tr('trễ')}, <Text style={[statText.b, rep.missing > 0 && { color: color.danger }]}>{rep.missing}</Text> {tr('thiếu')}, {tr('chuỗi đúng hạn')} <Text style={statText.b}>{tr('{n} ngày', { n: rep.ontimeStreak })}</Text></Text>}
         />
       </StatRow>
-      <MonthChart counts={counts} missed={missed} selected={day} onSelect={setDay} />
+      <DayChart counts={counts} missed={missed} selected={day} onSelect={setDay} />
       {/* Wide screens: calendar on the left, the selected day on the right. */}
       {wide ? (
         <View style={s.cols}>
@@ -143,68 +153,59 @@ export default function Journal() {
   );
 }
 
-/** Done per day of the month as bars (Figma "Task Done" chart); a bar selects its day. */
-function MonthChart({ counts, missed, selected, onSelect }: { counts: Record<string, number>; missed: Set<string>; selected: string; onSelect: (d: string) => void }) {
-  const now = today();
-  const days = Object.keys(counts).sort();
-  const top = Math.max(...days.map((d) => counts[d]));
-  const max = Math.max(top, 1);
+/** A free note for the day, beside the done tasks and the report. Mounted per day (key), so a draft is per day. */
+function DayNote({ day }: { day: string }) {
+  const [rows, , loaded] = useRows<JournalNote>('journal_notes', (q) => q.eq('day', day), `note:${day}`);
+  const saved = rows[0]?.body ?? '';
+  const [draft, setDraft] = useState<string | null>(null); // null: showing what is saved
+  const [busy, setBusy] = useState(false);
+  const dirty = draft !== null && draft.trim() !== saved;
+
+  const save = async () => {
+    const body = draft!.trim();
+    setBusy(true);
+    // Emptied: the row goes, so an empty note never lingers.
+    const res = body
+      ? await supabase.from('journal_notes').upsert({ day, body, updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' })
+      : await supabase.from('journal_notes').delete().eq('day', day);
+    setBusy(false);
+    if (!ok(res)) return;
+    setDraft(null);
+    refresh('journal_notes');
+  };
+
   return (
-    <Card title={tr('Việc xong theo ngày')} action={<Text style={s.legend}>{top ? tr('Cao nhất {n} việc', { n: top }) : tr('Chưa có việc xong tháng này')}</Text>}>
-      <View style={s.chart}>
-        {days.map((d) => {
-          const future = d > now;
-          const on = d === selected;
-          const v = counts[d];
-          return (
-            <Pressable
-              key={d}
-              onPress={() => onSelect(d)}
-              disabled={future}
-              accessibilityRole="button"
-              accessibilityLabel={tr('{date}: {n} việc xong', { date: fmtDay(d), n: v })}
-              accessibilityState={{ selected: on, disabled: future }}
-              style={s.col}
-            >
-              {(st) => (
-                <>
-                  <View style={s.barArea}>
-                    <View
-                      style={[
-                        s.bar,
-                        webEase,
-                        { height: v ? 6 + (v / max) * 114 : 4 },
-                        { backgroundColor: on ? color.primary : (st as { hovered?: boolean }).hovered ? color.chartBarHover : v ? color.chartBar : color.border },
-                        future && { opacity: 0.4 },
-                      ]}
-                    />
-                  </View>
-                  <View style={[s.miss, missed.has(d) && { backgroundColor: color.warning }]} />
-                  <Text style={[s.tick, on && { color: color.primary, fontWeight: '600' }]}>{Number(d.slice(8)) % 5 === 1 || on ? Number(d.slice(8)) : ''}</Text>
-                </>
-              )}
-            </Pressable>
-          );
-        })}
+    <Card title={tr('Ghi chú trong ngày')}>
+      <View style={s.note}>
+        <Field
+          value={draft ?? saved}
+          onChangeText={setDraft}
+          editable={loaded}
+          multiline
+          maxLength={20000}
+          placeholder={tr('Hôm nay thế nào? Điều gì đáng nhớ, điều gì muốn làm khác đi…')}
+          aria-label={tr('Ghi chú trong ngày')}
+          style={s.noteInput}
+        />
+        {dirty && (
+          <View style={s.noteActions}>
+            <Button title={tr('Huỷ')} variant="ghost" onPress={() => setDraft(null)} />
+            <Button title={tr('Lưu ghi chú')} variant="primary" onPress={save} loading={busy} />
+          </View>
+        )}
       </View>
     </Card>
   );
 }
 
 const s = StyleSheet.create({
+  note: { gap: 12 },
+  noteInput: { height: 112, paddingTop: 12, textAlignVertical: 'top' },
+  noteActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   cols: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
   calCol: { width: 380 },
   dayCol: { flex: 1, minWidth: 0, gap: 16 },
   dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingBottom: 10, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   dayTitle: { ...text.h2, color: color.foreground, fontVariant: ['tabular-nums'] },
   badges: { flexDirection: 'row', gap: 6 },
-  legend: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
-  // The month's one chart, set large: bars stand on a baseline rule.
-  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  col: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 },
-  barArea: { height: 140, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
-  bar: { width: '100%', maxWidth: 18, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  miss: { width: 5, height: 5, borderRadius: 3 },
-  // Fixed width wider than a phone's day column, centred on it, so two-digit days are not cut.
-  tick: { ...text.xs, fontSize: 11, lineHeight: 14, height: 14, width: 28, textAlign: 'center', color: color.muted, fontVariant: ['tabular-nums'] },
 });

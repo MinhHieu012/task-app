@@ -1,6 +1,6 @@
 // Hallmark redesign (2026-11-09), softened the same day: Almanac's structure (ruled sheets, tables, tabular
 // figures) in a warmer material. Cream stock, white sheets, warm ink, soft rounded corners, light rules, one
-// terracotta accent for the primary action and the current selection only. The slate/ink/square version read cold.
+// accent (designed in terracotta, sea blue by default since) for the primary action and the current selection only. The slate/ink/square version read cold.
 // Every text colour passes 4.5:1 on the sheet; priority 2 and 4 text sits a step darker than their marks.
 // Be Vietnam Pro stays the one family: it has full Vietnamese glyphs (DM Sans broke them). Loaded in src/app/_layout.tsx.
 import { Appearance } from 'react-native';
@@ -11,15 +11,15 @@ import { getPref } from '@/lib/prefs';
 export const font = 'Be Vietnam Pro';
 
 // Light / dark / system, from Settings. Like the accent it is read once before any StyleSheet is built, so
-// 'system' follows the OS theme as of launch (a switch while the app runs shows after the next start).
-const mode = getPref('theme') ?? 'system';
+// Light until the user picks otherwise. 'system' follows the OS theme as of launch (a switch while the app runs shows after the next start).
+const mode = getPref('theme') ?? 'light';
 export const dark = mode === 'dark' || (mode === 'system' && Appearance.getColorScheme() === 'dark');
 /** Light value, or its dark-theme twin. */
 const d = <T,>(light: T, night: T) => (dark ? night : light);
 
-// The accent is the user's pick from Settings (default terracotta), read before any StyleSheet is built.
+// The accent is the user's pick from Settings (default Biển, sea blue), read before any StyleSheet is built.
 const accent = accentTokens(getPref('accent') ?? DEFAULT_ACCENT, dark);
-// Warm neutrals follow the accent's hue (unchanged for the default), so a blue accent doesn't sit on yellow cream.
+// Warm neutrals follow the accent's hue (unchanged for terracotta, their base), so blue doesn't sit on yellow cream.
 const n = (hex: string) => neutral(hex, accent.primary);
 
 export const color = {

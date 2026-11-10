@@ -3,7 +3,7 @@ import { type Href, router, usePathname } from 'expo-router';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 
 import { QuickAdd } from '@/components/QuickAdd';
-import { Avatar, type IconName } from '@/components/ui';
+import { AppMark, Avatar, type IconName } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { dayTitle, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -15,6 +15,8 @@ export const NAV: { href: Href; label: string; icon: IconName; match: (p: string
   { href: '/inbox', label: 'Hộp thư', icon: 'file-tray-outline', match: (p) => p === '/inbox' },
   { href: '/projects', label: 'Project', icon: 'folder-outline', match: (p) => p.startsWith('/project') },
   { href: '/journal', label: 'Nhật ký', icon: 'book-outline', match: (p) => p === '/journal' },
+  { href: '/stats', label: 'Thống kê', icon: 'stats-chart-outline', match: (p) => p === '/stats' },
+  { href: '/search', label: 'Tìm kiếm', icon: 'search-outline', match: (p) => p === '/search' },
 ];
 
 /** Overdue open tasks, for the dot on "Hôm nay". */
@@ -31,7 +33,7 @@ export function Rail() {
 
   return (
     <View style={s.rail}>
-      <View style={s.mark}><Ionicons name="checkmark-done" size={20} color={color.primaryFg} /></View>
+      <View style={s.mark}><AppMark size={22} tint={color.primaryFg} /></View>
       <View style={s.items}>
         {NAV.map((n) => (
           <RailItem key={n.label} icon={n.icon} label={tr(n.label)} on={n.match(path)} badge={n.href === '/' ? over : 0} onPress={() => router.navigate(n.href)} />
@@ -107,7 +109,8 @@ const s = StyleSheet.create({
   tip: { ...text.xs, position: 'absolute', left: 58, top: 14, backgroundColor: color.foreground, color: color.primaryFg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm, zIndex: 30, width: 'max-content' as never },
   foot: { alignItems: 'center', gap: 8 },
 
-  top: { height: 72, flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 32, backgroundColor: color.surface, borderBottomWidth: rule.hair, borderBottomColor: color.border },
+  // Above the page so quick add's tag suggestions can drop over it.
+  top: { zIndex: 10, height: 72, flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 32, backgroundColor: color.surface, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   qa: { flex: 1, maxWidth: 460, marginHorizontal: 'auto' },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36 },
   pillText: { ...text.meta, color: color.soft, fontVariant: ['tabular-nums'] },

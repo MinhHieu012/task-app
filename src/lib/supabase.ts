@@ -3,10 +3,13 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type PostgrestFilterBuilder, type Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { AppState, Platform } from 'react-native';
+import * as ExpoCrypto from 'expo-crypto';
+import * as WebBrowser from 'expo-web-browser';
+import { AppState, Linking, Platform } from 'react-native';
 
 import { tr } from './i18n';
 import { showError } from './notify';
+import { tagCounts } from './tags';
 
 export type Project = { id: string; name: string; created_at: string };
 export type Task = {
@@ -23,6 +26,7 @@ export type Task = {
   completed_at: string | null;
   completed_day: string | null;
   recurring_copy: boolean;
+  tags: string[]; // lowercase, without '#'
   created_at: string;
 };
 export type Report = {
@@ -36,7 +40,18 @@ export type Report = {
   submitted_at: string;
   updated_at: string;
 };
+export type JournalNote = { id: string; day: string; body: string; updated_at: string };
 export type Subtask ={ id: string; task_id: string; title: string; done: boolean; start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null; created_at: string };
+
+// Native has no WebCrypto, so supabase-js fell back to a Math.random PKCE verifier sent as "plain" (the secret
+// in the sign-in URL). Fill the two calls it makes from expo-crypto, so the verifier is random and only its
+// SHA-256 leaves the device. Web has crypto already.
+if (Platform.OS !== 'web') {
+  const c = (globalThis.crypto ??= {} as Crypto);
+  c.getRandomValues ??= ExpoCrypto.getRandomValues as Crypto['getRandomValues'];
+  // @ts-expect-error a partial SubtleCrypto: supabase-js only calls digest('SHA-256', bytes)
+  c.subtle ??= { digest: (_alg: string, data: BufferSource) => ExpoCrypto.digest(ExpoCrypto.CryptoDigestAlgorithm.SHA256, data) };
+}
 
 export const supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, process.env.EXPO_PUBLIC_SUPABASE_KEY!, {
   auth: {
@@ -88,7 +103,60 @@ const AUTH_ERRORS: Record<string, string> = {
   over_request_rate_limit: 'Thử quá nhiều lần. Đợi một lúc rồi thử lại.',
   otp_expired: 'Link đã hết hạn hoặc được mở trên máy khác. Gửi lại link từ màn đăng nhập.',
   signup_disabled: 'Hiện chưa mở đăng ký tài khoản mới.',
+  identity_already_exists: 'Tài khoản Google này đã gắn với một tài khoản khác.',
+  manual_linking_disabled: 'Chưa bật liên kết tài khoản trong Supabase (Allow manual linking).',
+  provider_disabled: 'Chưa bật đăng nhập Google trong Supabase.',
+  access_denied: 'Bạn đã huỷ đăng nhập Google.',
+  single_identity_not_deletable: 'Đây là cách đăng nhập duy nhất của tài khoản nên chưa gỡ được.',
 };
+
+/** Where an auth email or OAuth round trip comes back to; it must be in Supabase's Redirect URLs, else Supabase
+ *  silently sends the user to the Site URL (the web app) instead. Native: the bare scheme, not Linking.createURL,
+ *  which adds the dev server host (taskapp://192.168.x.x:8081/). Supabase also rejects any non-loopback IP host,
+ *  so Expo Go over the LAN (exp://192.168.x.x) can never sign in with Google: use a development build. */
+export const authRedirect = (path: string) =>
+  Platform.OS === 'web' ? `${window.location.origin}${path}` : `taskapp://${path.replace(/^\//, '')}`;
+
+/** Google sign-in (`link` false) or linking Google to the signed-in account (`link` true), so it can sign in
+ *  later. Web leaves the page for Google and comes back to `path`; the client trades the ?code= itself
+ *  (detectSessionInUrl). Native opens an auth browser and trades the code here. Same-email accounts are
+ *  linked by Supabase on its own; `link` is for a Google account with another email. */
+export async function google(link: boolean, path = '/') {
+  const web = Platform.OS === 'web';
+  const redirectTo = authRedirect(path);
+  const options = { redirectTo, skipBrowserRedirect: !web };
+  const res = link ? await supabase.auth.linkIdentity({ provider: 'google', options }) : await supabase.auth.signInWithOAuth({ provider: 'google', options });
+  if (!ok(res) || web || !res.data.url) return;
+  // Supabase sends the bare taskapp:// back as taskapp:?code=… (Go drops the empty authority), which the browser
+  // module does not see as its redirect, so it reports "dismiss" and the code was lost. The redirect is caught as
+  // a deep link instead, compared without the "//".
+  const bare = (u: string) => u.replace('://', ':');
+  let linked = '';
+  const sub = Linking.addEventListener('url', ({ url }) => { if (bare(url).startsWith(bare(redirectTo))) linked = url; });
+  const back = await WebBrowser.openAuthSessionAsync(res.data.url, redirectTo);
+  if (back.type !== 'success' && !linked) await new Promise((r) => setTimeout(r, 500)); // the link event may trail
+  sub.remove();
+  const url = back.type === 'success' ? back.url : linked;
+  if (!url) return; // closed by the user
+  const code = urlParams(url).get('code');
+  if (code) ok(await supabase.auth.exchangeCodeForSession(code));
+  else authUrlError(url);
+  if (link) supabase.auth.refreshSession(); // the new identity shows in the user only after a refresh
+}
+
+const urlParams = (url: string) => new URLSearchParams(url.split(/[?#]/).slice(1).join('&'));
+/** Supabase reports a failed OAuth round trip in the URL it sends back (error_code=…), not as a thrown error. */
+const authUrlError = (url: string) => {
+  const q = urlParams(url);
+  const code = q.get('error_code') ?? q.get('error');
+  if (code) ok({ error: { code, message: q.get('error_description') ?? code } });
+};
+// Web: the redirect back from Google lands as a fresh page load. Later, so tr and the toasts are ready.
+if (Platform.OS === 'web' && typeof window !== 'undefined' && /[?&#]error/.test(window.location.href)) {
+  const url = window.location.href;
+  window.history.replaceState(null, '', window.location.pathname); // a reload must not show it again
+  setTimeout(() => authUrlError(url));
+}
 
 /** Surfaces a Supabase error on web and native; returns true on success. */
 export function ok({ error }: { error: { message: string; code?: string } | null }) {
@@ -148,4 +216,11 @@ export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q
   }, [load, table]);
 
   return [rows ?? [], load, rows !== undefined] as const; // [rows, reload, loaded]
+}
+
+/** Tags already in use, most used first (task form chips, quick add suggestions). Done copies of recurring tasks
+ *  are skipped so one task doesn't count many times. ponytail: reads every tagged task; a tags view if that grows. */
+export function useKnownTags() {
+  const [tagged] = useRows<Task>('tasks', (q) => q.neq('tags', '{}'), 'tagged');
+  return tagCounts(tagged.filter((t) => !t.recurring_copy)).map(([t]) => t);
 }

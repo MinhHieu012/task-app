@@ -26,6 +26,7 @@ create table tasks (
   completed_day date,
   -- True only on the done copy a recurring tick leaves in the journal.
   recurring_copy boolean not null default false,
+  tags text[] not null default '{}', -- lowercase, without '#'
   created_at timestamptz not null default now(),
   check ((completed_at is null) = (completed_day is null)),
   check (due_time is null or due_date is not null),
@@ -78,14 +79,37 @@ begin
   if not found then raise exception 'task not found'; end if;
   if p_next_due is null or p_next_due <= t.due_date then raise exception 'invalid next due date'; end if;
 
-  insert into tasks (project_id, title, note, priority, due_date, due_time, end_date, end_time, completed_at, completed_day, recurring_copy)
-  values (t.project_id, t.title, t.note, t.priority, t.due_date, t.due_time, t.end_date, t.end_time, p_completed_at, p_completed_day, true);
+  insert into tasks (project_id, title, note, priority, due_date, due_time, end_date, end_time, completed_at, completed_day, recurring_copy, tags)
+  values (t.project_id, t.title, t.note, t.priority, t.due_date, t.due_time, t.end_date, t.end_time, p_completed_at, p_completed_day, true, t.tags);
 
   -- The end moves with the start, keeping the same span.
   update tasks set due_date = p_next_due, end_date = p_next_due + (end_date - due_date) where id = p_task_id;
   -- The checklist moves with the task and starts the next round unticked.
   update subtasks set done = false, start_date = start_date + (p_next_due - t.due_date), end_date = end_date + (p_next_due - t.due_date)
   where task_id = p_task_id;
+end $$;
+
+-- Move open tasks to new start days, one day per task, in one transaction: snooze one task ("Mai", "Tuần sau"),
+-- move every overdue task to today, and undo either (each task back to its own old day).
+-- The end and the subtasks move by the same number of days, so spans and subtask bounds stay valid.
+create function move_tasks(p_ids uuid[], p_days date[])
+returns int
+language plpgsql security invoker set search_path = public
+as $$
+declare n int;
+begin
+  -- Data-modifying CTEs always run, so the subtask update happens even though nothing reads `subs`.
+  with m as (
+    select t.id, d.day - t.due_date as delta
+    from unnest(p_ids, p_days) as d(id, day) join tasks t on t.id = d.id
+    where t.completed_at is null and t.due_date is not null and d.day is not null
+  ), upd as (
+    update tasks t set due_date = t.due_date + m.delta, end_date = t.end_date + m.delta from m where t.id = m.id returning t.id
+  ), subs as (
+    update subtasks s set start_date = s.start_date + m.delta, end_date = s.end_date + m.delta from m where s.task_id = m.id
+  )
+  select count(*) into n from upd;
+  return n;
 end $$;
 
 -- End-of-day report, one per user and day, due by 21:00 local time.
@@ -109,4 +133,17 @@ create table daily_reports (
 alter table daily_reports enable row level security;
 create policy "own rows" on daily_reports for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
-alter publication supabase_realtime add table projects, tasks, subtasks, daily_reports;
+-- A free note per day in the journal, beside the done tasks and the report.
+create table journal_notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  day date not null,
+  body text not null check (char_length(body) <= 20000),
+  updated_at timestamptz not null default now(),
+  unique (user_id, day)
+);
+
+alter table journal_notes enable row level security;
+create policy "own rows" on journal_notes for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+alter publication supabase_realtime add table projects, tasks, subtasks, daily_reports, journal_notes;

@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Animated, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { animate, ConfirmModal, ease, IconButton, type IconName, reducedMotion } from '@/components/ui';
+import { animate, ConfirmModal, ease, IconButton, type IconName, reducedMotion, TextLink } from '@/components/ui';
 import { color, duration, radius, rule, shadowModal, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
 import { answer, dismissToast, notifyStore, type Toast, type Tone } from '@/lib/notify';
@@ -55,11 +55,19 @@ function ToastCard({ toast: t, fromRight }: { toast: Toast; fromRight: boolean }
     a.start(({ finished }) => { if (finished && leaving) dismissToast(t.id); });
     return () => a.stop();
   }, [leaving, v, t.id]);
-  // Errors stay longer: they usually need reading.
+  // Errors stay longer: they usually need reading. A toast with an action (undo) stays longest, to be caught.
+  const ms = t.action ? 10000 : t.tone === 'error' ? 6000 : 4000;
   useEffect(() => {
-    const timer = setTimeout(() => setLeaving(true), t.tone === 'error' ? 6000 : 4000);
+    const timer = setTimeout(() => setLeaving(true), ms);
     return () => clearTimeout(timer);
-  }, [t.tone]);
+  }, [ms]);
+  // The action shows the seconds it has left, so the user knows how long the undo stays.
+  const [left, setLeft] = useState(ms / 1000);
+  useEffect(() => {
+    if (!t.action) return;
+    const tick = setInterval(() => setLeft((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(tick);
+  }, [t.action]);
 
   return (
     <Animated.View
@@ -71,6 +79,11 @@ function ToastCard({ toast: t, fromRight }: { toast: Toast; fromRight: boolean }
       <View style={s.body}>
         <Text style={s.title}>{t.title}</Text>
         {!!t.message && <Text style={s.message}>{t.message}</Text>}
+        {t.action && (
+          <View style={s.action}>
+            <TextLink icon="arrow-undo" label={`${t.action.label} (${left}s)`} onPress={() => { t.action!.run(); setLeaving(true); }} />
+          </View>
+        )}
       </View>
       <IconButton icon="close" label={tr('Đóng thông báo')} onPress={() => setLeaving(true)} />
     </Animated.View>
@@ -93,4 +106,5 @@ const s = StyleSheet.create({
   body: { flex: 1, minWidth: 0, paddingTop: 5 },
   title: { ...text.smMedium, color: color.foreground },
   message: { ...text.meta, color: color.muted, marginTop: 2 },
+  action: { marginTop: 8, alignSelf: 'flex-start' },
 });

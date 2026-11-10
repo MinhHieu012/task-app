@@ -109,7 +109,8 @@ function Overview({ reports }: { reports: Report[] }) {
         <InfoLine icon="checkmark-circle-outline" label={tr('Đúng hạn')} n={st.ontime} tone={st.ontime ? color.success : undefined} />
         <InfoLine icon="time-outline" label={tr('Nộp trễ')} n={st.late} tone={st.late ? color.warning : undefined} />
         <InfoLine icon="alert-circle-outline" label={tr('Thiếu báo cáo')} n={st.missing} tone={st.missing ? color.danger : undefined} />
-        <InfoLine icon="flame-outline" label={tr('Chuỗi hiện tại')} n={tr('{n} ngày', { n: st.streak })} last />
+        <InfoLine icon="flame-outline" label={tr('Chuỗi hiện tại')} n={tr('{n} ngày', { n: st.streak })} />
+        <InfoLine icon="flame" label={tr('Chuỗi đúng hạn')} n={tr('{n} ngày', { n: st.ontimeStreak })} tone={st.ontimeStreak ? color.primary : undefined} last />
       </View>
     </>
   );

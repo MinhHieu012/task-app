@@ -4,13 +4,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { ACCENTS, accentTokens, contrast, DARK_SURFACE, DEFAULT_ACCENT, neutral } from './accent.ts';
-import { dayTitle, fmtDate, fromIso, greeting, localDay, monthGrid, nextDue, parseDate, parseTime, spanRange, toIso } from './dates.ts';
+import { daysIn, dayTitle, nextMonday, fmtDate, fromIso, greeting, localDay, monthGrid, nextDue, parseDate, parseTime, periodRange, shiftPeriod, spanRange, toIso } from './dates.ts';
 import { en, setLang, tr } from './i18n.ts';
-import { dayCounts, groupByProject, monthCounts } from './journal.ts';
+import { dayCounts, groupByProject, monthCounts, periodStats } from './journal.ts';
 import { answer, confirmAction, notifyStore, toast } from './notify.ts';
 import { draftHtml, isLate, matches, reportReminders, reportStats, reportStatus, snippet } from './reports.ts';
 import { fmtSpan, spanError, spanLength, subStatus } from './subtasks.ts';
 import type { Project, Task } from './supabase.ts';
+import { parseQuick, quickFields } from './quick.ts';
+import { completeTag, fmtTags, parseTags, searchTasks, splitTags, suggestTags, tagCounts } from './tags.ts';
 
 // 2026-11-02 is a Monday.
 assert.equal(fromIso('2026-11-02').getDay(), 1);
@@ -73,6 +75,7 @@ const task = (t: Partial<Task>): Task => ({
   completed_at: null,
   completed_day: null,
   recurring_copy: false,
+  tags: [],
   created_at: '2026-11-01T00:00:00Z',
   ...t,
 });
@@ -187,8 +190,10 @@ assert.equal(reportStatus('2026-11-08', { late: true }, '2026-11-05', at('2026-1
   const reps = [{ day: '2026-11-05', late: false }, { day: '2026-11-07', late: true }, { day: '2026-11-08', late: false }];
   const days = ['2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09'];
   // 09 is pending (morning), so the streak counts back from 08: 08, 07.
-  assert.deepEqual(reportStats(days, reps, '2026-11-05', at('2026-11-09', '10:00')), { ontime: 2, late: 1, missing: 1, streak: 2 });
-  assert.deepEqual(reportStats(days, [...reps, { day: '2026-11-09', late: false }], '2026-11-05', at('2026-11-09', '22:00')), { ontime: 3, late: 1, missing: 1, streak: 3 });
+  assert.deepEqual(reportStats(days, reps, '2026-11-05', at('2026-11-09', '10:00')), { ontime: 2, late: 1, missing: 1, streak: 2, ontimeStreak: 1 });
+  assert.deepEqual(reportStats(days, [...reps, { day: '2026-11-09', late: false }], '2026-11-05', at('2026-11-09', '22:00')), { ontime: 3, late: 1, missing: 1, streak: 3, ontimeStreak: 2 });
+  // A late report today ends the on-time run at once.
+  assert.equal(reportStats(days, [...reps, { day: '2026-11-09', late: true }], '2026-11-05', at('2026-11-09', '22:00')).ontimeStreak, 0);
 }
 // Draft escapes task titles; search ignores case and Vietnamese marks.
 assert.equal(draftHtml([{ name: 'A&B', items: [{ title: '<script>x</script>' }] }], []).includes('<b>A&amp;B</b>: &lt;script&gt;x&lt;/script&gt;'), true);
@@ -204,6 +209,80 @@ assert.equal(snippet('Đã gửi báo cáo tuần cho sếp', 'BAO CAO', 100), '
   ]);
 }
 
+// Tags: quick add pulls #tags out of the title; the form field takes spaces or commas; search filters by both.
+assert.deepEqual(splitTags('Gửi mail #Công-việc cho sếp #gấp #gấp'), { title: 'Gửi mail cho sếp', tags: ['công-việc', 'gấp'] });
+assert.deepEqual(splitTags('Họp lúc 9h'), { title: 'Họp lúc 9h', tags: [] });
+assert.deepEqual(parseTags('#nhà, gấp  #Nhà'), ['nhà', 'gấp']);
+assert.equal(fmtTags(['nhà', 'gấp']), '#nhà #gấp');
+{
+  const ts = [task({ title: 'Gửi báo cáo', tags: ['công-việc'] }), task({ title: 'Đi chợ', note: 'mua rau', tags: ['nhà'] }), task({ title: 'Dọn nhà', tags: ['nhà', 'gấp'] })];
+  assert.deepEqual(searchTasks(ts, 'bao cao').map((t) => t.title), ['Gửi báo cáo']);
+  assert.deepEqual(searchTasks(ts, 'RAU').map((t) => t.title), ['Đi chợ']); // the note counts
+  assert.deepEqual(searchTasks(ts, '#nha').map((t) => t.title), ['Đi chợ', 'Dọn nhà']); // tags fold accents too
+  assert.deepEqual(searchTasks(ts, '#nhà #gấp').map((t) => t.title), ['Dọn nhà']);
+  assert.deepEqual(searchTasks(ts, '#nhà chợ').map((t) => t.title), ['Đi chợ']);
+  assert.deepEqual(searchTasks(ts, '  '), []);
+  assert.deepEqual(tagCounts(ts), [['nhà', 2], ['công-việc', 1], ['gấp', 1]]);
+}
+
+// Quick add suggests known tags for the "#..." being typed, and completes it.
+{
+  const known = ['nhà', 'nhanh', 'gấp', 'công-việc'];
+  assert.deepEqual(suggestTags('Đi chợ #nh', known), ['nhà', 'nhanh']);
+  assert.deepEqual(suggestTags('Đi chợ #NHA', known), ['nhà', 'nhanh']); // case and accents ignored
+  assert.deepEqual(suggestTags('Đi chợ #', known), known); // just "#": everything
+  assert.deepEqual(suggestTags('#nhà dọn #nh', known), ['nhanh']); // already used: left out
+  assert.deepEqual(suggestTags('#nhà', known), ['nhanh']); // typed in full: no need to suggest it
+  assert.deepEqual(suggestTags('Đi chợ', known), []);
+  assert.deepEqual(suggestTags('#nh xong', known), []); // only the word at the end
+  assert.equal(completeTag('Đi chợ #nh', 'nhà'), 'Đi chợ #nhà ');
+}
+
+// Quick add syntax. 2026-11-10 is a Tuesday.
+{
+  const T = '2026-11-10';
+  assert.deepEqual(parseQuick('Họp nhóm mai 9h !1 #công-việc', T), { title: 'Họp nhóm', tags: ['công-việc'], date: '2026-11-11', time: '09:00', priority: 1 });
+  assert.deepEqual(parseQuick('Gọi chị Mai', T), { title: 'Gọi chị Mai', tags: [] }); // a name, not tomorrow
+  assert.equal(parseQuick('Nộp thuế ngày mai', T).date, '2026-11-11');
+  assert.equal(parseQuick('Đi khám mốt', T).date, '2026-11-12');
+  assert.equal(parseQuick('Báo cáo thứ 6', T).date, '2026-11-13');
+  assert.equal(parseQuick('Báo cáo Thứ Sáu', T).date, '2026-11-13');
+  assert.equal(parseQuick('Họp thứ 3', T).date, '2026-11-17'); // today is Tuesday: next week's
+  assert.equal(parseQuick('Đá bóng cn', T).date, '2026-11-15');
+  assert.equal(parseQuick('Đi chơi chủ nhật', T).date, '2026-11-15');
+  assert.equal(parseQuick('Lên kế hoạch tuần sau', T).date, '2026-11-16');
+  assert.equal(parseQuick('Sinh nhật 20/11', T).date, '2026-11-20');
+  assert.deepEqual(parseQuick('Họp lúc 14h30', T), { title: 'Họp', tags: [], time: '14:30' });
+  assert.equal(parseQuick('Gọi 9:05', T).time, '09:05');
+  assert.equal(parseQuick('Chạy 25h', T).time, undefined); // not a time: stays in the title
+  assert.equal(parseQuick('Chạy 25h', T).title, 'Chạy 25h');
+  assert.equal(parseQuick('Đọc chương !4', T).title, 'Đọc chương !4');
+  assert.equal(parseQuick('mai mai', T).title, 'mai'); // one date only; the second stays
+  assert.equal(nextMonday('2026-11-16'), '2026-11-23'); // a Monday: the one after
+  // Fields: a day alone is all day; a time alone is today; nothing parsed changes nothing.
+  assert.deepEqual(quickFields(parseQuick('A mai', T), T), { due_date: '2026-11-11', due_time: null, end_date: null, end_time: null });
+  assert.deepEqual(quickFields(parseQuick('A 9h !2', T), T), { due_date: T, due_time: '09:00', end_date: T, end_time: '23:59:59', priority: 2 });
+  assert.deepEqual(quickFields(parseQuick('A', T), T), {});
+}
+
+// Stats periods: weeks run Monday to Sunday, months are calendar months; shifting crosses years.
+assert.deepEqual(periodRange('week', '2026-11-08'), ['2026-11-02', '2026-11-08']); // a Sunday stays in its week
+assert.deepEqual(periodRange('week', MON), [MON, '2026-11-08']);
+assert.deepEqual(periodRange('month', '2026-02-14'), ['2026-02-01', '2026-02-28']);
+assert.equal(shiftPeriod('week', WED, -1), '2026-10-26');
+assert.equal(shiftPeriod('month', '2026-12-31', 1), '2027-01-01');
+assert.equal(daysIn(MON, WED).length, 3);
+{
+  // rows: two due Tuesday, one done on time, one done late; one due Tuesday never done; one quick log.
+  const st = periodStats(rows, daysIn(MON, WED), projects, '2026-11-05');
+  assert.deepEqual(st.perDay, [0, 2, 1]);
+  assert.equal(st.done, 3);
+  assert.equal(st.missed, 2);
+  assert.equal(st.rate, 1 / 3);
+  assert.deepEqual(st.byProject, [{ id: null, name: 'Hộp thư', n: 3 }]);
+  assert.equal(periodStats([], daysIn(MON, WED), projects, '2026-11-05').rate, null);
+}
+
 // Accent: default kept as is; a light pick is darkened until white text reads; junk falls back to the default.
 assert.equal(accentTokens(DEFAULT_ACCENT).primary, DEFAULT_ACCENT);
 assert.ok(contrast(accentTokens('#ffe066').primary, '#ffffff') >= 4.5);
@@ -211,8 +290,8 @@ assert.equal(accentTokens('red').primary, DEFAULT_ACCENT);
 // Dark theme: every preset reads as text on the dark sheet.
 for (const { hex } of ACCENTS) assert.ok(contrast(accentTokens(hex, true).primary, DARK_SURFACE) >= 4.5, `dark ${hex}`);
 assert.match(accentTokens('#2563B0').light, /^#[0-9a-f]{6}$/);
-// Neutrals: untouched under the default accent; under every preset the inks keep their contrast on the sheet.
-assert.equal(neutral('#f6f3ee', DEFAULT_ACCENT), '#f6f3ee');
+// Neutrals: untouched under terracotta (what they were tuned for); under every preset the inks keep their contrast on the sheet.
+assert.equal(neutral('#f6f3ee', '#b04a24'), '#f6f3ee'); // tuned for terracotta: unchanged there
 assert.notEqual(neutral('#f6f3ee', '#2563b0'), '#f6f3ee');
 for (const { hex } of ACCENTS) {
   const a = accentTokens(hex).primary;
@@ -234,13 +313,13 @@ assert.equal(greeting(4), 'Chào buổi tối');
 assert.equal(greeting(5), 'Chào buổi sáng');
 assert.equal(greeting(12), 'Chào buổi chiều');
 assert.equal(greeting(18), 'Chào buổi tối');
-// Every quoted Vietnamese string in the app (tr keys and the constants translated at render) has an English entry.
+// Every quoted Vietnamese string in the app (quick.ts holds syntax words, not UI text) (tr keys and the constants translated at render) has an English entry.
 const missing: string[] = [];
 const scan = (dir: string): void => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const f = `${dir}/${e.name}`;
     if (e.isDirectory()) scan(f);
-    else if (/\.tsx?$/.test(f) && !/design-system|logic\.check|i18n\.ts/.test(f)) {
+    else if (/\.tsx?$/.test(f) && !/design-system|logic\.check|i18n\.ts|quick\.ts/.test(f)) {
       for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
         if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(line)) continue;
         for (const m of line.matchAll(/'([^'\n]*[À-ỹĐđ][^'\n]*)'/g)) if (!(m[1] in en)) missing.push(`${f}: ${m[1]}`);
