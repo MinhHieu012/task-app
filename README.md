@@ -68,3 +68,7 @@ Dữ liệu gồm 4 bảng: `projects`, `tasks`, `subtasks`, `daily_reports`, đ
 ## Triển khai web
 
 Web được deploy lên Vercel (`vercel.json`): build bằng `npx expo export -p web`, xuất ra `dist/`, chỉ tự deploy từ nhánh `main`. Đặt hai biến `EXPO_PUBLIC_SUPABASE_*` trong project Vercel.
+
+## Giấy phép
+
+MIT, xem [LICENSE](LICENSE).
