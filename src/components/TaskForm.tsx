@@ -1,18 +1,22 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { type ReactNode, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DateField, TimeField } from '@/components/DateTime';
-import RichEditor from '@/components/dom/RichEditor';
+import { Editor } from '@/components/Rich';
 import { editorLabels, palette } from '@/components/Report';
+import { Sheet } from '@/components/Sheet';
 import { addSubtask, Subtasks } from '@/components/Subtasks';
-import { Button, Card, Choices, ErrorText, Field } from '@/components/ui';
-import { color, priority, text } from '@/constants/theme';
-import { fromIso, parseDate, parseTime } from '@/lib/dates';
+import { priorityLabel, removeTask, repeatLabel } from '@/components/TaskRow';
+import { active, Button, Card, Choices, ErrorText, Field, ICON_INSET, ListGroup, ListItem } from '@/components/ui';
+import { color, priority, radius, rule, text } from '@/constants/theme';
+import { addDays, fmtDate, fromIso, nextMonday, parseDate, parseTime, today } from '@/lib/dates';
+import { haptic } from '@/lib/haptics';
 import { titleHtml, titleText } from '@/lib/html';
 import { tr } from '@/lib/i18n';
-import { confirmAction, toast } from '@/lib/notify';
 import { spanError } from '@/lib/subtasks';
-import { ok, type Project, refresh, type Subtask, supabase, type Task, useKnownTags } from '@/lib/supabase';
+import { ok, type Project, type Subtask, supabase, type Task, useKnownTags } from '@/lib/supabase';
 import { fmtTags, parseTags } from '@/lib/tags';
 
 type Kind = '' | 'daily' | 'weekly' | 'monthly' | 'every';
@@ -20,7 +24,8 @@ const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const ddmmyyyy = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '');
 
 /** Edit form for one task; mount with key={task.id} so switching tasks resets it. */
-export function TaskForm({ task, projects, onDone, bare }: { task: Task; projects: Project[]; onDone: () => void; bare?: boolean }) {
+export function TaskForm({ task, projects, onDone, bare, sheet }: { task: Task; projects: Project[]; onDone: () => void; bare?: boolean; sheet?: boolean }) {
+  // sheet: phones, the full-height sheet of the task route (TaskSheet below); same state, save and delete.
   // bare: straight on the white side panel; otherwise white cards on the gray page.
   // A plain function, not a component: a component defined here would remount the inputs on every keystroke.
   const box = (children: ReactNode, title?: string) =>
@@ -95,24 +100,118 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
     if (sub) onDone();
   };
 
-  const remove = async () => {
-    const msg = tr('“{name}” sẽ bị xoá. Bạn có vài giây để hoàn tác.', { name: task.title }) + (task.completed_at ? ' ' + tr('Mục này cũng mất khỏi nhật ký.') : '');
-    if (!(await confirmAction(tr('Xoá việc này?'), msg))) return;
-    // Kept for the undo: the row and its subtasks go back with the same ids, so nothing else needs to change.
-    const subs = await supabase.from('subtasks').select('*').eq('task_id', id);
-    if (!ok(subs) || !ok(await supabase.from('tasks').delete().eq('id', id))) return;
-    refresh('tasks');
-    onDone();
-    toast(tr('“{name}” đã bị xoá.', { name: task.title }), tr('Đã xoá việc'), 'success', {
-      label: tr('Hoàn tác'),
-      run: async () => {
-        if (!ok(await supabase.from('tasks').insert(task))) return;
-        if (subs.data?.length) ok(await supabase.from('subtasks').insert(subs.data));
-        refresh('tasks');
-        refresh('subtasks');
-      },
-    });
-  };
+  // The undo puts the row and its subtasks back with the same ids, so nothing else needs to change.
+  const remove = async () => { if (await removeTask(task)) onDone(); };
+
+  if (sheet) {
+    const repeat =
+      kind === 'weekly' ? (weekDays.length ? repeatLabel(`weekly:${[...weekDays].sort().join(',')}`) : tr('Hằng tuần'))
+      : kind === 'monthly' ? tr('Hằng tháng')
+      : kind === 'every' ? (/^[1-9]\d*$/.test(everyN.trim()) ? repeatLabel(`every:${everyN.trim()}`) : tr('Mỗi N ngày'))
+      : kind === 'daily' ? tr('Hằng ngày') : tr('Không lặp');
+    return (
+      <TaskSheet
+        title={
+          <Editor
+            initial={titleHtml(task)}
+            palette={palette}
+            compact
+            minHeight={26}
+            labels={editorLabels(tr('Tên việc'))}
+            onChange={async (html, body) => { title.current = { html, text: titleText(body) }; }}
+            dom={{ matchContents: true, scrollEnabled: false }}
+          />
+        }
+        note={
+          <Editor
+            initial={task.note ?? ''}
+            palette={palette}
+            minHeight={96}
+            labels={editorLabels(tr('Thêm ghi chú…'))}
+            onChange={async (html, body) => { note.current = body.trim() ? html : null; }}
+            dom={{ matchContents: true, scrollEnabled: false }}
+          />
+        }
+        titleError={errors.title}
+        busy={busy}
+        onSave={save}
+        onCancel={onDone}
+        onRemove={remove}
+        when={{
+          value: date ? `${date}${time ? ` ${time}` : ''}${endTime ? ` – ${endDate ? `${endDate} ` : ''}${endTime}` : ''}` : tr('Chưa có ngày'),
+          error: errors.date || errors.time || errors.endDate || errors.endTime,
+          body: (
+            <>
+              <View style={s.quick}>
+                {([[today(), tr('Hôm nay')], [addDays(today(), 1), tr('Ngày mai')], [nextMonday(today()), tr('Thứ Hai tới')]] as const).map(([d, l]) => (
+                  <Pressable key={l} onPress={() => { haptic.select(); setDate(fmtDate(d)); }} hitSlop={4} accessibilityRole="button" style={(st) => [s.quickChip, date === fmtDate(d) && s.quickOn, active(st) && { backgroundColor: color.itemHover }]}>
+                    <Text style={[s.quickText, date === fmtDate(d) && { color: color.primary }]}>{l}</Text>
+                  </Pressable>
+                ))}
+                <Pressable onPress={() => { setDate(''); setTime(''); setEndDate(''); setEndTime(''); }} hitSlop={4} accessibilityRole="button" style={(st) => [s.quickChip, active(st) && { backgroundColor: color.itemHover }]}>
+                  <Text style={s.quickText}>{tr('Không hẹn ngày')}</Text>
+                </Pressable>
+              </View>
+              <Text style={s.label}>{tr('Bắt đầu')}</Text>
+              <View style={s.pair}>
+                <View style={s.dateCol}><DateField value={date} onChange={setDate} error={errors.date} /></View>
+                <View style={s.timeCol}><TimeField value={time} onChange={setTime} error={errors.time} /></View>
+              </View>
+              <Text style={s.label}>{tr('Kết thúc')}</Text>
+              <View style={s.pair}>
+                <View style={s.dateCol}><DateField value={endDate} onChange={setEndDate} error={errors.endDate} base={parseDate(date)} /></View>
+                <View style={s.timeCol}><TimeField value={endTime} onChange={setEndTime} error={errors.endTime} /></View>
+              </View>
+              <Text style={s.hint}>{tr('Trống = cùng ngày bắt đầu')}</Text>
+            </>
+          ),
+        }}
+        repeat={{
+          value: repeat,
+          error: errors.repeat,
+          body: (
+            <>
+              <ListGroup>
+                {([['', tr('Không lặp')], ['daily', tr('Hằng ngày')], ['weekly', tr('Hằng tuần')], ['monthly', tr('Hằng tháng')], ['every', tr('Mỗi N ngày')]] as [Kind, string][]).map(([k, l]) => (
+                  <ListItem key={k || 'none'} title={l} selected={kind === k} chevron={false} onPress={() => { haptic.select(); setKind(k); }} />
+                ))}
+              </ListGroup>
+              {kind === 'weekly' && (
+                <Choices
+                  layout="days"
+                  value={weekDays}
+                  onChange={(d) => setWeekDays((v) => (v.includes(d) ? v.filter((x) => x !== d) : [...v, d]))}
+                  options={DAYS.map((label, value) => ({ value, label: tr(label) }))}
+                />
+              )}
+              {kind === 'monthly' && <Text style={s.muted}>{tr('Lặp vào ngày {d} mỗi tháng (theo ngày ở trên).', { d: date ? date.split('/')[0] : '…' })}</Text>}
+              {kind === 'every' && <Field value={everyN} onChangeText={setEveryN} placeholder={tr('Số ngày, ví dụ 3')} keyboardType="number-pad" aria-label="Số ngày" />}
+              {errors.repeat && <ErrorText key={errors.repeat}>{errors.repeat}</ErrorText>}
+            </>
+          ),
+        }}
+        priority={{
+          value: prio,
+          set: (p) => { haptic.select(); setPrio(p); },
+        }}
+        project={{
+          value: projectId,
+          options: [{ value: '', label: tr('Hộp thư') }, ...projects.map((p) => ({ value: p.id, label: p.name }))],
+          set: (p) => { haptic.select(); setProjectId(p); },
+        }}
+        tags={{
+          value: picked.length ? picked.map((t) => `#${t}`).join(' ') : tr('Không có'),
+          body: (
+            <>
+              <Field value={tags} onChangeText={setTags} placeholder="#nhà #gấp" autoCapitalize="none" autoCorrect={false} aria-label={tr('Nhãn')} hint={tr('Gõ nhãn mới cách nhau bằng dấu cách, hoặc chọn bên dưới.')} />
+              {known.length > 0 && <Choices value={picked} onChange={pick} options={known.map((t) => ({ value: t, label: `#${t}` }))} />}
+            </>
+          ),
+        }}
+        subtasks={<Subtasks task={task} draft={subDraft} setDraft={setSubDraft} />}
+      />
+    );
+  }
 
   return (
     <>
@@ -120,7 +219,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
         <View style={s.form}>
           <View style={s.group}>
             <Text style={s.label}>{tr('Tên việc')}</Text>
-            <RichEditor
+            <Editor
               initial={titleHtml(task)}
               palette={palette}
               compact
@@ -133,7 +232,7 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
           </View>
           <View style={s.group}>
             <Text style={s.label}>{tr('Ghi chú')}</Text>
-            <RichEditor
+            <Editor
               initial={task.note ?? ''}
               palette={palette}
               minHeight={120}
@@ -221,7 +320,98 @@ export function TaskForm({ task, projects, onDone, bare }: { task: Task; project
   );
 }
 
+type Pick = 'when' | 'repeat' | 'priority' | 'project' | 'tags';
+
+/** Phones: the task as a sheet. Huỷ, the title and Lưu in the head; the title and note edited in place; every
+ *  other field a row with its value that opens a small picker sheet. Lưu stays explicit, like the wide form. */
+function TaskSheet({ title, note, titleError, busy, onSave, onCancel, onRemove, when, repeat, priority: prio, project, tags, subtasks }: {
+  title: ReactNode; note: ReactNode; titleError?: string; busy: boolean; onSave: () => void; onCancel: () => void; onRemove: () => void;
+  when: { value: string; error?: string; body: ReactNode };
+  repeat: { value: string; error?: string; body: ReactNode };
+  priority: { value: number; set: (p: number) => void };
+  project: { value: string; options: { value: string; label: string }[]; set: (p: string) => void };
+  tags: { value: string; body: ReactNode };
+  subtasks: ReactNode;
+}) {
+  const { top } = useSafeAreaInsets();
+  const [pick, setPick] = useState<Pick | null>(null);
+  const close = () => setPick(null);
+  const done = { label: tr('Xong'), onPress: close };
+  return (
+    <View style={s.sheet}>
+      <View style={[s.head, { paddingTop: top + 4 }]}>
+        <Pressable onPress={onCancel} hitSlop={8} accessibilityRole="button" style={(st) => [s.headBtn, active(st) && { backgroundColor: color.itemHover }]}>
+          <Text style={s.cancel}>{tr('Huỷ')}</Text>
+        </Pressable>
+        <Text style={s.headTitle}>{tr('Sửa việc')}</Text>
+        <Button title={tr('Lưu')} variant="primary" onPress={onSave} loading={busy} style={s.saveBtn} />
+      </View>
+      <KeyboardAvoidingView behavior="padding" style={s.flex}>
+        <ScrollView style={s.flex} contentContainerStyle={s.sheetBody} keyboardShouldPersistTaps="handled">
+          <View style={s.titleBox}>
+            <Text style={s.fieldHead}>{tr('Tên việc')}</Text>
+            {title}
+            {titleError && <ErrorText>{titleError}</ErrorText>}
+          </View>
+          <View style={s.titleBox}>
+            <Text style={s.fieldHead}>{tr('Ghi chú')}</Text>
+            {note}
+          </View>
+          <ListGroup inset={ICON_INSET}>
+            <ListItem icon="calendar-outline" title={tr('Thời gian')} value={when.value} sub={when.error} subTone="error" onPress={() => setPick('when')} />
+            <ListItem icon="repeat-outline" title={tr('Lặp lại')} value={repeat.value} sub={repeat.error} subTone="error" onPress={() => setPick('repeat')} />
+            <ListItem icon="flag" tint={priority[prio.value as 1 | 2 | 3 | 4]} title={tr('Ưu tiên')} value={priorityLabel(prio.value)} onPress={() => setPick('priority')} />
+            <ListItem icon="folder-outline" title="Project" value={project.options.find((o) => o.value === project.value)?.label} onPress={() => setPick('project')} />
+            <ListItem icon="pricetag-outline" title={tr('Nhãn')} value={tags.value} onPress={() => setPick('tags')} />
+          </ListGroup>
+          <ListGroup title={tr('Việc con')}>
+            <View style={s.subs}>{subtasks}</View>
+          </ListGroup>
+          <ListGroup inset={ICON_INSET}>
+            <ListItem icon="trash-outline" title={tr('Xoá việc')} danger chevron={false} onPress={onRemove} />
+          </ListGroup>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Sheet visible={pick === 'when'} onClose={close} title={tr('Thời gian')} done={done} scroll>{when.body}</Sheet>
+      <Sheet visible={pick === 'repeat'} onClose={close} title={tr('Lặp lại')} done={done} scroll>{repeat.body}</Sheet>
+      <Sheet visible={pick === 'tags'} onClose={close} title={tr('Nhãn')} done={done} scroll>{tags.body}</Sheet>
+      <Sheet visible={pick === 'priority'} onClose={close} title={tr('Ưu tiên')}>
+        <ListGroup inset={ICON_INSET}>
+          {([1, 2, 3, 4] as const).map((n) => (
+            <ListItem key={n} left={<View style={s.flagCol}><Ionicons name="flag" size={20} color={priority[n]} /></View>} title={priorityLabel(n)} selected={prio.value === n} chevron={false} onPress={() => { prio.set(n); close(); }} />
+          ))}
+        </ListGroup>
+      </Sheet>
+      <Sheet visible={pick === 'project'} onClose={close} title="Project" scroll>
+        <ListGroup inset={ICON_INSET}>
+          {project.options.map((o) => (
+            <ListItem key={o.value || 'inbox'} icon={o.value ? 'folder-outline' : 'file-tray-outline'} title={o.label} selected={project.value === o.value} chevron={false} onPress={() => { project.set(o.value); close(); }} />
+          ))}
+        </ListGroup>
+      </Sheet>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
+  sheet: { flex: 1, backgroundColor: color.background },
+  flex: { flex: 1 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingBottom: 8, borderBottomWidth: rule.hair, borderBottomColor: color.border, backgroundColor: color.background },
+  headBtn: { minHeight: 44, paddingHorizontal: 10, borderRadius: radius.full, justifyContent: 'center' },
+  cancel: { ...text.body, color: color.primary },
+  headTitle: { ...text.bar, flex: 1, textAlign: 'center', color: color.foreground },
+  saveBtn: { minWidth: 72, marginRight: 4 },
+  sheetBody: { padding: 16, gap: 20, paddingBottom: 48 },
+  titleBox: { gap: 6 },
+  // Same look as the "Việc con" group heading below (ListGroup title).
+  fieldHead: { ...text.smMedium, color: color.muted, paddingHorizontal: 4 },
+  subs: { padding: 12 },
+  flagCol: { width: 28, alignItems: 'center' },
+  quick: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  quickChip: { height: 36, paddingHorizontal: 14, borderRadius: radius.full, borderWidth: rule.hair, borderColor: color.fieldEdge, justifyContent: 'center' },
+  quickOn: { borderColor: color.primary, backgroundColor: color.primaryLight },
+  quickText: { ...text.smMedium, color: color.soft },
   form: { gap: 16 },
   group: { gap: 8 },
   label: { ...text.meta, fontWeight: '500', color: color.soft },

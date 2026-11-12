@@ -77,7 +77,8 @@ export const priorityText = d({ 1: '#b42318', 2: '#9a5b00', 3: '#2563b0', 4: n('
 export type Priority = keyof typeof priority;
 
 // Soft corners: controls 10, sheets 14. `full` for round ticks, pills and the avatar.
-export const radius = { sm: 6, ctl: 10, md: 12, lg: 14, full: 9999 } as const;
+// Phones: `xl` rounds the top of a bottom sheet.
+export const radius = { sm: 6, ctl: 10, md: 12, lg: 14, xl: 20, full: 9999 } as const;
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24 } as const;
 // Two rule weights: a hairline between rows, a slightly firmer light line under a head.
 export const rule = { hair: 1, bar: 2 } as const;
@@ -85,6 +86,9 @@ export const rule = { hair: 1, bar: 2 } as const;
 // Heads one weight (600), tightened; body at 16. Figures use tabular numerals (`num`).
 export const text = {
   h1: { fontFamily: font, fontSize: 30, lineHeight: 38, fontWeight: '600', letterSpacing: -0.6 },
+  // Phones: the large title that scrolls away, and the small one the top bar shows once it has.
+  title: { fontFamily: font, fontSize: 28, lineHeight: 36, fontWeight: '600', letterSpacing: -0.5 },
+  bar: { fontFamily: font, fontSize: 17, lineHeight: 24, fontWeight: '600', letterSpacing: -0.2 },
   h2: { fontFamily: font, fontSize: 18, lineHeight: 26, fontWeight: '600', letterSpacing: -0.2 },
   xl: { fontFamily: font, fontSize: 20, lineHeight: 28, fontWeight: '600', letterSpacing: -0.3 },
   lg: { fontFamily: font, fontSize: 18, lineHeight: 26, fontWeight: '600' },
@@ -104,6 +108,10 @@ export const easeCss = 'cubic-bezier(0.33, 1, 0.68, 1)'; // web CSS transitions,
 // One soft shadow for things that float above the page (dialogs, toasts); sheets stay flat.
 export const shadowModal = d('0 12px 32px rgba(35,33,29,0.12)', '0 12px 32px rgba(0,0,0,0.5)');
 export const shadowPrimary = 'none';
+// Phones: the add button floats over the list, so it carries a tighter, darker shadow than a dialog.
+export const shadowFab = d('0 4px 12px rgba(35,33,29,0.22)', '0 4px 12px rgba(0,0,0,0.6)');
+// Phones: a touch target is never smaller than this, whatever it draws (hitSlop makes up the rest).
+export const touch = 44;
 // The selected tab of a segmented control: lifted just off its rail.
 export const shadowRaised = d('0 1px 2px rgba(35,33,29,0.12)', '0 1px 2px rgba(0,0,0,0.5)');
 

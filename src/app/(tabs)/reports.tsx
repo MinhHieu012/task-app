@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar';
 import { ReportBadge } from '@/components/Report';
-import { active, Button, Empty, EmptyState, Field, InfoLine, Screen } from '@/components/ui';
+import { active, Button, Empty, EmptyState, Fab, Field, InfoLine, Screen, useWide } from '@/components/ui';
 import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDate, fromIso, today, toIso } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -20,12 +20,14 @@ export default function Reports() {
   const shown = q.trim() ? reports.filter((r) => matches(r.body, q)) : reports;
   const now = today();
   const mine = reports.find((r) => r.day === now);
+  const wide = useWide();
+  const openToday = () => router.push({ pathname: '/report/[day]', params: { day: now } });
   const write = (
     <Button
       title={mine ? tr('Sửa báo cáo hôm nay') : tr('Viết báo cáo hôm nay')}
       icon={mine ? 'create-outline' : 'add'}
       variant={mine ? 'outline' : 'primary'}
-      onPress={() => router.push({ pathname: '/report/[day]', params: { day: now } })}
+      onPress={openToday}
     />
   );
 
@@ -35,6 +37,7 @@ export default function Reports() {
       title={tr('Báo cáo ngày')}
       sub={loaded ? tr('{n} báo cáo, {late} nộp trễ', { n: reports.length, late: reports.filter((r) => r.late).length }) : undefined}
       right={loaded ? write : undefined}
+      fab={loaded ? <Fab icon={mine ? 'create-outline' : 'pencil'} label={mine ? tr('Sửa báo cáo hôm nay') : tr('Viết báo cáo hôm nay')} onPress={openToday} /> : undefined}
       aside={loaded && reports.length ? <Overview reports={reports} /> : undefined}
       maxWidth={880}
     >
@@ -46,7 +49,7 @@ export default function Reports() {
       )}
       {loaded && !!reports.length && !shown.length && <Empty>{tr('Không có báo cáo nào khớp “{q}”.', { q: q.trim() })}</Empty>}
       {!!shown.length && (
-      <View style={s.list}>
+      <View style={[s.list, !wide && s.listNarrow]}>
         {shown.map((r, i) => (
           <Pressable
             key={r.id}
@@ -57,9 +60,9 @@ export default function Reports() {
             <View style={s.head}>
               <Text style={s.day}>{tr(WEEKDAY[fromIso(r.day).getDay()])}, {fmtDate(r.day)}</Text>
               <ReportBadge status={r.late ? 'late' : 'ontime'} />
-              <Text style={s.meta}>{tr('{done} việc xong, {missed} lỡ', { done: r.done_count, missed: r.missed_count })}</Text>
+              <Text style={[s.meta, !wide && s.metaNarrow]}>{tr('{done} việc xong, {missed} lỡ', { done: r.done_count, missed: r.missed_count })}</Text>
             </View>
-            <Text style={s.snippet} numberOfLines={2}>{snippet(r.body, q)}</Text>
+            <Text style={s.snippet} numberOfLines={wide ? 2 : 1}>{snippet(r.body, q)}</Text>
           </Pressable>
         ))}
       </View>
@@ -119,6 +122,9 @@ function Overview({ reports }: { reports: Report[] }) {
 const s = StyleSheet.create({
   asideTitle: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 12, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   list: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
+  listNarrow: { borderWidth: 0 },
+  // Phones: the counts start their own line at the left, under the day.
+  metaNarrow: { marginLeft: 0, width: '100%' },
   row: { paddingVertical: 14, paddingHorizontal: 16, gap: 6, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   last: { borderBottomWidth: 0 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },

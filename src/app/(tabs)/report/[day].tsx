@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import RichEditor from '@/components/dom/RichEditor';
+import { Editor } from '@/components/Rich';
 import { editorLabels, palette, ReportBadge, timeOf } from '@/components/Report';
 import { Button, InfoLine, Screen } from '@/components/ui';
 import { color, rule, text } from '@/constants/theme';
@@ -12,7 +12,7 @@ import { tr } from '@/lib/i18n';
 import { dayCounts, groupByProject } from '@/lib/journal';
 import { confirmAction, toast } from '@/lib/notify';
 import { DEADLINE, draftHtml, isLate, reportStatus } from '@/lib/reports';
-import { ok, type Project, refresh, type Report, supabase, type Task, useRows } from '@/lib/supabase';
+import { ok, type Project, refresh, type Report, type Subtask, supabase, type Task, useRows } from '@/lib/supabase';
 
 export default function ReportScreen() {
   const { day = '' } = useLocalSearchParams<{ day: string }>();
@@ -21,18 +21,22 @@ export default function ReportScreen() {
   const [done, , dLoaded] = useRows<Task>('tasks', (q) => q.eq('completed_day', day), `d:${day}`);
   const [due, , uLoaded] = useRows<Task>('tasks', (q) => q.eq('due_date', day), `u:${day}`);
   const [projects, , pLoaded] = useRows<Project>('projects');
-  const ready = rLoaded && dLoaded && uLoaded && pLoaded;
+  // The subtasks of the day's tasks, for the draft. Keyed by the ids, so it reloads (and holds `ready`) as they come in.
+  const ids = [...new Set([...done, ...due].map((t) => t.id))];
+  const [subs, , sLoaded] = useRows<Subtask>('subtasks', (q) => q.in('task_id', ids).order('created_at'), `rs:${ids.join()}`);
+  const ready = rLoaded && dLoaded && uLoaded && pLoaded && sLoaded;
   const show = valid && ready;
 
   return (
     <Screen
       back="always"
+      fit
       title={valid ? tr('Báo cáo ngày {date}', { date: fmtDate(day) }) : tr('Không có ngày này')}
-      sub={valid ? tr('Hạn nộp {time} cùng ngày', { time: DEADLINE }) : undefined}
+      // No sub: the status line under the title already gives the deadline in every state.
       aside={show ? <DayAside day={day} done={done} due={due} projects={projects} /> : undefined}
       maxWidth={880}
     >
-      {show && <ReportForm key={day} day={day} report={reports[0]} done={done} due={due} projects={projects} />}
+      {show && <ReportForm key={day} day={day} report={reports.find((r) => r.day === day)} done={done} due={due} projects={projects} subs={subs} />}
     </Screen>
   );
 }
@@ -81,11 +85,11 @@ function DayAside({ day, done, due, projects }: { day: string; done: Task[]; due
 }
 
 /** Mounted once the data is in, so the draft is built once and later realtime reloads don't reset the editor. */
-function ReportForm({ day, report, done, due, projects }: { day: string; report?: Report; done: Task[]; due: Task[]; projects: Project[] }) {
+function ReportForm({ day, report, done, due, projects, subs }: { day: string; report?: Report; done: Task[]; due: Task[]; projects: Project[]; subs: Subtask[] }) {
   const [initial] = useState(() => {
     if (report) return report.content;
     const groups = groupByProject(done, projects).map((g) => ({ name: g.id ? g.name : tr(g.name), items: g.items }));
-    return draftHtml(groups, due.filter((t) => !t.completed_day || t.completed_day > day));
+    return draftHtml(groups, due.filter((t) => !t.completed_day || t.completed_day > day), subs);
   });
   const content = useRef({ html: initial, text: report?.body ?? '' });
   const [busy, setBusy] = useState(false);
@@ -128,7 +132,8 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
   return (
     <View style={s.root}>
       <View style={s.status}>
-        <ReportBadge status={status} />
+        {/* Pending: the line beside it already says "Hạn nộp 21:00 tối nay", so no "Hạn 21:00" badge too. */}
+        {status !== 'pending' && <ReportBadge status={status} />}
         <Text style={s.meta}>
           {report
             ? tr('Nộp lúc {time} ngày {date}, hạn {deadline}.', { time: timeOf(report.submitted_at), date: fmtDate(localDay(new Date(report.submitted_at))), deadline: DEADLINE }) +
@@ -142,7 +147,7 @@ function ReportForm({ day, report, done, due, projects }: { day: string; report?
           <Text style={s.warnText}>{tr('Báo cáo này đã qua hạn {time} nên không xoá được nữa. Bạn vẫn sửa được, và thời điểm sửa sẽ được ghi lại.', { time: DEADLINE })}</Text>
         </View>
       )}
-      <RichEditor
+      <Editor
         initial={initial}
         palette={palette}
         labels={editorLabels(tr('Hôm nay bạn đã làm gì?'))}

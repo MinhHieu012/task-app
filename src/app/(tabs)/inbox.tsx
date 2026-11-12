@@ -2,9 +2,9 @@ import { router } from 'expo-router';
 import { useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
+import { AddFab, focusQuickAdd } from '@/components/QuickAdd';
 import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
-import { active, Button, Empty, EmptyState, IconButton, InfoLine, Screen, TextLink, useWide } from '@/components/ui';
+import { active, Button, Empty, EmptyState, InfoLine, Screen, TextLink, useWide } from '@/components/ui';
 import { color, projectColor, rule, text } from '@/constants/theme';
 import { today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -59,15 +59,16 @@ export default function Inbox() {
     <Screen
       title={tr('Hộp thư')}
       sub={tr('Việc chưa thuộc project nào') + (loaded ? tr(', {n} việc', { n: open.length }) : '')}
-      footer={<QuickAdd placeholder={tr('Thêm vào Hộp thư…')} />}
+      back
       aside={sel?.id ? undefined : aside}
-      right={!wide && <IconButton icon="search-outline" label={tr('Tìm kiếm')} surface size={40} onPress={() => router.navigate('/search')} />}
+      actions={[{ icon: 'search-outline', label: tr('Tìm kiếm'), onPress: () => router.navigate('/search') }]}
+      fab={<AddFab placeholder={tr('Thêm vào Hộp thư…')} />}
       maxWidth={100000}
     >
       {!loaded ? (
         <TaskGroup title={tr('Việc')} tasks={[]} loading />
       ) : !open.length ? (
-        <EmptyState icon="file-tray-outline" title={tr('Hộp thư trống')} action={<Button title={tr('Thêm việc')} icon="add" variant="primary" onPress={focusQuickAdd} />}>
+        <EmptyState icon="file-tray-outline" title={tr('Hộp thư trống')} action={<Button title={tr('Thêm việc')} icon="add" variant={wide ? 'primary' : 'outline'} onPress={focusQuickAdd} />}>
           {tr('Việc thêm nhanh mà chưa chọn project sẽ nằm ở đây cho tới khi bạn xếp nó vào project.')}
         </EmptyState>
       ) : (

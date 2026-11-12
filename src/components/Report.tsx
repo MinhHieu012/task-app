@@ -1,11 +1,11 @@
 // Daily report pieces shared by Today, Journal, the report list and the editor screen.
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import RichView from '@/components/dom/RichView';
 import type { EditorLabels, Palette } from '@/components/dom/RichEditor';
-import { Badge, Button, Card, TextLink } from '@/components/ui';
+import { Viewer } from '@/components/Rich';
+import { active, Badge, Button, Card, TextLink, useWide } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
 import { fmtDate, localDay } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -42,9 +42,40 @@ export const statusColor = (s: Status) => (s === 'ontime' ? color.success : s ==
 /** "HH:MM" local time of a timestamp. */
 export const timeOf = (at: string) => new Date(at).toTimeString().slice(0, 5);
 
+/** Phones: the day's report as one row, on Today and in the Journal. The status is its second line, in the
+ *  status colour, instead of a pill wedged between the title and "Viết" (the pill also sat high: Badge aligns
+ *  itself to the top of its row). */
+function ReportRow({ day, report, status, streak = 0 }: { day: string; report?: Report; status: Status; streak?: number }) {
+  const open = () => router.push({ pathname: '/report/[day]', params: { day } });
+  const tone = statusColor(status) ?? color.muted;
+  const line =
+    status === 'ontime' && report ? tr('Đúng hạn, nộp lúc {time}', { time: timeOf(report.submitted_at) })
+    : status === 'late' && report ? tr('Nộp trễ lúc {time} ngày {date}', { time: timeOf(report.submitted_at), date: fmtDate(localDay(new Date(report.submitted_at))) })
+    : status === 'missing' ? tr('Chưa nộp, đã quá hạn {time}', { time: DEADLINE })
+    : status === 'pending' ? tr('Hạn {time} tối nay', { time: DEADLINE })
+    : tr('Chưa có báo cáo cho ngày này.');
+  // Today's on-time streak rides at the end of the line (it was a flame pill); a late day has none to show.
+  const shown = streak && status !== 'missing' ? `${line}, ${tr('{n} ngày đúng hạn', { n: streak })}` : line;
+  return (
+    <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={`${tr('Báo cáo ngày')}, ${shown}`} style={(st) => [s.row1, active(st) && { backgroundColor: color.itemHover }]}>
+      <Ionicons name={report ? 'document-text' : 'document-text-outline'} size={20} color={report ? tone : color.soft} />
+      <View style={s.row1Body}>
+        <Text style={s.row1Title}>{tr('Báo cáo ngày')}</Text>
+        <Text style={[s.meta, { color: status === 'pending' || status === 'none' ? color.muted : tone }]} numberOfLines={1}>{shown}</Text>
+      </View>
+      {!report && <Text style={s.row1Go}>{tr('Viết')}</Text>}
+      <Ionicons name="chevron-forward" size={16} color={report ? color.muted : color.primary} />
+    </Pressable>
+  );
+}
+
 /** The selected day's report in the journal: read it, or a button to write it. */
 export function ReportCard({ day, report, status }: { day: string; report?: Report; status: Status }) {
   const open = () => router.push({ pathname: '/report/[day]', params: { day } });
+  const wide = useWide();
+  if (!wide) {
+    return <ReportRow day={day} report={report} status={status} />;
+  }
   return (
     <Card
       title={
@@ -57,7 +88,7 @@ export function ReportCard({ day, report, status }: { day: string; report?: Repo
     >
       {report ? (
         <View style={s.gap}>
-          <RichView html={report.content} palette={palette} dom={{ matchContents: true, scrollEnabled: false }} />
+          <Viewer html={report.content} palette={palette} dom={{ matchContents: true, scrollEnabled: false }} />
           <View style={s.row}>
             <Text style={s.meta}>{tr('Nộp lúc {time} ngày {date}', { time: timeOf(report.submitted_at), date: fmtDate(localDay(new Date(report.submitted_at))) })}</Text>
             <Button title={tr('Sửa báo cáo')} icon="create-outline" onPress={open} />
@@ -88,6 +119,10 @@ function Streak({ n }: { n: number }) {
  *  Once past the deadline the streak is already lost, so it is not shown. */
 export function ReportNudge({ day, report, status, streak = 0 }: { day: string; report?: Report; status: Status; streak?: number }) {
   const open = () => router.push({ pathname: '/report/[day]', params: { day } });
+  const wide = useWide();
+  if (!wide) {
+    return <ReportRow day={day} report={report} status={status} streak={streak} />;
+  }
   if (report) {
     return (
       <View style={[s.nudge, s.nudgeDone]}>
@@ -121,6 +156,11 @@ const s = StyleSheet.create({
   nudgeLate: { backgroundColor: color.dangerBg },
   nudgeDone: { backgroundColor: color.successBg },
   nudgeText: { ...text.sm, color: color.foreground, flex: 1, minWidth: 180 },
+  row1: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.lg, backgroundColor: color.surface },
+  row1Text: { ...text.sm, flex: 1, color: color.foreground },
+  row1Body: { flex: 1, minWidth: 0, gap: 2 },
+  row1Title: { ...text.body, color: color.foreground },
+  row1Go: { ...text.smMedium, fontWeight: '600', color: color.primary, marginRight: -6 },
   streak: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full, backgroundColor: color.surface },
   streakText: { ...text.xs, fontWeight: '600', color: color.primary, fontVariant: ['tabular-nums'] },
 });

@@ -1,9 +1,9 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { TaskGroup } from '@/components/TaskRow';
-import { Choices, Empty, Field, Screen } from '@/components/ui';
+import { Choices, Empty, Field, Screen, useWide } from '@/components/ui';
 import { color, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
 import { type Project, type Task, useRows } from '@/lib/supabase';
@@ -13,6 +13,7 @@ const DONE_SHOWN = 50;
 
 export default function Search() {
   const params = useLocalSearchParams<{ q?: string }>();
+  const wide = useWide();
   const [q, setQ] = useState(params.q ?? '');
   // A tag tapped while this screen is already open arrives as a new param.
   const [seen, setSeen] = useState(params.q);
@@ -49,12 +50,17 @@ export default function Search() {
         autoCapitalize="none"
         returnKeyType="search"
       />
-      {tags.length > 0 && (
+      {tags.length > 0 && (wide ? (
         <View style={s.tags}>
           <Text style={s.label}>{tr('Nhãn')}</Text>
           <Choices value={on} onChange={toggle} options={tags.map(([tag, n]) => ({ value: tag, label: `#${tag} ${n}` }))} />
         </View>
-      )}
+      ) : (
+        // Phones: one row of tags that scrolls sideways, instead of a wall of chips above the results.
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={s.bleed} contentContainerStyle={s.tagRow}>
+          <Choices value={on} onChange={toggle} layout="row" options={tags.map(([tag, n]) => ({ value: tag, label: `#${tag} ${n}` }))} />
+        </ScrollView>
+      ))}
       {!q.trim() ? (
         <Empty>{tr('Gõ để tìm trong tên và ghi chú của mọi việc, kể cả việc đã xong. Thêm #nhãn để lọc theo nhãn.')}</Empty>
       ) : !loaded ? (
@@ -74,6 +80,8 @@ export default function Search() {
 
 const s = StyleSheet.create({
   tags: { gap: 8 },
+  bleed: { marginHorizontal: -16, flexGrow: 0 },
+  tagRow: { paddingHorizontal: 16 },
   label: { ...text.meta, fontWeight: '500', color: color.muted },
   groups: { gap: 28 },
 });

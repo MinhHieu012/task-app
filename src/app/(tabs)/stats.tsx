@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DayChart } from '@/components/DayChart';
 import { Stat, StatRow, statText } from '@/components/Stat';
@@ -52,6 +52,7 @@ export default function Stats() {
   const activeDays = past.filter((d) => counts[d] > 0).length;
   const avg = elapsed ? (st.done / elapsed).toFixed(1).replace('.', ',') : '0';
   const { ontimeStreak } = reportStats([], recent, null);
+  const periodName = kind === 'week' ? tr('Tuần {from} – {to}', { from: fmtDay(from), to: fmtDay(to) }) : tr('Tháng {m}, {y}', { m, y });
 
   const aside = (
     <>
@@ -93,10 +94,11 @@ export default function Stats() {
     <Screen
       back
       title={tr('Thống kê')}
-      sub={kind === 'week' ? tr('Tuần {from} – {to}', { from: fmtDay(from), to: fmtDay(to) }) : tr('Tháng {m}, {y}', { m, y })}
+      sub={wide ? periodName : undefined}
       aside={aside}
       maxWidth={100000}
     >
+      {wide ? (
       <View style={s.controls}>
         <Choices<Period>
           value={kind}
@@ -110,6 +112,27 @@ export default function Stats() {
           {!current && <IconButton icon="chevron-forward" label={tr('Kỳ sau')} surface size={36} onPress={() => setAnchor(shiftPeriod(kind, anchor, 1))} />}
         </View>
       </View>
+      ) : (
+        // Phones: the kind as two columns, then one line "‹ period ›" stepping through periods.
+        <View style={s.controlsNarrow}>
+          <Choices<Period>
+            layout="cols"
+            value={kind}
+            onChange={(k) => { setKind(k); setAnchor(now); }}
+            options={[{ value: 'week', label: tr('Tuần') }, { value: 'month', label: tr('Tháng') }]}
+          />
+          <View style={s.period}>
+            <IconButton icon="chevron-back" label={tr('Kỳ trước')} size={40} ink onPress={() => setAnchor(prevFrom)} />
+            <Pressable onPress={() => setAnchor(now)} disabled={current} accessibilityRole="button" accessibilityLabel={current ? periodName : `${periodName}. ${tr('Về hiện tại')}`} style={s.periodMid}>
+              <Text style={s.periodText}>{periodName}</Text>
+              {!current && <Text style={s.periodBack}>{tr('Về hiện tại')}</Text>}
+            </Pressable>
+            <View style={current ? s.off : undefined}>
+              <IconButton icon="chevron-forward" label={tr('Kỳ sau')} size={40} ink onPress={() => { if (!current) setAnchor(shiftPeriod(kind, anchor, 1)); }} />
+            </View>
+          </View>
+        </View>
+      )}
 
       <StatRow>
         <Stat
@@ -151,6 +174,8 @@ export default function Stats() {
       </StatRow>
       <DayChart counts={counts} missed={missed} />
       {breakdowns}
+      {/* Phones: the wide aside's highlights, as one more sheet at the end. */}
+      {!wide && <Card><View style={s.stack}>{aside}</View></Card>}
     </Screen>
   );
 }
@@ -174,6 +199,12 @@ function Breakdown({ title, items, empty, half }: { title: string; items: { labe
 const s = StyleSheet.create({
   asideTitle: { ...text.h2, color: color.foreground, paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
+  controlsNarrow: { gap: 8 },
+  period: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  periodMid: { flex: 1, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  periodText: { ...text.base, color: color.foreground, fontVariant: ['tabular-nums'] },
+  periodBack: { ...text.xs, color: color.primary, fontWeight: '600' },
+  off: { opacity: 0.3 },
   nav: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pair: { flexDirection: 'row', gap: 24 },
   stack: { gap: 20 },

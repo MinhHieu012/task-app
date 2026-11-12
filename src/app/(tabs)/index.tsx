@@ -3,11 +3,12 @@ import { router } from 'expo-router';
 import { useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
+import { AddFab, focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
 import { ReportNudge } from '@/components/Report';
 import { Bars, Stat, StatRow, statText } from '@/components/Stat';
 import { endDay, moveTasks, TaskGroup } from '@/components/TaskRow';
-import { active, Avatar, Button, Empty, EmptyState, IconButton, Screen, TextLink, useWide } from '@/components/ui';
+import { active, Button, Empty, EmptyState, Screen, TextLink, useWide } from '@/components/ui';
+import { WeekStrip } from '@/components/WeekStrip';
 import { color, radius, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -57,6 +58,59 @@ export default function Today() {
     await moveTasks(over, () => day, tr('Đã dời việc quá hạn'), tr('{n} việc giờ có hạn hôm nay.', { n: over.length }));
     setMoving(false);
   };
+
+  if (!wide) {
+    // Phones: one line of figures instead of three stat tiles, then the coming week as a strip, the report as one
+    // row, the lists, and today's done tasks folded at the end (the wide aside's content, which phones lacked).
+    const figures = [
+      tr('{n} còn lại', { n: due.length }),
+      over.length ? tr('{n} quá hạn', { n: over.length }) : '',
+      done.length ? tr('{n} đã xong', { n: done.length }) : '',
+    ].filter(Boolean).join(', ');
+    return (
+      <Screen
+        title={tr('Hôm nay')}
+        sub={`${tr(WEEKDAY[fromIso(day).getDay()])}, ${fmtDay(day)}${loaded ? `, ${figures}` : ''}`}
+        actions={[{ icon: 'search-outline', label: tr('Tìm kiếm'), onPress: () => router.navigate('/search') }]}
+        fab={<AddFab defaults={{ due_date: day }} placeholder={tr('Thêm việc cho hôm nay…')} />}
+      >
+        <View style={s.bleed}>
+          <WeekStrip
+            days={week}
+            counts={Object.fromEntries(week.map((w) => [w, soon.filter((t) => t.due_date === w).length]))}
+            onPick={(d) => router.navigate({ pathname: '/upcoming', params: { day: d } })}
+          />
+        </View>
+        {reportLoaded && <ReportNudge day={day} report={report} status={reportStatus(day, report, day)} streak={ontimeStreak} />}
+        {!loaded ? (
+          <TaskGroup title={tr('Hôm nay')} tasks={[]} loading />
+        ) : open.length === 0 ? (
+          <EmptyState
+            icon="sunny-outline"
+            title={tr('Xong hết việc hôm nay')}
+            action={<Button title={tr('Xem Sắp tới')} onPress={() => router.navigate('/upcoming')} />}
+          >
+            {tr('Việc có hạn hôm nay sẽ hiện ở đây. Bấm + để thêm một việc.')}
+          </EmptyState>
+        ) : (
+          <>
+            {over.length > 0 && (
+              <TaskGroup
+                title={tr('Quá hạn')}
+                over
+                tasks={over}
+                projects={projects}
+                timeCol
+                action={!moving ? <TextLink icon="arrow-forward" label={tr('Dời hết sang hôm nay')} onPress={moveOverdue} /> : undefined}
+              />
+            )}
+            <TaskGroup title={tr('Hôm nay')} tasks={due} projects={projects} timeCol empty={tr('Không còn việc nào có hạn hôm nay.')} />
+          </>
+        )}
+        {done.length > 0 && <TaskGroup title={tr('Đã xong hôm nay')} tasks={done} projects={projects} folded />}
+      </Screen>
+    );
+  }
 
   const list = !loaded ? (
     <TaskGroup title={tr('Hôm nay')} tasks={[]} loading />
@@ -156,15 +210,6 @@ export default function Today() {
       sub={`${tr(WEEKDAY[fromIso(day).getDay()])}, ${fmtDay(day)}${loaded ? tr(', {n} việc', { n: open.length }) : ''}`}
       footer={<QuickAdd defaults={{ due_date: day }} placeholder={tr('Thêm việc cho hôm nay…')} />}
       aside={sel?.id ? undefined : aside}
-      // Wide screens reach settings from the rail.
-      right={
-        !wide && (
-          <View style={s.me}>
-            <IconButton icon="search-outline" label={tr('Tìm kiếm')} surface size={40} onPress={() => router.navigate('/search')} />
-            <Avatar onPress={() => router.navigate('/settings')} />
-          </View>
-        )
-      }
       maxWidth={100000}
     >
       <StatRow>
@@ -206,8 +251,8 @@ export default function Today() {
 }
 
 const s = StyleSheet.create({
-  // The header row aligns to the bottom; the avatar sits level with the title instead.
-  me: { alignSelf: 'flex-start', flexDirection: 'row', gap: 8 },
+  // Phones: the strip runs to the screen edges and scrolls under the page's gutter.
+  bleed: { marginHorizontal: -16, marginVertical: -8 },
   groups: { gap: 28 },
   asideHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 4, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   asideTitle: { ...text.h2, color: color.foreground },

@@ -1,15 +1,16 @@
-import { router } from 'expo-router';
-import { type ComponentRef, useContext, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { type ComponentRef, useContext, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { QuickAdd } from '@/components/QuickAdd';
-import { TaskGroup } from '@/components/TaskRow';
-import { active, Empty, Field, IconButton, Screen, useWide } from '@/components/ui';
+import { AddFab } from '@/components/QuickAdd';
+import { TaskGroup, TaskRows } from '@/components/TaskRow';
+import { active, Empty, EmptyState, Field, GroupTitle, IconButton, Screen, useWide } from '@/components/ui';
+import { WeekStrip } from '@/components/WeekStrip';
 import { addDays, fmtDay, fromIso, parseDate, type Span, spanRange, today, toIso } from '@/lib/dates';
 import { color, priority, radius, rule, shadowRaised, text } from '@/constants/theme';
 import { tr } from '@/lib/i18n';
 import { Selection } from '@/lib/selection';
-import { type Project, type Task, useRows } from '@/lib/supabase';
+import { type Project, type Subtask, type Task, useRows } from '@/lib/supabase';
 
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const COL = 260;
@@ -21,7 +22,7 @@ const SPANS: [Pick, string][] = [
   ['3d', '3 ngày'], ['1w', '1 tuần'], ['2w', '2 tuần'], ['1m', '1 tháng'], ['q', 'Quý'], ['y', 'Năm'], ['custom', 'Tự chọn'],
 ];
 
-export default function Upcoming() {
+function UpcomingWide() {
   const day = today();
   const [pick, setPick] = useState<Pick>('1w');
   const [n, setN] = useState(0); // which quarter/year: 0 = current
@@ -136,7 +137,7 @@ export default function Upcoming() {
   const empty = !(wide && !lanes) && !shown.length;
 
   return (
-    <Screen title={tr('Sắp tới')} sub={sub} maxWidth={100000} right={arrows} footer={<QuickAdd placeholder={tr('Thêm vào Hộp thư…')} />}>
+    <Screen title={tr('Sắp tới')} sub={sub} maxWidth={100000} right={arrows}>
       {picker}
       {empty ? (
         <Empty>{tr('Không có việc nào trong khoảng này.')}</Empty>
@@ -165,6 +166,90 @@ export default function Upcoming() {
       ) : (
         <View style={{ gap: 28 }}>{groups}</View>
       )}
+    </Screen>
+  );
+}
+
+export default function Upcoming() {
+  return useWide() ? <UpcomingWide /> : <Agenda />;
+}
+
+const AHEAD = 30; // phones: the agenda runs this many days past today
+
+/** Phones: no range picker. The next 30 days as one continuous agenda, a strip of the same days pinned under
+ *  the bar: tap a day to jump to it, scroll and the strip follows. An empty day is a single quiet line, not a
+ *  card saying "Trống". New tasks go to the day the strip shows. */
+function Agenda() {
+  const day = today();
+  const params = useLocalSearchParams<{ day?: string }>();
+  const days = Array.from({ length: AHEAD }, (_, i) => addDays(day, i + 1));
+  const [open, , loaded] = useRows<Task>(
+    'tasks',
+    (q) => q.is('completed_at', null).gt('due_date', day).lte('due_date', days[AHEAD - 1]).order('due_date').order('due_time', { nullsFirst: false }).order('priority'),
+    `agenda:${day}`,
+  );
+  const [projects] = useRows<Project>('projects');
+  const ids = open.map((t) => t.id);
+  const [subtasks] = useRows<Subtask>('subtasks', (q) => q.in('task_id', ids).order('created_at'), `agenda:${ids.join()}`);
+  const names = new Map(projects.map((p) => [p.id, p.name]));
+  const subs = (id: string) => subtasks.filter((x) => x.task_id === id);
+
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const ys = useRef<Record<string, number>>({});
+  const jumping = useRef(0); // while a jump animates, the scroll position must not drag the strip along
+  const [sel, setSel] = useState(days[0]);
+  const jump = (d: string) => {
+    setSel(d);
+    jumping.current = Date.now();
+    scroll.current?.scrollTo({ y: Math.max(0, (ys.current[d] ?? 0) - 4), animated: true });
+  };
+  // Today's strip opens a day here: jump once the agenda is laid out, then drop the param.
+  useEffect(() => {
+    if (!loaded || !params.day) return;
+    const t = setTimeout(() => { jump(params.day!); router.setParams({ day: undefined }); }, 60);
+    return () => clearTimeout(t);
+  }, [loaded, params.day]);
+
+  const counts = Object.fromEntries(days.map((d) => [d, open.filter((t) => t.due_date === d).length]));
+  const label = (d: string) => `${d === addDays(day, 1) ? tr('Ngày mai') : tr(DAYS[fromIso(d).getDay()])}, ${fmtDay(d)}`;
+
+  return (
+    <Screen
+      title={tr('Sắp tới')}
+      scrollRef={scroll}
+      onScroll={(e) => {
+        if (Date.now() - jumping.current < 600) return;
+        const y = e.nativeEvent.contentOffset.y + 16;
+        let cur = days[0];
+        for (const d of days) if ((ys.current[d] ?? Infinity) <= y) cur = d;
+        if (cur !== sel) setSel(cur);
+      }}
+      top={<WeekStrip days={days} selected={sel} counts={counts} onPick={jump} />}
+      fab={<AddFab defaults={() => ({ due_date: sel })} placeholder={tr('Thêm việc cho {day}…', { day: label(sel) })} />}
+    >
+      {loaded && !open.length && (
+        <EmptyState icon="calendar-outline" title={tr('30 ngày tới còn trống')}>
+          {tr('Việc có hạn từ ngày mai sẽ hiện ở đây theo từng ngày. Bấm + để thêm việc cho ngày đang chọn.')}
+        </EmptyState>
+      )}
+      {(!loaded || open.length > 0) && days.map((d) => {
+        const list = open.filter((t) => t.due_date === d);
+        return (
+          <View key={d} onLayout={(e) => { ys.current[d] = e.nativeEvent.layout.y; }}>
+            {list.length || !loaded ? (
+              <>
+                <GroupTitle title={label(d)} count={list.length} />
+                <TaskRows tasks={list} names={names} subs={subs} hideDate compact loading={!loaded} />
+              </>
+            ) : (
+              <View style={c.emptyDay}>
+                <Text style={c.emptyDayText}>{label(d)}</Text>
+                <Text style={c.emptyDayNote}>{tr('Trống')}</Text>
+              </View>
+            )}
+          </View>
+        );
+      }).slice(0, loaded ? AHEAD : 2)}
     </Screen>
   );
 }
@@ -227,6 +312,10 @@ function Month({ first, from, to, tasks }: { first: string; from: string; to: st
 }
 
 const c = StyleSheet.create({
+  // Phones: an empty day in the agenda, one muted line.
+  emptyDay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, paddingHorizontal: 4, marginVertical: -8 },
+  emptyDayText: { ...text.smMedium, color: color.muted, fontVariant: ['tabular-nums'] },
+  emptyDayNote: { ...text.meta, color: color.muted },
   // Range picker: one segmented control on a rail; the chosen segment is a raised white tab.
   bar: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   seg: { flexDirection: 'row', padding: 3, gap: 2, borderRadius: radius.ctl, backgroundColor: color.secondary },

@@ -1,70 +1,98 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { NAV, Rail, TopBar, useOverdue } from '@/components/Rail';
+import { Rail, TopBar, useOverdue } from '@/components/Rail';
 import { TaskForm } from '@/components/TaskForm';
 import { FadeIn, type IconName, useWide } from '@/components/ui';
 import { color, duration, radius, rule, text } from '@/constants/theme';
+import { haptic } from '@/lib/haptics';
 import { tr } from '@/lib/i18n';
 import { useReminders } from '@/lib/reminders';
 import { Selection } from '@/lib/selection';
 import { type Project, type Task, useRows } from '@/lib/supabase';
 
-// `key` is the Vietnamese label: it also finds the icon in NAV, so translate only for display.
-const tab = (key: string, icon: IconName, badge?: number, title = tr(key)) => ({
-  title,
-  tabBarIcon: ({ color: c }: { color: unknown }) => <Ionicons name={icon} size={22} color={c as string} />,
-  // Own label: the default one clips Vietnamese diacritics on web.
-  tabBarLabel: ({ color: c, focused }: { color: unknown; focused: boolean }) => (
-    <Text style={{ ...text.xs, fontWeight: focused ? '600' : '500', color: c as string }}>{title}</Text>
-  ),
-  tabBarBadge: badge || undefined,
-  tabBarBadgeStyle: { backgroundColor: color.danger, color: color.primaryFg, fontFamily: text.xs.fontFamily, fontSize: 10, fontWeight: '600' as const },
-});
-const icon = (label: string) => NAV.find((n) => n.label === label)!.icon;
+// Phones: four tabs. Inbox, projects, reports, stats, search and settings stay routes of their own (deep links,
+// the wide rail) but live under Browse, so their screens light up its tab.
+const TABS: { name: string; label: string; icon: IconName; on: IconName }[] = [
+  { name: 'index', label: 'Hôm nay', icon: 'sunny-outline', on: 'sunny' },
+  { name: 'upcoming', label: 'Sắp tới', icon: 'calendar-outline', on: 'calendar' },
+  { name: 'journal', label: 'Nhật ký', icon: 'book-outline', on: 'book' },
+  { name: 'browse', label: 'Duyệt', icon: 'grid-outline', on: 'grid' },
+];
+
+type BarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
+
+/** Phones: the bottom bar, Material 3 style: the current tab's icon in a soft accent pill, labels always shown. */
+function TabBar({ state, navigateToTab }: BarProps) {
+  const { bottom } = useSafeAreaInsets();
+  const over = useOverdue();
+  const current = state.routes[state.index].name;
+  const lit = TABS.some((t) => t.name === current) ? current : 'browse';
+  return (
+    <View style={[s.bar, { paddingBottom: bottom + 6 }]} accessibilityRole="tablist">
+      {TABS.map((t) => {
+        const on = lit === t.name;
+        const badge = t.name === 'index' ? over : 0;
+        return (
+          <Pressable
+            key={t.name}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={badge ? `${tr(t.label)}, ${tr('{n} việc quá hạn', { n: badge })}` : tr(t.label)}
+            onPress={() => {
+              if (current !== t.name) haptic.select();
+              // From a Browse screen (a project, settings…), its tab goes back to Browse itself.
+              const key = state.routes.find((r) => r.name === t.name)?.key;
+              if (key) navigateToTab(key);
+            }}
+            style={s.tab}
+          >
+            <View style={[s.pill, on && s.pillOn]}>
+              <Ionicons name={on ? t.on : t.icon} size={22} color={on ? color.primary : color.muted} />
+              {badge > 0 && (
+                <View style={s.badge}><Text style={s.badgeText}>{badge > 99 ? '99+' : badge}</Text></View>
+              )}
+            </View>
+            {/* Own label: the default one clips Vietnamese diacritics on web. */}
+            <Text style={[s.label, on && s.labelOn]} numberOfLines={1}>{tr(t.label)}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function TabLayout() {
   useReminders();
   const wide = useWide();
-  const over = useOverdue();
-  const { bottom } = useSafeAreaInsets();
   const [selected, select] = useState<string | null>(null);
 
   const tabs = (
     <Tabs
       backBehavior="history"
-      tabBar={wide ? () => null : undefined}
+      tabBar={wide ? () => null : (p) => <TabBar {...p} />}
       screenOptions={{
         headerShown: false,
         // Cross-fade between tabs (opacity only, no movement, so it stays fine for reduce-motion users).
         animation: 'fade',
-        tabBarActiveTintColor: color.primary,
-        tabBarInactiveTintColor: color.muted,
-        tabBarLabelPosition: 'below-icon',
-        // The tab bar would otherwise sit between the footer input and the keyboard on Android.
-        tabBarHideOnKeyboard: true,
-        // A fixed height/padding replaces the default safe-area padding, so add the bottom inset back
-        // or the labels sit on the home indicator / gesture bar.
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.borderStrong, borderTopWidth: rule.bar, height: 64 + bottom, paddingTop: 6, paddingBottom: 8 + bottom },
       }}
     >
-      <Tabs.Screen name="index" options={tab('Hôm nay', icon('Hôm nay'), over)} />
-      <Tabs.Screen name="upcoming" options={tab('Sắp tới', icon('Sắp tới'))} />
-      <Tabs.Screen name="inbox" options={tab('Hộp thư', icon('Hộp thư'))} />
-      <Tabs.Screen name="projects" options={tab('Project', icon('Project'))} />
-      <Tabs.Screen name="journal" options={tab('Nhật ký', icon('Nhật ký'))} />
-      {/* Hidden from the tab bar but still routable (href: null drops the URL). Settings opens from the
-          avatar on Today (narrow) or the rail (wide), so it does not take a sixth tab slot. */}
-      <Tabs.Screen name="project/[id]" options={{ tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="reports" options={{ tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="search" options={{ tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="stats" options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="upcoming" />
+      <Tabs.Screen name="journal" />
+      <Tabs.Screen name="browse" />
+      <Tabs.Screen name="inbox" />
+      <Tabs.Screen name="projects" />
+      <Tabs.Screen name="project/[id]" />
+      <Tabs.Screen name="settings" />
+      <Tabs.Screen name="reports" />
+      <Tabs.Screen name="search" />
+      <Tabs.Screen name="stats" />
       {/* Inside the tabs so wide screens keep the rail and top bar while writing a report. */}
-      <Tabs.Screen name="report/[day]" options={{ tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="report/[day]" />
     </Tabs>
   );
   if (!wide) return tabs;
@@ -110,6 +138,16 @@ function TaskPanel({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 const s = StyleSheet.create({
+  bar: { flexDirection: 'row', backgroundColor: color.surface, borderTopWidth: rule.hair, borderTopColor: color.border, paddingTop: 8 },
+  tab: { flex: 1, alignItems: 'center', gap: 4, minHeight: 52 },
+  // Always painted (the bar's colour when off): Android dropped the rounding of a background added to a
+  // view that had none, so the pill turned square after switching tabs.
+  pill: { width: 60, height: 32, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: color.surface },
+  pillOn: { backgroundColor: color.primaryLight },
+  label: { ...text.xs, fontWeight: '500', color: color.muted },
+  labelOn: { fontWeight: '600', color: color.foreground },
+  badge: { position: 'absolute', top: 0, right: 10, minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, borderWidth: 2, borderColor: color.surface, backgroundColor: color.danger, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { ...text.xs, fontSize: 10, lineHeight: 12, fontWeight: '700', color: color.primaryFg, fontVariant: ['tabular-nums'] },
   row: { flex: 1, flexDirection: 'row', backgroundColor: color.background },
   main: { flex: 1, minWidth: 0 },
   body: { flex: 1, flexDirection: 'row' },

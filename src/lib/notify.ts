@@ -8,10 +8,13 @@ export type Tone = 'error' | 'success' | 'info';
 export type ToastAction = { label: string; run: () => unknown };
 export type Toast = { id: number; tone: Tone; title: string; message: string; action?: ToastAction };
 type Ask = { title: string; message: string; confirmText: string; resolve: (ok: boolean) => void };
-// `ask` outlives `asking` so the dialog keeps its text while it animates out.
-type State = { toasts: Toast[]; ask: Ask | null; asking: boolean };
+/** One line of a menu: `key` comes back from choose(). `on` marks the current value with a tick. */
+export type Choice = { key: string; label: string; icon?: string; tint?: string; danger?: boolean; on?: boolean; detail?: string };
+type Menu = { title: string; message: string; choices: Choice[]; resolve: (key: string | null) => void };
+// `ask` outlives `asking` (and `menu` outlives `menuOpen`) so each keeps its text while it animates out.
+type State = { toasts: Toast[]; ask: Ask | null; asking: boolean; menu: Menu | null; menuOpen: boolean };
 
-let state: State = { toasts: [], ask: null, asking: false };
+let state: State = { toasts: [], ask: null, asking: false, menu: null, menuOpen: false };
 const listeners = new Set<() => void>();
 const emit = (next: Partial<State>) => {
   state = { ...state, ...next };
@@ -44,4 +47,15 @@ export function confirmAction(title: string, message = '', confirmText = tr('XoÃ
 export function answer(ok: boolean) {
   state.ask?.resolve(ok);
   emit({ asking: false });
+}
+
+/** Phones: a menu as an action sheet (long press on a task, a screen's â‹¯). Resolves the picked key, or null. */
+export function choose(title: string, choices: Choice[], message = ''): Promise<string | null> {
+  state.menu?.resolve(null);
+  return new Promise((resolve) => emit({ menu: { title, message, choices, resolve }, menuOpen: true }));
+}
+export function picked(key: string | null) {
+  const m = state.menu;
+  emit({ menuOpen: false });
+  m?.resolve(key);
 }
