@@ -209,6 +209,14 @@ assert.equal(titleHtml({ title: 'PR #21', title_html: '<p><b>PR</b> #21</p>' }),
 assert.equal(titleHtml({ title: 'Đổi tên', title_html: '<p><b>PR</b> #21</p>' }), '<p>Đổi tên</p>'); // stale formatting dropped
 assert.equal(titleHtml({ title: 'a<b', title_html: null }), '<p>a&lt;b</p>');
 assert.equal(draftHtml([{ name: 'A&B', items: [{ title: '<script>x</script>' }] }], []).includes('<b>A&amp;B</b>: &lt;script&gt;x&lt;/script&gt;'), true);
+// Subtasks nest under their own task only, unfinished ones marked; a task without any gets no empty list.
+{
+  const subs = [{ task_id: 't1', title: 'Viết test', done: true }, { task_id: 't1', title: 'Review <code>', done: false }, { task_id: 't9', title: 'Khác', done: false }];
+  const html = draftHtml([{ name: 'P', items: [{ id: 't1', title: 'API' }, { id: 't2', title: 'Docs' }] }], [{ id: 't9', title: 'Trễ' }], subs);
+  assert.ok(html.includes('<li><b>P</b>: API<ul><li>Viết test</li><li>Review &lt;code&gt; (chưa xong)</li></ul></li>'));
+  assert.ok(html.includes('<li><b>P</b>: Docs</li>'));
+  assert.ok(html.includes('<li>Trễ<ul><li>Khác (chưa xong)</li></ul></li>'));
+}
 assert.ok(matches('Họp với khách về báo cáo', 'bao CAO'));
 assert.ok(matches('Đường dây', 'duong'));
 assert.ok(!matches('Họp team', 'khách'));

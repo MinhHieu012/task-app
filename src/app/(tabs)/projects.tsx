@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useContext, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { NewProject } from '@/components/NewProject';
 import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
 import { active, Button, EmptyState, Field, InfoLine, Screen, Skeleton, useWide } from '@/components/ui';
 import { color, projectColor, radius, rule, text } from '@/constants/theme';
@@ -21,6 +22,7 @@ export default function Projects() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const sel = useContext(Selection);
+  const [naming, setNaming] = useState(false); // phones: the new-project sheet
 
   const add = async () => {
     if (!name.trim() || busy) return;
@@ -71,12 +73,14 @@ export default function Projects() {
   return (
     <Screen
       title="Project"
+      back
       sub={loaded ? tr('{p} project, {n} việc đang mở', { p: projects.length, n: open.length }) : undefined}
+      actions={[{ icon: 'add', label: tr('Project mới'), onPress: () => setNaming(true) }]}
       maxWidth={100000}
       aside={loaded && projects.length > 0 && !sel?.id ? aside : undefined}
     >
       {!loaded ? (
-        <View style={s.sheet}>
+        <View style={[s.sheet, !wide && s.sheetNarrow]}>
           {[0, 1, 2].map((i) => (
             <View key={i} style={s.row}>
               <Skeleton width={12} height={12} />
@@ -88,10 +92,10 @@ export default function Projects() {
         <>
           {!projects.length && (
             <EmptyState icon="folder-open-outline" title={tr('Chưa có project nào')}>
-              {tr('Gom các việc cùng mục tiêu vào một project. Tạo project đầu tiên ở dòng bên dưới.')}
+              {wide ? tr('Gom các việc cùng mục tiêu vào một project. Tạo project đầu tiên ở dòng bên dưới.') : tr('Gom các việc cùng mục tiêu vào một project. Bấm + ở trên để tạo project đầu tiên.')}
             </EmptyState>
           )}
-          <View style={s.sheet}>
+          <View style={[s.sheet, !wide && s.sheetNarrow]}>
             {wide && projects.length > 0 && (
               <View style={[s.row, s.headRow]}>
                 <Text style={[s.th, s.cName]}>Project</Text>
@@ -155,13 +159,14 @@ export default function Projects() {
                 </Pressable>
               );
             })}
-            {newRow}
+            {wide && newRow}
           </View>
           {byDue.map(([title, list]) => (
             <TaskGroup key={title} title={title} tasks={list} projects={projects} over={title === tr('Quá hạn')} compact />
           ))}
         </>
       )}
+      {!wide && <NewProject visible={naming} onClose={() => setNaming(false)} />}
     </Screen>
   );
 }
@@ -172,6 +177,7 @@ const s = StyleSheet.create({
   pctRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 8, marginBottom: 10 },
   pct: { ...text.h1, fontSize: 40, lineHeight: 44, letterSpacing: -1.2, color: color.foreground, fontVariant: ['tabular-nums'] },
   sheet: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, overflow: 'hidden' },
+  sheetNarrow: { borderWidth: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 56, paddingHorizontal: 20, borderBottomWidth: rule.hair, borderBottomColor: color.border },
   rowNarrow: { flexDirection: 'column', alignItems: 'stretch', gap: 8, paddingVertical: 14, paddingHorizontal: 16 },
   headRow: { minHeight: 40, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },

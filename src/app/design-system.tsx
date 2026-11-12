@@ -3,7 +3,10 @@ import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge, Button, Card, Choices, ConfirmModal, Empty, Field, ListRow, Meta, Tick } from '@/components/ui';
+import { ActionSheet, Sheet } from '@/components/Sheet';
+import { Badge, Button, Card, Choices, ConfirmModal, Empty, Field, ICON_INSET, ListGroup, ListItem, ListRow, Meta, Tick } from '@/components/ui';
+import { WeekStrip } from '@/components/WeekStrip';
+import { addDays, today } from '@/lib/dates';
 import { color, priority, text } from '@/constants/theme';
 
 // Dev-only screen to compare the RN components with docs/design/design-system.html.
@@ -13,6 +16,8 @@ export default function DesignSystem() {
   const [repeat, setRepeat] = useState('daily');
   const [done, setDone] = useState(false);
   const [modal, setModal] = useState(false);
+  const [sheet, setSheet] = useState<'sheet' | 'actions' | null>(null);
+  const [day, setDay] = useState(today);
   if (!__DEV__) return <Redirect href="/sign-in" />;
 
   return (
@@ -90,6 +95,36 @@ export default function DesignSystem() {
             confirmText="Xoá project"
             onCancel={() => setModal(false)}
             onConfirm={() => setModal(false)}
+          />
+        </Section>
+
+        {/* Phones: the mobile primitives (ui.tsx ListGroup/ListItem/Fab, Sheet.tsx, WeekStrip.tsx). */}
+        <Section title="Điện thoại: nhóm hàng">
+          <ListGroup title="Giao diện" inset={ICON_INSET}>
+            <ListItem icon="language-outline" title="Ngôn ngữ" value="Tiếng Việt" onPress={() => {}} />
+            <ListItem icon="contrast-outline" title="Sáng / Tối" value="Sáng" onPress={() => {}} />
+            <ListItem icon="log-out-outline" title="Đăng xuất" danger chevron={false} onPress={() => {}} />
+          </ListGroup>
+        </Section>
+
+        <Section title="Điện thoại: dải ngày">
+          <WeekStrip days={Array.from({ length: 10 }, (_, i) => addDays(today(), i))} selected={day} counts={{ [addDays(today(), 1)]: 3 }} onPick={setDay} padded={false} />
+        </Section>
+
+        <Section title="Điện thoại: sheet">
+          <View style={s.wrap}>
+            <Button title="Sheet" onPress={() => setSheet('sheet')} />
+            <Button title="Action sheet" onPress={() => setSheet('actions')} />
+          </View>
+          <Sheet visible={sheet === 'sheet'} onClose={() => setSheet(null)} title="Project mới" done={{ label: 'Xong', onPress: () => setSheet(null) }}>
+            <Field placeholder="Tên project" />
+          </Sheet>
+          <ActionSheet
+            visible={sheet === 'actions'}
+            title="Lịch sử ký số"
+            actions={[{ key: 'a', label: 'Dời sang ngày mai', icon: 'arrow-forward-outline' }, { key: 'b', label: 'Xoá việc', icon: 'trash-outline', danger: true }]}
+            onPick={() => setSheet(null)}
+            onClose={() => setSheet(null)}
           />
         </Section>
 

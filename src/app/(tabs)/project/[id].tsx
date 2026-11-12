@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useContext, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { type ComponentRef, useContext, useRef, useState } from 'react';
+import { StyleSheet, Text, type TextInput, View } from 'react-native';
 
-import { focusQuickAdd, QuickAdd } from '@/components/QuickAdd';
+import { AddFab, focusQuickAdd } from '@/components/QuickAdd';
+import { Sheet } from '@/components/Sheet';
 import { endDay, groupByDue, TaskGroup } from '@/components/TaskRow';
 import { Button, Empty, EmptyState, Field, InfoLine, Screen, useWide } from '@/components/ui';
 import { color, projectColor, rule, text } from '@/constants/theme';
@@ -28,6 +29,7 @@ export default function ProjectScreen() {
   const index = projects.findIndex((p) => p.id === id);
   const project = projects[index];
   const [name, setName] = useState<string | null>(null); // non-null while renaming
+  const nameInput = useRef<ComponentRef<typeof TextInput>>(null);
 
   const rename = async () => {
     if (!name?.trim()) return;
@@ -84,8 +86,13 @@ export default function ProjectScreen() {
       back
       title={project?.name ?? ''}
       sub={loaded ? tr('{open} việc đang mở, {done} đã xong tuần này', { open: open.length, done: done.length }) : undefined}
-      footer={<QuickAdd defaults={{ project_id: id }} placeholder={tr('Thêm việc vào {name}…', { name: project?.name ?? 'project' })} />}
       aside={sel?.id ? undefined : aside}
+      fab={<AddFab defaults={{ project_id: id }} placeholder={tr('Thêm việc vào {name}…', { name: project?.name ?? 'project' })} />}
+      // Phones: rename and delete behind ⋯ (they were text buttons beside the title, squeezing it to one word a line).
+      menu={project ? [
+        { key: 'rename', label: tr('Đổi tên'), icon: 'create-outline', run: () => setName(project.name) },
+        { key: 'delete', label: tr('Xoá project'), icon: 'trash-outline', danger: true, run: remove },
+      ] : undefined}
       maxWidth={100000}
       right={
         project && name === null && (
@@ -96,7 +103,7 @@ export default function ProjectScreen() {
         )
       }
     >
-      {name !== null && (
+      {wide && name !== null && (
         <Field
           label={tr('Tên project')}
           value={name}
@@ -114,18 +121,24 @@ export default function ProjectScreen() {
       {!loaded ? (
         <TaskGroup title={tr('Việc')} tasks={[]} loading />
       ) : !open.length && !done.length ? (
-        <EmptyState icon="folder-open-outline" title={tr('Project này chưa có việc')} action={<Button title={tr('Thêm việc')} icon="add" variant="primary" onPress={focusQuickAdd} />}>
+        <EmptyState icon="folder-open-outline" title={tr('Project này chưa có việc')} action={<Button title={tr('Thêm việc')} icon="add" variant={wide ? 'primary' : 'outline'} onPress={focusQuickAdd} />}>
           {tr('Thêm việc đầu tiên, hoặc chuyển việc từ Hộp thư vào đây.')}
         </EmptyState>
       ) : (
         <View style={{ gap: 28 }}>
           {groups.filter(([, list]) => list.length).map(([title, list]) => (
-            <TaskGroup key={title} title={title} tasks={list} over={title === tr('Quá hạn')} />
+            <TaskGroup key={title} title={title} tasks={list} over={title === tr('Quá hạn')} folded={title === tr('Đã xong') ? true : undefined} />
           ))}
         </View>
       )}
       {/* Wide: the delete button lives at the bottom of the side panel. */}
-      {(!wide || sel?.id) && removeButton && <View style={{ alignItems: 'flex-start' }}>{removeButton}</View>}
+      {wide && sel?.id && removeButton && <View style={{ alignItems: 'flex-start' }}>{removeButton}</View>}
+      {!wide && (
+        <Sheet visible={name !== null} onClose={() => setName(null)} title={tr('Đổi tên project')} focus={nameInput}>
+          <Field ref={nameInput} value={name ?? ''} onChangeText={setName} onSubmitEditing={rename} aria-label={tr('Tên project')} returnKeyType="done" />
+          <Button title={tr('Lưu')} variant="primary" onPress={rename} disabled={!name?.trim()} />
+        </Sheet>
+      )}
     </Screen>
   );
 }

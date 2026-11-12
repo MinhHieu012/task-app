@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DateField, TimeField } from '@/components/DateTime';
-import RichEditor from '@/components/dom/RichEditor';
+import { Editor as RichText } from '@/components/Rich';
 import { editorLabels, palette } from '@/components/Report';
 import { active, Button, Field, IconButton, Tick } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
@@ -147,7 +147,7 @@ function Editor({ row, task, onClose, onSaved }: { row: Subtask; task: Task; onC
   return (
     <View style={s.editor}>
       <Text style={[s.label, { marginTop: 0 }]}>{tr('Tên việc con')}</Text>
-      <RichEditor
+      <RichText
         initial={titleHtml(row)}
         palette={palette}
         compact

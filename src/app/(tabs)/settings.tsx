@@ -4,7 +4,8 @@ import { createElement, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { GoogleLogo } from '@/components/GoogleLogo';
-import { AppMark, Avatar, Button, Card, Choices, Field, InfoLine, Screen, useWide } from '@/components/ui';
+import { Sheet } from '@/components/Sheet';
+import { AppMark, Avatar, Button, Card, Choices, Field, ICON_INSET, InfoLine, ListGroup, ListItem, Screen, useWide } from '@/components/ui';
 import { color, dark, radius, rule, text } from '@/constants/theme';
 import { accentTokens, ACCENTS, DEFAULT_ACCENT, isHex } from '@/lib/accent';
 import { localDay } from '@/lib/dates';
@@ -27,6 +28,8 @@ export default function Settings() {
   const [lang, setLangPick] = useState<Lang>(getLang());
   const theme0 = (getPref('theme') ?? 'light') as Theme; // the same default as theme.ts
   const [theme, setTheme] = useState<Theme>(theme0);
+  const [sheet, setSheet] = useState<'lang' | 'theme' | 'accent' | 'password' | 'google' | null>(null); // phones
+  const googles = (user?.identities ?? []).filter((i) => i.provider === 'google');
   const accent = accentTokens(isHex(hex) ? hex : current).primary; // what the app will really use (light picks get darkened)
   const dirty = lang !== getLang() || accent !== current || theme !== theme0;
 
@@ -43,6 +46,82 @@ export default function Settings() {
     // On success the root layout's Stack.Protected swaps to sign-in, unmounting this screen.
     if (!ok(await supabase.auth.signOut())) setBusy(false);
   };
+  const reset = () => { setHex(current); setLangPick(getLang()); setTheme(theme0); };
+  const themes: { value: Theme; label: string }[] = [
+    { value: 'light', label: tr('Sáng') },
+    { value: 'dark', label: tr('Tối') },
+    { value: 'system', label: tr('Theo hệ thống') },
+  ];
+
+  if (!wide) {
+    // Phones: the system settings pattern. Rows with a value and a chevron; each opens a small sheet. Picks
+    // wait in a bar at the bottom until Áp dụng, since applying reloads the app.
+    const preset = ACCENTS.find((a) => a.hex === accent);
+    return (
+      <Screen
+        title={tr('Cài đặt')}
+        back
+        footer={dirty ? (
+          <View style={s.applyBar}>
+            <Text style={[s.meta, s.info]}>{tr('Áp dụng sẽ tải lại ứng dụng.')}</Text>
+            <Button title={tr('Hoàn tác')} variant="ghost" onPress={reset} />
+            <Button title={tr('Áp dụng')} variant="primary" onPress={apply} />
+          </View>
+        ) : undefined}
+      >
+        <ListGroup title={tr('Tài khoản')} inset={ICON_INSET}>
+          <ListItem
+            left={<View style={s.avatarCol}><Avatar size={36} /></View>}
+            title={user?.email ?? ''}
+            sub={user ? tr('Tham gia từ {date}', { date: localDay(new Date(user.created_at)).split('-').reverse().join('/') }) : undefined}
+          />
+          <ListItem icon="key-outline" title={tr('Đổi mật khẩu')} onPress={() => setSheet('password')} />
+          <ListItem left={<View style={s.avatarCol}><GoogleLogo /></View>} title={tr('Tài khoản Google')} value={googles.length ? String(googles.length) : tr('Chưa liên kết')} onPress={() => setSheet('google')} />
+        </ListGroup>
+
+        <ListGroup title={tr('Giao diện')} inset={ICON_INSET}>
+          <ListItem icon="language-outline" title={tr('Ngôn ngữ')} value={LANGS.find((l) => l.value === lang)?.label} onPress={() => setSheet('lang')} />
+          <ListItem icon="contrast-outline" title={tr('Sáng / Tối')} value={themes.find((t) => t.value === theme)?.label} onPress={() => setSheet('theme')} />
+          <ListItem
+            icon="color-palette-outline"
+            tint={accent}
+            title={tr('Màu chủ đạo')}
+            value={preset ? tr(preset.name) : accent}
+            right={<View style={[s.dotBig, { backgroundColor: accent }]} />}
+            onPress={() => setSheet('accent')}
+          />
+        </ListGroup>
+
+        <ListGroup title={tr('Ứng dụng')} inset={ICON_INSET}>
+          <ListItem icon="information-circle-outline" title={tr('Phiên bản')} value={Constants.expoConfig?.version ?? '-'} />
+        </ListGroup>
+
+        <ListGroup inset={ICON_INSET}>
+          <ListItem icon="log-out-outline" title={busy ? tr('Đang đăng xuất…') : tr('Đăng xuất')} danger onPress={busy ? undefined : signOut} chevron={false} />
+        </ListGroup>
+
+        <Sheet visible={sheet === 'lang'} onClose={() => setSheet(null)} title={tr('Ngôn ngữ')}>
+          <ListGroup>
+            {LANGS.map((l) => <ListItem key={l.value} title={l.label} selected={lang === l.value} chevron={false} onPress={() => { setLangPick(l.value); setSheet(null); }} />)}
+          </ListGroup>
+        </Sheet>
+        <Sheet visible={sheet === 'theme'} onClose={() => setSheet(null)} title={tr('Sáng / Tối')}>
+          <ListGroup>
+            {themes.map((t) => <ListItem key={t.value} title={t.label} selected={theme === t.value} chevron={false} onPress={() => { setTheme(t.value); setSheet(null); }} />)}
+          </ListGroup>
+        </Sheet>
+        <Sheet visible={sheet === 'accent'} onClose={() => setSheet(null)} title={tr('Màu chủ đạo')} done={{ label: tr('Xong'), onPress: () => setSheet(null) }} scroll>
+          <AccentCard hex={hex} setHex={setHex} shown={accent} bare />
+        </Sheet>
+        <Sheet visible={sheet === 'password'} onClose={() => setSheet(null)} title={tr('Đổi mật khẩu')} scroll>
+          <PasswordCard email={user?.email ?? ''} wide={false} bare onDone={() => setSheet(null)} />
+        </Sheet>
+        <Sheet visible={sheet === 'google'} onClose={() => setSheet(null)} title={tr('Tài khoản Google')} scroll>
+          <GoogleLine identities={user?.identities ?? []} bare />
+        </Sheet>
+      </Screen>
+    );
+  }
 
   return (
     <Screen title={tr('Cài đặt')} sub={tr('Tài khoản của bạn')} back aside={<Preview hex={hex} />} maxWidth={1120}>
@@ -68,22 +147,14 @@ export default function Settings() {
       <PasswordCard email={user?.email ?? ''} wide={wide} />
 
       <Card title={tr('Giao diện')}>
-        <Choices<Theme>
-          value={theme}
-          onChange={setTheme}
-          options={[
-            { value: 'light', label: tr('Sáng') },
-            { value: 'dark', label: tr('Tối') },
-            { value: 'system', label: tr('Theo hệ thống') },
-          ]}
-        />
+        <Choices<Theme> value={theme} onChange={setTheme} options={themes} />
       </Card>
 
       <AccentCard hex={hex} setHex={setHex} shown={accent} />
 
       <View style={s.applyRow}>
         <Text style={[s.meta, s.info]}>{tr('Đổi ngôn ngữ, giao diện hoặc màu sẽ tải lại ứng dụng.')}</Text>
-        {dirty && <Button title={tr('Hoàn tác')} variant="ghost" onPress={() => { setHex(current); setLangPick(getLang()); setTheme(theme0); }} />}
+        {dirty && <Button title={tr('Hoàn tác')} variant="ghost" onPress={reset} />}
         <Button title={tr('Áp dụng')} variant="primary" disabled={!dirty} onPress={apply} />
       </View>
     </Screen>
@@ -91,7 +162,7 @@ export default function Settings() {
 }
 
 /** The Google accounts that sign in to this account, each with Gỡ (unlink); Liên kết adds one more. */
-function GoogleLine({ identities }: { identities: UserIdentity[] }) {
+function GoogleLine({ identities, bare }: { identities: UserIdentity[]; bare?: boolean }) {
   const [busy, setBusy] = useState('');
   const googles = identities.filter((i) => i.provider === 'google');
 
@@ -109,7 +180,7 @@ function GoogleLine({ identities }: { identities: UserIdentity[] }) {
 
   return (
     // Stacked, so it reads on a phone: title, a line of help, the linked accounts as rows, then the button.
-    <View style={s.google}>
+    <View style={[s.google, bare && s.bare]}>
       <View style={s.googleHead}>
         <GoogleLogo />
         <Text style={s.email}>{tr('Tài khoản Google')}</Text>
@@ -140,7 +211,7 @@ function GoogleLine({ identities }: { identities: UserIdentity[] }) {
   );
 }
 
-function PasswordCard({ email, wide }: { email: string; wide: boolean }) {
+function PasswordCard({ email, wide, bare, onDone }: { email: string; wide: boolean; bare?: boolean; onDone?: () => void }) {
   const [old, setOld] = useState('');
   const [next, setNext] = useState('');
   const [again, setAgain] = useState('');
@@ -163,6 +234,7 @@ function PasswordCard({ email, wide }: { email: string; wide: boolean }) {
     else if (ok(await supabase.auth.updateUser({ password: next }))) {
       toast(tr('Lần sau đăng nhập bằng mật khẩu mới.'), tr('Đã đổi mật khẩu'), 'success');
       setOld(''); setNext(''); setAgain(''); setTried(false);
+      onDone?.();
     }
     setBusy(false);
   };
@@ -173,8 +245,8 @@ function PasswordCard({ email, wide }: { email: string; wide: boolean }) {
     </View>
   );
 
-  return (
-    <Card title={tr('Đổi mật khẩu')}>
+  const body = (
+    <>
       {/* Password managers pair a password with the nearest text field before it; without this they took the
           top bar's quick add for the username and filled the email into it. Chrome's advice: a hidden username. */}
       {Platform.OS === 'web' && createElement('input', { type: 'text', name: 'username', autoComplete: 'username', value: email, readOnly: true, hidden: true })}
@@ -183,18 +255,19 @@ function PasswordCard({ email, wide }: { email: string; wide: boolean }) {
         {field(tr('Mật khẩu mới'), next, setNext, err('next'), 'new-password', tr('Ít nhất 6 ký tự'))}
         {field(tr('Nhập lại mật khẩu mới'), again, setAgain, err('again'), 'new-password', tr('Gõ lại mật khẩu mới'))}
       </View>
-      <Button title={tr('Đổi mật khẩu')} icon="key-outline" onPress={save} loading={busy} disabled={busy} style={s.out} />
-    </Card>
+      <Button title={tr('Đổi mật khẩu')} icon="key-outline" variant={bare ? 'primary' : 'outline'} onPress={save} loading={busy} disabled={busy} style={bare ? s.full : s.out} />
+    </>
   );
+  return bare ? <View style={s.stack}>{body}</View> : <Card title={tr('Đổi mật khẩu')}>{body}</Card>;
 }
 
 // Picking only changes the preview; the Apply button at the bottom saves and reloads.
-function AccentCard({ hex, setHex, shown }: { hex: string; setHex: (h: string) => void; shown: string }) {
+function AccentCard({ hex, setHex, shown, bare }: { hex: string; setHex: (h: string) => void; shown: string; bare?: boolean }) {
   const valid = isHex(hex);
   const preset = ACCENTS.find((a) => a.hex === shown)?.hex ?? null;
 
-  return (
-    <Card title={tr('Màu chủ đạo')}>
+  const body = (
+    <>
       <Text style={s.label}>{tr('Màu gợi ý')}</Text>
       <Choices
         value={preset}
@@ -230,8 +303,9 @@ function AccentCard({ hex, setHex, shown }: { hex: string; setHex: (h: string) =
           />
         </View>
       </View>
-    </Card>
+    </>
   );
+  return bare ? <View>{body}</View> : <Card title={tr('Màu chủ đạo')}>{body}</Card>;
 }
 
 /** Wide screens: the picked colour on a few real pieces of the app, before the reload that applies it. */
@@ -298,6 +372,11 @@ const s = StyleSheet.create({
   btnText: { ...text.smMedium, fontWeight: '600', color: color.primaryFg },
   pair: { flexDirection: 'row', gap: 28, alignItems: 'stretch' },
   stack: { gap: 20 },
+  bare: { marginTop: 0, paddingTop: 0, borderTopWidth: 0 },
+  full: { marginTop: 4 },
+  avatarCol: { width: 28, alignItems: 'center' },
+  dotBig: { width: 18, height: 18, borderRadius: 9 },
+  applyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 10, borderTopWidth: rule.hair, borderTopColor: color.border },
   half: { flex: 1, minWidth: 0 },
   applyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 14 },

@@ -99,8 +99,11 @@ export default function RichEditor({ initial, labels, palette, onChange, minHeig
   return (
     <div className="re" style={{ fontFamily: '"Be Vietnam Pro", system-ui, sans-serif', color: p.fg }}>
       <style>{`
-        .re { background: ${p.field}; border: 1px solid ${p.edge}; border-radius: 12px; overflow: hidden; transition: box-shadow .15s; }
-        .re:focus-within { box-shadow: 0 0 0 2px ${p.ring}; }
+        /* flex: 1 — on native, Expo's #root is a flex row, so the box shrank to its content: a short title gave a narrow field. */
+        .re { flex: 1; min-width: 0; background: ${p.field}; border: 1px solid ${p.edge}; border-radius: 12px; overflow: hidden; }
+        /* Focus ring drawn wholly inside the box (offset = -width): on native the WebView is exactly the box's size, so any part outside
+           (box-shadow 0 0 0 2px) was clipped away on all four sides and only its rounded corners showed. */
+        .re:focus-within { outline: 2px solid ${p.ring}; outline-offset: -2px; }
         .re-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 6px; background: ${p.surface}; border-bottom: 1px solid ${p.border}; }
         .re-tool { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; border-radius: 6px; background: none; color: ${p.muted}; cursor: pointer; padding: 0; }
         .re-tool:hover { background: ${p.hover}; color: ${p.fg}; }

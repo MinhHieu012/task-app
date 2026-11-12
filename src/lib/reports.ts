@@ -2,7 +2,7 @@
 import { addDays, fromIso, localDay } from './dates.ts';
 import { esc } from './html.ts';
 import { tr } from './i18n.ts';
-import type { Report, Task } from './supabase.ts';
+import type { Report, Subtask, Task } from './supabase.ts';
 
 export const DEADLINE = '21:00';
 
@@ -42,14 +42,22 @@ export function reportStats(days: string[], reports: Pick<Report, 'day' | 'late'
   return { ...count, streak: run(() => true), ontimeStreak: run((r) => !r.late) };
 }
 
-/** Starting point for a new report: the day's done tasks by project, what slipped, and empty sections to fill in. */
-export function draftHtml(groups: { name: string; items: Pick<Task, 'title'>[] }[], missed: Pick<Task, 'title'>[]) {
+type DraftTask = Pick<Task, 'title'> & { id?: string };
+type DraftSub = Pick<Subtask, 'task_id' | 'title' | 'done'>;
+
+/** Starting point for a new report: the day's done tasks by project, what slipped, and empty sections to fill in.
+ *  Each task's subtasks sit in a list under it, the unfinished ones marked, so the report shows how far it got. */
+export function draftHtml(groups: { name: string; items: DraftTask[] }[], missed: DraftTask[], subs: DraftSub[] = []) {
   const list = (items: string[]) => `<ul>${(items.length ? items : ['']).map((i) => `<li>${i}</li>`).join('')}</ul>`;
-  const done = groups.flatMap((g) => g.items.map((t) => `<b>${esc(g.name)}</b>: ${esc(t.title)}`));
+  const withSubs = (t: DraftTask, line: string) => {
+    const mine = subs.filter((x) => t.id && x.task_id === t.id);
+    return mine.length ? line + list(mine.map((x) => esc(x.title) + (x.done ? '' : ` (${tr('chưa xong')})`))) : line;
+  };
+  const done = groups.flatMap((g) => g.items.map((t) => withSubs(t, `<b>${esc(g.name)}</b>: ${esc(t.title)}`)));
   return [
     `<h3>${tr('Đã làm')}</h3>`,
     list(done),
-    ...(missed.length ? [`<h3>${tr('Chưa xong')}</h3>`, list(missed.map((t) => esc(t.title)))] : []),
+    ...(missed.length ? [`<h3>${tr('Chưa xong')}</h3>`, list(missed.map((t) => withSubs(t, esc(t.title))))] : []),
     `<h3>${tr('Vướng mắc')}</h3>`,
     '<p></p>',
     `<h3>${tr('Kế hoạch ngày mai')}</h3>`,

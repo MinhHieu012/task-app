@@ -83,7 +83,7 @@ function Popup({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function Calendar({ selected, start, onPick }: { selected: string | null; start: string; onPick: (iso: string | null) => void }) {
+export function Calendar({ selected, start, onPick }: { selected: string | null; start: string; onPick: (iso: string | null) => void }) {
   const [ym, setYm] = useState({ y: Number(start.slice(0, 4)), m: Number(start.slice(5, 7)) });
   const move = (d: number) => setYm(({ y, m }) => ({ y: m + d > 12 ? y + 1 : m + d < 1 ? y - 1 : y, m: ((m + d + 11) % 12) + 1 }));
   const now = today();

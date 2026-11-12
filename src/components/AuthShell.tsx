@@ -40,8 +40,10 @@ export function AuthShell({ title, sub, children }: { title: string; sub?: strin
         {wide && <Intro />}
         {/* `padding` on Android too: edge-to-edge windows do not resize for the keyboard. */}
         <KeyboardAvoidingView style={s.side} behavior="padding">
-          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-            {wide ? form : <View style={s.card}>{form}</View>}
+          {/* Phones: the form straight on the page, the logo near the top and the buttons in the thumb's half;
+              a white card around a form was the web layout shrunk. */}
+          <ScrollView contentContainerStyle={[s.scroll, !wide && s.scrollNarrow]} keyboardShouldPersistTaps="handled">
+            {form}
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
@@ -114,8 +116,7 @@ const s = StyleSheet.create({
   split: { flex: 1, flexDirection: 'row' },
   side: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingVertical: 32 },
-  // Phones: the form on a white sheet with soft corners.
-  card: { width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, padding: 24 },
+  scrollNarrow: { justifyContent: 'flex-start', paddingHorizontal: 24, paddingTop: 40, paddingBottom: 24 },
   form: { width: '100%', maxWidth: 400, alignSelf: 'center', gap: 24 },
 
   brand: { flexDirection: 'row', alignItems: 'center', gap: 12 },

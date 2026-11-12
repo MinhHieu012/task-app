@@ -190,18 +190,21 @@ export const refresh = (table: string) => loaders.get(table)?.forEach((l) => l()
  * `filter` narrows/orders the select; `key` must change whenever `filter` does.
  */
 export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q, key = '') {
-  const [rows, setRows] = useState<T[]>();
-  const load = useCallback(
-    () =>
-      filter(supabase.from(table).select('*') as Query)
-        .then((res) => {
-          setRows((prev) => (ok(res) ? (res.data as T[]) : (prev ?? [])));
-        }),
+  // The rows remember which key they were read for. While a new key loads, the old rows stay on screen (no
+  // flash) but `loaded` is false: a screen kept alive in the tabs (the report editor) otherwise read the
+  // previous day's rows as this day's and froze them into its draft.
+  const [got, setGot] = useState<{ rows: T[]; key: string }>();
+  const fetch = useCallback(
+    () => filter(supabase.from(table).select('*') as Query),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [table, key],
   );
 
   useEffect(() => {
+    let live = true; // a response for a key we have left must not land after the new one
+    const load = () => fetch().then((res) => {
+      if (live) setGot((prev) => ({ rows: ok(res) ? (res.data as T[]) : (prev?.rows ?? []), key }));
+    });
     load();
     if (!loaders.has(table)) loaders.set(table, new Set());
     loaders.get(table)!.add(load);
@@ -211,12 +214,14 @@ export function useRows<T>(table: string, filter: (q: Query) => Query = (q) => q
       .on('postgres_changes', { event: '*', schema: 'public', table }, () => load())
       .subscribe();
     return () => {
+      live = false;
       loaders.get(table)!.delete(load);
       supabase.removeChannel(channel);
     };
-  }, [load, table]);
+  }, [fetch, table, key]);
 
-  return [rows ?? [], load, rows !== undefined] as const; // [rows, reload, loaded]
+  // reload: refetches every mounted query of the table (nothing calls it per query).
+  return [got?.rows ?? [], () => refresh(table), got?.key === key] as const; // [rows, reload, loaded]
 }
 
 /** Tags already in use, most used first (task form chips, quick add suggestions). Done copies of recurring tasks

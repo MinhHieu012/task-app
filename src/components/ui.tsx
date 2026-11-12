@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { type ComponentProps, type ComponentRef, type ReactNode, type Ref, useEffect, useState } from 'react';
+import { Children, type ComponentProps, type ComponentRef, Fragment, type ReactNode, type Ref, type RefObject, useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -9,8 +9,11 @@ import {
   Image,
   KeyboardAvoidingView,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   type PressableStateCallbackType,
   StyleSheet,
@@ -21,7 +24,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   color,
@@ -34,11 +37,15 @@ import {
   type Priority,
   radius,
   rule,
+  shadowFab,
   shadowModal,
   text,
+  touch,
 } from '@/constants/theme';
+import { haptic } from '@/lib/haptics';
 import { tr } from '@/lib/i18n';
-import { useSession } from '@/lib/supabase';
+import { choose, type Choice } from '@/lib/notify';
+import { refresh, useSession } from '@/lib/supabase';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -95,6 +102,7 @@ export function Button({ title, icon, leading, onPress, variant = 'outline', dis
   title: string; icon?: IconName; leading?: ReactNode; onPress?: () => void; variant?: Variant; disabled?: boolean; loading?: boolean; style?: ViewStyle;
 }) {
   const v = btn[variant];
+  const narrow = !useWide();
   return (
     <Pressable
       onPress={onPress}
@@ -103,6 +111,7 @@ export function Button({ title, icon, leading, onPress, variant = 'outline', dis
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       style={(s) => [
         st.btn,
+        narrow && { minHeight: touch },
         { backgroundColor: active(s) ? v.bgActive : v.bg, borderColor: v.border ?? 'transparent' },
         pressed(s),
         disabled && !loading && st.disabled,
@@ -117,23 +126,28 @@ export function Button({ title, icon, leading, onPress, variant = 'outline', dis
   );
 }
 
-/* Square icon-only button */
-export function IconButton({ icon, label, onPress, tint, surface, size = 32 }: { icon: IconName; label: string; onPress?: () => void; tint?: boolean; surface?: boolean; size?: number }) {
+/* Square icon-only button. Whatever it draws, the touch target reaches 44 (hitSlop makes up the rest). */
+export function IconButton({ icon, label, onPress, tint, surface, size = 32, ink }: { icon: IconName; label: string; onPress?: () => void; tint?: boolean; surface?: boolean; size?: number; ink?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
+      hitSlop={Math.max(0, (touch - size) / 2)}
       style={(s) => [st.iconBtn, { width: size, height: size }, surface && st.iconBtnSurface, tint && { backgroundColor: color.primaryLight }, !tint && active(s) && { backgroundColor: surface ? color.buttonHover : color.itemHover }, pressed(s)]}
     >
-      <Ionicons name={icon} size={18} color={tint ? color.primary : color.muted} />
+      {/* ink: the top bar's icons, drawn in the text colour at a phone's 22. */}
+      <Ionicons name={icon} size={ink ? 22 : 18} color={tint ? color.primary : ink ? color.foreground : color.muted} />
     </Pressable>
   );
 }
 
-/* The signed-in user's initial on an accent wash; with onPress it is a button (opens settings) */
+/* The signed-in user's initial on an accent wash; with onPress it is a button (opens settings).
+   An email that starts with a digit or a symbol gets a person icon: a lone "0" read as a counter. */
 export function Avatar({ size = 40, onPress }: { size?: number; onPress?: () => void }) {
   const email = useSession()?.user.email;
+  const first = (email ?? '')[0] ?? '';
+  const letter = first.toLowerCase() !== first.toUpperCase();
   return (
     <Pressable
       onPress={onPress}
@@ -142,7 +156,9 @@ export function Avatar({ size = 40, onPress }: { size?: number; onPress?: () => 
       accessibilityLabel={onPress ? `${tr('Cài đặt')}, ${email ?? ''}` : email}
       style={(s) => [st.avatar, { width: size, height: size, borderRadius: size / 2 }, pressed(s)]}
     >
-      <Text style={[st.avatarText, { fontSize: size * 0.42, lineHeight: size * 0.6 }]}>{(email ?? '?')[0].toUpperCase()}</Text>
+      {letter
+        ? <Text style={[st.avatarText, { fontSize: size * 0.42, lineHeight: size * 0.6 }]}>{first.toUpperCase()}</Text>
+        : <Ionicons name="person" size={size * 0.5} color={color.primary} />}
     </Pressable>
   );
 }
@@ -238,8 +254,10 @@ export function Field({ label, hint, error, editable = true, right, icon, traili
 
 /* Card: a white sheet on the cream page, soft corners and a hairline edge */
 export function Card({ title, action, flush, children, style }: { title?: ReactNode; action?: ReactNode; flush?: boolean; children: ReactNode; style?: ViewStyle }) {
+  const narrow = !useWide();
   return (
-    <View style={[st.card, flush && st.cardFlush, style]}>
+    // Phones: no edge and a 16 gutter; a white sheet on cream is enough to group.
+    <View style={[st.card, narrow && st.cardNarrow, flush && st.cardFlush, style]}>
       {(title || action) && (
         <View style={[st.cardHead, flush && st.cardHeadFlush]}>
           {typeof title === 'string' ? <Text style={st.cardTitle}>{title}</Text> : title}
@@ -311,13 +329,22 @@ export function ConfirmModal({ visible, title, message, confirmText = tr('Xoá')
 /** Wide screens (web on a computer) use the rail + top bar layout instead of the bottom tabs. */
 export const useWide = () => useWindowDimensions().width >= 1024;
 
+export type BarAction = { icon: IconName; label: string; onPress: () => void };
+/** A line of a screen's ⋯ menu (phones). */
+export type MenuItem = Choice & { run: () => void };
+
+const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
 /* Screen: title, scrolling body, optional right aside (wide only) and footer pinned above the tab bar.
-   On wide screens the top bar holds the quick add, so `footer` is hidden there unless `wideFooter`. */
-export function Screen({ title, sub, back, right, footer, wideFooter, aside, children, maxWidth = 760 }: {
+   On wide screens the top bar holds the quick add, so `footer` is hidden there unless `wideFooter`.
+   Phones get their own frame (MobileScreen): `actions`, `menu`, `fab` and `top` are read there only, `right` and
+   `aside` only on wide. */
+export function Screen({ title, sub, back, right, footer, wideFooter, aside, children, maxWidth = 760, ...phone }: {
   // `back`: narrow only, where there is no rail. 'always' also shows it on wide, for pages the rail can't reach.
   title: string; sub?: string; back?: boolean | 'always'; right?: ReactNode; footer?: ReactNode; wideFooter?: boolean; aside?: ReactNode; children: ReactNode; maxWidth?: number;
-}) {
+} & MobileProps) {
   const wide = useWide();
+  if (!wide) return <MobileScreen title={title} sub={sub} back={!!back} footer={footer} {...phone}>{children}</MobileScreen>;
   const body = (
     <ScrollView style={st.screen} contentContainerStyle={[st.screenBody, wide && { padding: 32, gap: 28, maxWidth, alignSelf: 'flex-start' }]} keyboardShouldPersistTaps="handled">
       {back && (!wide || back === 'always') && (
@@ -357,13 +384,159 @@ export function Screen({ title, sub, back, right, footer, wideFooter, aside, chi
   );
 }
 
-/* Group heading: 18px, count beside it; overdue is red with an alert icon */
-export function GroupTitle({ title, count, over, action }: { title: string; count?: number; over?: boolean; action?: ReactNode }) {
+type MobileProps = {
+  actions?: BarAction[]; // icons at the right of the top bar; with a menu only the first stays beside the ⋯
+  menu?: MenuItem[]; // the screen's less used actions (rename, delete…), as an action sheet behind ⋯
+  fab?: ReactNode; // the floating add button (see AddFab), drawn over the list in the thumb's corner
+  top?: ReactNode; // pinned under the top bar (a week strip); the title then stays in the bar
+  fit?: boolean; // the large title keeps to one line, shrinking a little if it must (a dated title, "Báo cáo ngày 09/11/2026")
+  scrollRef?: RefObject<ComponentRef<typeof ScrollView> | null>;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+};
+
+// Pull to refresh reloads every table a screen may show; realtime normally keeps them current anyway.
+const TABLES = ['tasks', 'subtasks', 'projects', 'daily_reports', 'journal_notes'];
+
+/** Phones: a top bar (back, the title once the large one has scrolled away, up to two icons) over a scrolling
+ *  page that opens with the large title. Pull down to refresh. No text buttons in the head, ever: they wrapped
+ *  the title into a column of single words. */
+function MobileScreen({ title, sub, back, footer, actions = [], menu, fab, top, fit, children, scrollRef, onScroll }: {
+  title: string; sub?: string; back: boolean; footer?: ReactNode; children: ReactNode;
+} & MobileProps) {
+  const inset = useSafeAreaInsets().top;
+  const [y] = useState(() => new Animated.Value(0));
+  const [refreshing, setRefreshing] = useState(false);
+  const fixed = !!top;
+  // The small title and the bar's rule fade in as the large title goes under the bar (opacity only).
+  const shown = fixed ? 1 : y.interpolate({ inputRange: [28, 56], outputRange: [0, 1], extrapolate: 'clamp' });
+  const reload = () => {
+    setRefreshing(true);
+    TABLES.forEach(refresh);
+    setTimeout(() => setRefreshing(false), 700); // ponytail: refresh() doesn't report back; a fixed beat reads as done
+  };
+  const icons: BarAction[] = menu?.length
+    ? [...actions.slice(0, 1), {
+        icon: 'ellipsis-horizontal', label: tr('Thêm thao tác'),
+        onPress: async () => { const k = await choose(title, menu); menu.find((m) => m.key === k)?.run(); },
+      }]
+    : actions.slice(0, 2);
+
   return (
-    <View style={st.groupHead}>
-      {over && <Ionicons name="alert-circle" size={20} color={color.danger} />}
-      <Text style={[st.groupTitle, over && { color: color.danger }]}>{title}</Text>
+    <View style={st.screen}>
+      <View style={[st.bar, { paddingTop: inset }]}>
+        <View style={st.barRow}>
+          {back && <IconButton icon="chevron-back" ink size={40} label={tr('Quay lại')} onPress={goBack} />}
+          <Animated.Text style={[fixed ? st.barTitleFixed : st.barTitle, { opacity: shown }, !back && { paddingLeft: 8 }]} numberOfLines={1}>{title}</Animated.Text>
+          {icons.map((a) => <IconButton key={a.label} icon={a.icon} ink size={40} label={a.label} onPress={a.onPress} />)}
+        </View>
+        {top}
+        <Animated.View style={[st.barRule, { opacity: shown }]} />
+      </View>
+      <KeyboardAvoidingView style={st.screen} behavior="padding">
+        <Animated.ScrollView
+          ref={scrollRef as never}
+          style={st.screen}
+          contentContainerStyle={[st.mBody, { paddingBottom: fab ? 104 : 40 }]}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: Platform.OS !== 'web', listener: onScroll })}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} colors={[color.primary]} tintColor={color.primary} progressBackgroundColor={color.surface} />}
+        >
+          {!fixed && (
+            <View style={st.mHead}>
+              <Text style={[st.mTitle, fit && st.mTitleFit]} numberOfLines={fit ? 1 : 2} adjustsFontSizeToFit={fit} minimumFontScale={0.75}>{title}</Text>
+              {sub && <Text style={st.sub}>{sub}</Text>}
+            </View>
+          )}
+          {children}
+        </Animated.ScrollView>
+        {footer && <View style={st.footer}>{footer}</View>}
+      </KeyboardAvoidingView>
+      {fab}
+    </View>
+  );
+}
+
+/** Phones: the round add button over the list, bottom right where the thumb rests. */
+export function Fab({ icon = 'add', label, onPress }: { icon?: IconName; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={(s) => [st.fab, s.pressed && { backgroundColor: color.primaryHover }]}>
+      <Ionicons name={icon} size={28} color={color.primaryFg} />
+    </Pressable>
+  );
+}
+
+/** Where a list row's text starts when it has an icon: separators begin there, not at the edge. */
+export const ICON_INSET = 16 + 28 + 14;
+
+/** Phones: an inset group of rows (settings, browse, pickers): a quiet heading, then one rounded sheet with
+ *  hairlines between the rows, starting at the text column (`inset`). No border, no card in a card. */
+export function ListGroup({ title, action, footer, inset = 16, children }: { title?: string; action?: ReactNode; footer?: string; inset?: number; children: ReactNode }) {
+  const rows = Children.toArray(children).filter(Boolean);
+  return (
+    <View style={st.lg}>
+      {(title || action) && (
+        <View style={st.lgHead}>
+          <Text style={st.lgTitle}>{title}</Text>
+          {action}
+        </View>
+      )}
+      <View style={st.lgBox}>
+        {rows.map((r, i) => (
+          <Fragment key={(r as { key?: string }).key ?? i}>
+            {i > 0 && <View style={[st.lgRule, { marginLeft: inset }]} />}
+            {r}
+          </Fragment>
+        ))}
+      </View>
+      {footer && <Text style={st.lgFoot}>{footer}</Text>}
+    </View>
+  );
+}
+
+/** One row of a ListGroup: icon, title (and a line under it), the current value, a chevron when it leads on. */
+export function ListItem({ icon, tint, title, sub, value, onPress, chevron = !!onPress, danger, left, right, selected, subTone }: {
+  icon?: IconName; tint?: string; title: string; sub?: string; value?: string; onPress?: () => void; chevron?: boolean;
+  danger?: boolean; left?: ReactNode; right?: ReactNode; selected?: boolean; subTone?: 'error';
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityState={selected !== undefined ? { selected } : undefined}
+      style={(s) => [st.li, !!onPress && active(s) && { backgroundColor: color.itemHover }]}
+    >
+      {left ?? (icon && <View style={st.liIcon}><Ionicons name={icon} size={20} color={danger ? color.danger : tint ?? color.soft} /></View>)}
+      <View style={st.liBody}>
+        <Text style={[st.liTitle, danger && { color: color.danger }]} numberOfLines={2}>{title}</Text>
+        {sub && <Text style={[st.liSub, subTone === 'error' && { color: color.errorText }]} numberOfLines={2}>{sub}</Text>}
+      </View>
+      {value !== undefined && <Text style={st.liValue} numberOfLines={1}>{value}</Text>}
+      {right}
+      {selected && <Ionicons name="checkmark" size={20} color={color.primary} />}
+      {chevron && <Ionicons name="chevron-forward" size={18} color={color.muted} />}
+    </Pressable>
+  );
+}
+
+/* Group heading: 18px, count beside it; overdue is red with an alert icon. Phones: 16px.
+   With onToggle the heading folds its group (a chevron after the count). */
+export function GroupTitle({ title, count, over, action, open, onToggle }: { title: string; count?: number; over?: boolean; action?: ReactNode; open?: boolean; onToggle?: () => void }) {
+  const narrow = !useWide();
+  const head = (
+    <>
+      {over && <Ionicons name="alert-circle" size={narrow ? 18 : 20} color={color.danger} />}
+      <Text style={[st.groupTitle, narrow && st.groupTitleNarrow, over && { color: color.danger }]}>{title}</Text>
       {!!count && <Text style={st.groupCount}>{count}</Text>}
+      {onToggle && <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={color.muted} />}
+    </>
+  );
+  return (
+    <View style={[st.groupHead, narrow && st.groupHeadNarrow]}>
+      {onToggle ? (
+        <Pressable onPress={onToggle} hitSlop={12} accessibilityRole="button" accessibilityState={{ expanded: open }} style={st.groupToggle}>{head}</Pressable>
+      ) : head}
       {action && <View style={st.groupAction}>{action}</View>}
     </View>
   );
@@ -385,18 +558,17 @@ export function Empty({ children }: { children: ReactNode }) {
   return <Text style={st.empty}>{children}</Text>;
 }
 export function EmptyState({ icon, title, children, action }: { icon: IconName; title: string; children?: ReactNode; action?: ReactNode }) {
-  return (
-    <FadeIn>
-    <Card>
-      <View style={st.emptyBox}>
-        <Ionicons name={icon} size={24} color={color.muted} style={st.emptyIcon} />
-        <Text style={st.emptyTitle}>{title}</Text>
-        {children && <Text style={st.emptyText}>{children}</Text>}
-        {action && <View style={st.emptyAction}>{action}</View>}
-      </View>
-    </Card>
-    </FadeIn>
+  const wide = useWide();
+  const body = (
+    <View style={[st.emptyBox, !wide && st.emptyNarrow]}>
+      <Ionicons name={icon} size={wide ? 24 : 32} color={color.muted} style={st.emptyIcon} />
+      <Text style={[st.emptyTitle, !wide && st.center]}>{title}</Text>
+      {children && <Text style={[st.emptyText, !wide && st.center]}>{children}</Text>}
+      {action && <View style={[st.emptyAction, !wide && { justifyContent: 'center' }]}>{action}</View>}
+    </View>
   );
+  // Phones: straight on the page, centred; a white card around one sentence was a web habit.
+  return <FadeIn>{wide ? <Card>{body}</Card> : body}</FadeIn>;
 }
 
 /* Gray placeholder block while rows load; a slow opacity pulse says "still loading". Static under reduce motion. */
@@ -425,7 +597,7 @@ export function Tick({ priority = 4, checked, onPress, disabled, size = 24 }: {
   };
   return (
     <Pressable
-      onPress={() => { pop(); onPress?.(); }}
+      onPress={() => { pop(); if (!checked) haptic.tick(); onPress?.(); }}
       disabled={disabled}
       accessibilityRole="checkbox"
       accessibilityLabel={checked ? tr('Bỏ đánh dấu xong') : tr('Đánh dấu xong')}
@@ -458,7 +630,7 @@ export function Choices<T extends string | number>({ options, value, onChange, l
   options: Option<T>[];
   value: T | T[] | null;
   onChange: (v: T) => void; // multi: caller toggles
-  layout?: 'wrap' | 'cols' | 'stack' | 'days';
+  layout?: 'wrap' | 'cols' | 'stack' | 'days' | 'row'; // row: one line that never wraps (inside a sideways scroll)
   error?: string;
   disabled?: boolean;
 }) {
@@ -468,7 +640,7 @@ export function Choices<T extends string | number>({ options, value, onChange, l
   const stack = layout === 'stack' && width < 640;
   return (
     <View style={st.field}>
-      <View style={[st.choices, stack && st.choicesStack, grid && { gap: 6, flexWrap: 'nowrap' }]}>
+      <View style={[st.choices, stack && st.choicesStack, grid && { gap: 6, flexWrap: 'nowrap' }, layout === 'row' && { flexWrap: 'nowrap' }]}>
         {options.map((o) => {
           const on = multi ? value.includes(o.value) : value === o.value;
           return (
@@ -476,6 +648,7 @@ export function Choices<T extends string | number>({ options, value, onChange, l
               key={String(o.value)}
               onPress={() => onChange(o.value)}
               disabled={disabled}
+              hitSlop={4}
               accessibilityRole={multi ? 'checkbox' : 'radio'}
               accessibilityState={{ checked: on, disabled }}
               style={(s) => [
@@ -531,6 +704,7 @@ export const st = StyleSheet.create({
   hint: { ...text.xs, color: color.muted },
 
   card: { backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: rule.hair, borderColor: color.border, paddingVertical: 20, paddingHorizontal: 24 },
+  cardNarrow: { borderWidth: 0, paddingVertical: 16, paddingHorizontal: 16 },
   cardFlush: { paddingHorizontal: 0, paddingVertical: 16 },
   // Wraps: on a phone a long title (Báo cáo ngày + badge) and its action do not fit one line.
   cardHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', columnGap: 12, rowGap: 8, marginBottom: 16 },
@@ -566,8 +740,37 @@ export const st = StyleSheet.create({
   sub: { ...text.sm, color: color.muted, marginTop: 6, fontVariant: ['tabular-nums'] },
   footer: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 },
 
+  // Phones: the top bar, the large title, the page.
+  bar: { backgroundColor: color.background, zIndex: 2 },
+  barRow: { height: 56, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8 },
+  barTitle: { ...text.bar, flex: 1, color: color.foreground },
+  barTitleFixed: { ...text.xl, flex: 1, color: color.foreground },
+  barRule: { height: rule.hair, backgroundColor: color.border },
+  mBody: { paddingHorizontal: 16, paddingTop: 4, gap: 20, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  mHead: { gap: 2, marginBottom: -4 },
+  mTitle: { ...text.title, color: color.foreground },
+  // A dated title (the report): a step down from 28, so the date sits on one line without being squeezed.
+  mTitleFit: { fontSize: 24, lineHeight: 32, letterSpacing: -0.4 },
+  fab: { position: 'absolute', right: 16, bottom: 16, width: 56, height: 56, borderRadius: 18, backgroundColor: color.primary, alignItems: 'center', justifyContent: 'center', boxShadow: shadowFab },
+
+  lg: { gap: 8 },
+  lgHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 28, paddingHorizontal: 4 },
+  lgTitle: { ...text.smMedium, color: color.muted, flexShrink: 1 },
+  lgBox: { backgroundColor: color.surface, borderRadius: radius.lg, overflow: 'hidden' },
+  lgRule: { height: rule.hair, backgroundColor: color.border },
+  lgFoot: { ...text.meta, color: color.muted, paddingHorizontal: 4 },
+  li: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 52, paddingHorizontal: 16, paddingVertical: 10 },
+  liIcon: { width: 28, alignItems: 'center' },
+  liBody: { flex: 1, minWidth: 0, gap: 2 },
+  liTitle: { ...text.body, color: color.foreground },
+  liSub: { ...text.meta, color: color.muted, fontVariant: ['tabular-nums'] },
+  liValue: { ...text.sm, color: color.muted, maxWidth: '50%', textAlign: 'right', fontVariant: ['tabular-nums'] },
+
   groupHead: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 8 },
+  groupHeadNarrow: { alignItems: 'center', minHeight: 32, paddingHorizontal: 4, marginBottom: 6 },
+  groupToggle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupTitle: { ...text.h2, color: color.foreground },
+  groupTitleNarrow: { ...text.base },
   groupCount: { ...text.meta, fontWeight: '500', color: color.muted, fontVariant: ['tabular-nums'] },
   groupAction: { marginLeft: 'auto', alignSelf: 'center' },
 
@@ -577,6 +780,8 @@ export const st = StyleSheet.create({
 
   empty: { ...text.sm, color: color.muted, paddingVertical: 16 },
   emptyBox: { alignItems: 'flex-start', paddingVertical: 8, gap: 6 },
+  emptyNarrow: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  center: { textAlign: 'center' },
   emptyIcon: { marginBottom: 4 },
   emptyTitle: { ...text.base, color: color.foreground },
   emptyText: { ...text.sm, color: color.muted, maxWidth: 420 },

@@ -1,14 +1,16 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DayChart } from '@/components/DayChart';
 import { dayForMonth, MonthCalendar, monthOf } from '@/components/MonthCalendar';
-import { QuickAdd } from '@/components/QuickAdd';
+import { AddFab, QuickAdd } from '@/components/QuickAdd';
 import { ReportCard } from '@/components/Report';
 import { Stat, StatRow, statText } from '@/components/Stat';
 import { TaskGroup } from '@/components/TaskRow';
 import { Badge, Button, Card, EmptyState, Field, Screen, useWide } from '@/components/ui';
+import { WeekStrip } from '@/components/WeekStrip';
 import { color, rule, text } from '@/constants/theme';
 import { addDays, fmtDay, fromIso, toIso, today } from '@/lib/dates';
 import { tr } from '@/lib/i18n';
@@ -20,6 +22,7 @@ const WEEKDAY = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ N�
 
 export default function Journal() {
   const [day, setDay] = useState(today);
+  const [calOpen, setCalOpen] = useState(false); // phones: the month calendar folded out of the strip
   const { year, month } = monthOf(day);
   const from = toIso(new Date(year, month - 1, 1));
   const to = toIso(new Date(year, month, 0));
@@ -100,6 +103,67 @@ export default function Journal() {
     </>
   );
 
+  if (!wide) {
+    // Phones: the selected day's timeline is the page. The month's days run as a strip under the bar (the full
+    // calendar folds out of it); figures and the 30-day chart live in Stats, one tap away in the ⋯ menu.
+    const timeline = done.filter((t) => t.completed_day === day).sort((a, b) => a.completed_at!.localeCompare(b.completed_at!));
+    // Days still to come have nothing to look back on.
+    const monthDays = Object.keys(counts).sort().filter((d) => d <= now);
+    const top = (
+      <View>
+        {calOpen ? (
+          <View style={s.cal}>
+            <MonthCalendar
+              year={year}
+              month={month}
+              selected={day}
+              counts={counts}
+              missed={missed}
+              reports={statuses}
+              onSelect={(d) => { setDay(d); setCalOpen(false); }}
+              onMonth={(delta) => setDay(dayForMonth(year, month + delta))}
+            />
+          </View>
+        ) : (
+          <WeekStrip days={monthDays} selected={day} counts={counts} onPick={setDay} mark={Object.fromEntries([...missed].map((d) => [d, color.warning]))} />
+        )}
+        <Pressable onPress={() => setCalOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: calOpen }} hitSlop={6} style={s.fold}>
+          <Text style={s.foldText}>{tr('Tháng {m}, {y}', { m: month, y: year })}</Text>
+          <Ionicons name={calOpen ? 'chevron-up' : 'chevron-down'} size={16} color={color.muted} />
+        </Pressable>
+      </View>
+    );
+    return (
+      <Screen
+        title={tr('Nhật ký')}
+        top={top}
+        menu={[
+          { key: 'stats', label: tr('Thống kê'), icon: 'stats-chart-outline', run: () => router.navigate('/stats') },
+          { key: 'reports', label: tr('Tất cả báo cáo'), icon: 'document-text-outline', run: () => router.navigate('/reports') },
+          ...(!isToday ? [{ key: 'today', label: tr('Về hôm nay'), icon: 'today-outline', run: () => setDay(today()) }] : []),
+        ]}
+        fab={<AddFab defaults={logDefaults} label={tr('Ghi việc đã làm')} placeholder={isToday ? tr('Ghi việc đã làm hôm nay…') : tr('Ghi việc đã làm ngày {day}…', { day: label })} />}
+      >
+        <View style={[s.dayHead, s.dayHeadNarrow]}>
+          <Text style={s.dayTitle}>{isToday ? tr('Hôm nay') : tr(WEEKDAY[fromIso(day).getDay()])}, {label}</Text>
+          <View style={s.badges}>
+            <Badge tone="success" label={tr('Xong {n}', { n })} />
+            {m > 0 && <Badge tone="warning" label={tr('Trễ {n}', { n: m })} />}
+          </View>
+        </View>
+        <ReportCard day={day} report={byDay.get(day)} status={statuses[day] ?? 'none'} />
+        {loaded && !timeline.length ? (
+          <EmptyState icon="book-outline" title={tr('Chưa ghi việc nào ngày này')}>
+            {m ? tr('Có {n} việc đến hạn mà không xong.', { n: m }) + ' ' : ''}{tr('Bấm + để ghi lại việc đã làm.')}
+          </EmptyState>
+        ) : (
+          <TaskGroup title={tr('Đã xong')} tasks={timeline} projects={projects} loading={!loaded} />
+        )}
+        <DayNote key={day} day={day} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen
       title={tr('Nhật ký')}
@@ -107,7 +171,6 @@ export default function Journal() {
       // Wide screens reach the stats from the rail.
       right={!wide && <Button title={tr('Thống kê')} icon="stats-chart-outline" onPress={() => router.navigate('/stats')} />}
       maxWidth={100000}
-      footer={wide ? undefined : log}
     >
       <StatRow>
         <Stat
@@ -174,8 +237,8 @@ function DayNote({ day }: { day: string }) {
     refresh('journal_notes');
   };
 
-  return (
-    <Card title={tr('Ghi chú trong ngày')}>
+  const wide = useWide();
+  const body = (
       <View style={s.note}>
         <Field
           value={draft ?? saved}
@@ -194,12 +257,23 @@ function DayNote({ day }: { day: string }) {
           </View>
         )}
       </View>
-    </Card>
+  );
+  // Phones: a quiet heading over the field, no card around a field.
+  return wide ? <Card title={tr('Ghi chú trong ngày')}>{body}</Card> : (
+    <View style={s.noteNarrow}>
+      <Text style={s.noteHead}>{tr('Ghi chú trong ngày')}</Text>
+      {body}
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   note: { gap: 12 },
+  noteNarrow: { gap: 8 },
+  noteHead: { ...text.smMedium, color: color.muted, paddingHorizontal: 4 },
+  cal: { paddingHorizontal: 16, paddingTop: 4 },
+  fold: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 32, marginBottom: 4 },
+  foldText: { ...text.meta, fontWeight: '500', color: color.muted, fontVariant: ['tabular-nums'] },
   noteInput: { height: 112, paddingTop: 12, textAlignVertical: 'top' },
   noteActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   cols: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
@@ -208,4 +282,5 @@ const s = StyleSheet.create({
   dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingBottom: 10, borderBottomWidth: rule.bar, borderBottomColor: color.borderStrong },
   dayTitle: { ...text.h2, color: color.foreground, fontVariant: ['tabular-nums'] },
   badges: { flexDirection: 'row', gap: 6 },
+  dayHeadNarrow: { borderBottomWidth: 0, paddingBottom: 0, paddingHorizontal: 4, paddingTop: 12 },
 });

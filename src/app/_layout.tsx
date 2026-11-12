@@ -10,7 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
 
 import { Launch } from '@/components/Launch';
 import { Notifier } from '@/components/Notifier';
@@ -26,6 +26,13 @@ SystemUI.setBackgroundColorAsync(color.background);
 // Keep the native splash until the font and the session are in (see RootLayout). Called at module scope, not
 // awaited (expo-splash-screen docs).
 SplashScreen.preventAutoHideAsync();
+
+// Dev builds only (release builds don't track promise rejections at all): Expo's DOM component wrapper (expo
+// 58.0.23, still so in 58.0.24, src/dom/webview-wrapper.tsx `emit`) posts props into its WebView without catching
+// the promise. When it re-renders after a size change just as the native view goes away, the post is rejected:
+// harmless (nothing is left to update; a WebView that is still loading gets the props again on DOM_READY), but
+// LogBox raised it as a red error over the report screen. Only this one message is silenced.
+LogBox.ignoreLogs(["Call to function 'DomWebView.injectJavaScript' has been rejected"]);
 
 // Before the first render; strings are translated as they render (see i18n.ts).
 setLang(getPref('lang'));
@@ -146,7 +153,9 @@ export default function RootLayout() {
       </Stack.Protected>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="task/[id]" />
+        {/* Phones: the task rises over the list as a full-height sheet (back or Huỷ closes it). Chosen over a
+            formSheet with detents, whose keyboard handling around the rich-text WebView is the risky part on Android. */}
+        <Stack.Screen name="task/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack.Protected>
       <Stack.Screen name="reset-password" />
       <Stack.Screen name="design-system" />
