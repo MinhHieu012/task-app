@@ -1,0 +1,104 @@
+<a class="skip" href="#main">{{ 'Bỏ qua tới nội dung' | tr }}</a>
+
+<aside class="rail" [attr.aria-label]="'Điều hướng' | tr">
+  <a class="brand" routerLink="/" [attr.aria-label]="'Việc & Nhật ký, về Hôm nay' | tr">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 512 512"><g transform="translate(-20 -10) scale(1.08)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M236 330L266 360L444 150" stroke="currentColor" stroke-width="46"/><path d="M70 270L160 360L338 150" stroke="var(--color-accent)" stroke-width="98"/><path d="M70 270L160 360L338 150" stroke="currentColor" stroke-width="46"/></g></svg>
+    </span>
+    <span class="brand-name">{{ 'Việc & Nhật ký' | tr }}</span>
+  </a>
+  <nav>
+    <ul class="nav">
+      @for (n of nav; track n.path) {
+        <li>
+          <a class="nav-item" [routerLink]="n.path" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: !!n.exact }" ariaCurrentWhenActive="page" [class.on]="detailOf(n.path)">
+            <app-icon [name]="n.icon" [size]="18" />
+            <span class="grow">{{ n.label | tr }}</span>
+            @if (n.path === '/' && over()) {
+              <span class="count num" [attr.aria-label]="'{n} việc quá hạn' | tr: { n: over() }">{{ over() > 99 ? '99+' : over() }}</span>
+            }
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+  <div class="rail-foot">
+    <a class="nav-item" routerLink="/settings" routerLinkActive="on" ariaCurrentWhenActive="page">
+      <app-icon name="settings" [size]="18" /><span class="grow">{{ 'Cài đặt' | tr }}</span>
+    </a>
+    <div class="user">
+      <span class="avatar" aria-hidden="true">{{ initial() }}</span>
+      <span class="clamp-1 meta">{{ email() }}</span>
+    </div>
+  </div>
+</aside>
+
+<div class="main-col">
+  <header class="top">
+    <a class="brand only-narrow" routerLink="/" [attr.aria-label]="'Việc & Nhật ký, về Hôm nay' | tr">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 512 512"><g transform="translate(-20 -10) scale(1.08)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M236 330L266 360L444 150" stroke="currentColor" stroke-width="46"/><path d="M70 270L160 360L338 150" stroke="var(--color-accent)" stroke-width="98"/><path d="M70 270L160 360L338 150" stroke="currentColor" stroke-width="46"/></g></svg>
+      </span>
+    </a>
+    <div class="qa only-wide"><app-quick-add /></div>
+    <span class="date meta num only-wide">{{ dayTitle }}</span>
+    <span class="date-narrow only-narrow">{{ dayTitle }}</span>
+    <a class="btn btn-icon only-narrow" routerLink="/search" [attr.aria-label]="'Tìm kiếm' | tr"><app-icon name="search" /></a>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>
+
+@if (openId(); as id) {
+  <app-task-drawer [id]="id" (closed)="ui.openTask(null)" />
+}
+
+<!-- Phones -->
+<button type="button" class="fab only-narrow" (click)="openAdd()" [attr.aria-label]="ui.quick().label ?? ('Thêm việc' | tr)">
+  <app-icon name="plus" [size]="24" [stroke]="2.5" />
+</button>
+<nav class="tabs only-narrow" [attr.aria-label]="'Điều hướng' | tr">
+  @for (n of tabs; track n.path) {
+    <a class="tab" [routerLink]="n.path" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: !!n.exact }" ariaCurrentWhenActive="page">
+      <span class="pill"><app-icon [name]="n.icon" [size]="20" />
+        @if (n.path === '/' && over()) { <span class="dot num">{{ over() > 99 ? '99+' : over() }}</span> }
+      </span>
+      <span class="tab-label">{{ n.label | tr }}</span>
+    </a>
+  }
+  <button type="button" class="tab" [class.on]="moreActive()" (click)="openMore()" aria-haspopup="dialog">
+    <span class="pill"><app-icon name="grid" [size]="20" /></span>
+    <span class="tab-label">{{ 'Thêm' | tr }}</span>
+  </button>
+</nav>
+
+<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<dialog #addSheet class="bottom-sheet" aria-labelledby="add-title" (click)="$event.target === $event.currentTarget && closeAdd()" (close)="adding.set(false)">
+  <div class="sheet-inner">
+    <div class="sheet-bar">
+      <h2 id="add-title">{{ ui.quick().label ?? ('Thêm việc' | tr) }}</h2>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="closeAdd()">{{ 'Xong' | tr }}</button>
+    </div>
+    @if (adding()) { <app-quick-add [sheetMode]="true" /> }
+  </div>
+</dialog>
+
+<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<dialog #moreSheet class="bottom-sheet" aria-labelledby="more-title" (click)="$event.target === $event.currentTarget && closeMore()">
+  <div class="sheet-inner">
+    <div class="sheet-bar">
+      <h2 id="more-title">{{ 'Duyệt' | tr }}</h2>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="closeMore()">{{ 'Đóng' | tr }}</button>
+    </div>
+    <ul class="more-list">
+      @for (n of more; track n.path) {
+        <li><a class="nav-item" [routerLink]="n.path" routerLinkActive="on" ariaCurrentWhenActive="page" (click)="closeMore()"><app-icon [name]="n.icon" [size]="20" /><span class="grow">{{ n.label | tr }}</span><app-icon name="chevron-right" [size]="16" /></a></li>
+      }
+    </ul>
+    <p class="meta user-line clamp-1">{{ email() }}</p>
+  </div>
+</dialog>

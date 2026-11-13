@@ -1,0 +1,79 @@
+<div class="page wide-page">
+  <header class="page-head">
+    <div>
+      <h1>{{ 'Nhật ký' | tr }}</h1>
+      <p class="meta num">{{ 'Tháng {m}, {y}' | tr: { m: ym().month, y: ym().year } }}</p>
+    </div>
+    <div class="row">
+      @if (!isToday()) { <button type="button" class="btn btn-ghost" (click)="select(now)">{{ 'Về hôm nay' | tr }}</button> }
+      <a class="btn" routerLink="/stats"><app-icon name="chart" [size]="16" />{{ 'Thống kê' | tr }}</a>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="sheet stat">
+      <span class="stat-label">{{ 'Xong trong tháng' | tr }}</span>
+      <span class="stat-n">{{ total() }}</span>
+      <span class="stat-foot">@if (best(); as b) { {{ 'Nhiều nhất' | tr }} <b class="num">{{ '{n} việc' | tr: { n: counts()[b] } }}</b> {{ 'ngày {date}' | tr: { date: fmtDay(b) } }} } @else { {{ 'Chưa có việc nào xong' | tr }} }</span>
+    </div>
+    <div class="sheet stat">
+      <span class="stat-label">{{ 'Ngày có làm việc' | tr }}</span>
+      <span class="stat-n">{{ active() }}</span>
+      <span class="stat-foot">{{ 'Trên' | tr }} <b class="num">{{ dayCount() }}</b> {{ 'ngày, trung bình' | tr }} <b class="num">{{ avg() }}</b> {{ 'việc/ngày' | tr }}</span>
+    </div>
+    <div class="sheet stat">
+      <span class="stat-label">{{ 'Ngày có việc lỡ' | tr }}</span>
+      <span class="stat-n" [class.warning-text]="missed().size">{{ missed().size }}</span>
+      <span class="stat-foot">@if (lastMissed(); as l) { {{ 'Gần nhất' | tr }} <b class="num warning-text">{{ fmtDay(l) }}</b> } @else { {{ 'Không lỡ ngày nào' | tr }} }</span>
+    </div>
+    <div class="sheet stat">
+      <span class="stat-label">{{ 'Báo cáo đúng hạn' | tr }}</span>
+      <span class="stat-n">{{ rep().ontime }}</span>
+      <span class="stat-foot"><b class="num">{{ rep().late }}</b> {{ 'trễ' | tr }}, <b class="num" [class.danger-text]="rep().missing">{{ rep().missing }}</b> {{ 'thiếu' | tr }}, {{ 'chuỗi đúng hạn' | tr }} <b class="num">{{ '{n} ngày' | tr: { n: rep().ontimeStreak } }}</b></span>
+    </div>
+  </div>
+
+  <app-day-chart [counts]="counts()" [missed]="missed()" [selected]="day()" [selectable]="true" (pick)="select($event)" />
+
+  <div class="cols">
+    <div class="sheet sheet-pad cal">
+      <app-calendar [y]="ym().year" [m]="ym().month" [selected]="day()" [counts]="counts()" [missed]="missed()" [reports]="statuses()" (pick)="select($event)" (month)="shiftMonth($event)" />
+    </div>
+    <div class="day stack-lg">
+      <div class="day-head">
+        <h2 class="num">{{ title() }}</h2>
+        <span class="badge success num">{{ 'Xong {n}' | tr: { n: dayFig().done } }}</span>
+        @if (dayFig().missed) { <span class="badge warning num">{{ 'Trễ {n}' | tr: { n: dayFig().missed } }}</span> }
+        <span class="grow"></span>
+        <button type="button" class="btn btn-sm" (click)="ui.focusQuickAdd()"><app-icon name="plus" [size]="16" />{{ 'Ghi việc đã làm' | tr }}</button>
+      </div>
+
+      <app-report-card [day]="day()" [report]="report()" [status]="statusOf(day())" />
+
+      <section class="sheet sheet-pad stack" aria-labelledby="note-title">
+        <h3 id="note-title">{{ 'Ghi chú trong ngày' | tr }}</h3>
+        <label for="note" class="visually-hidden">{{ 'Ghi chú trong ngày' | tr }}</label>
+        <textarea id="note" class="input" maxlength="20000" [disabled]="!noteLoaded()" [placeholder]="'Hôm nay thế nào? Điều gì đáng nhớ, điều gì muốn làm khác đi…' | tr"
+          [ngModel]="draft() ?? saved()" (ngModelChange)="draft.set($event)"></textarea>
+        @if (dirty()) {
+          <div class="row end">
+            <button type="button" class="btn btn-ghost" (click)="draft.set(null)">{{ 'Huỷ' | tr }}</button>
+            <button type="button" class="btn btn-primary" (click)="saveNote()" [disabled]="noteBusy()" [attr.aria-busy]="noteBusy()">{{ 'Lưu ghi chú' | tr }}</button>
+          </div>
+        }
+      </section>
+
+      @if (!loaded()) {
+        <app-task-group [title]="'Đã xong' | tr" [loading]="true" />
+      } @else if (!groups().length) {
+        <div class="sheet empty">
+          <app-icon name="book" [size]="28" />
+          <h3>{{ 'Chưa ghi việc nào ngày này' | tr }}</h3>
+          <p>@if (dayFig().missed) { {{ 'Có {n} việc đến hạn mà không xong.' | tr: { n: dayFig().missed } }} } {{ 'Ghi lại việc đã làm bằng ô thêm nhanh.' | tr }}</p>
+        </div>
+      } @else {
+        @for (g of groups(); track g.id ?? 'inbox') { <app-task-group [title]="groupName(g)" [tasks]="g.items" /> }
+      }
+    </div>
+  </div>
+</div>

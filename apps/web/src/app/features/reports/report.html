@@ -1,0 +1,65 @@
+<div class="page" [class.with-aside]="valid() && ready()">
+  <header class="page-head">
+    <div>
+      <a class="link back" routerLink="/reports"><app-icon name="chevron-left" [size]="14" />{{ 'Báo cáo ngày' | tr }}</a>
+      <h1 class="num">{{ valid() ? ('Báo cáo ngày {date}' | tr: { date: fmtDate(day()) }) : ('Không có ngày này' | tr) }}</h1>
+    </div>
+  </header>
+
+  @if (!valid()) {
+    <div class="page-main"><div class="sheet empty"><p>{{ 'Ngày này chưa tới hoặc không hợp lệ, nên chưa viết báo cáo được.' | tr }}</p>
+      <div class="actions"><a class="btn" routerLink="/reports">{{ 'Về danh sách báo cáo' | tr }}</a></div></div></div>
+  } @else if (initial() === null) {
+    <div class="page-main" aria-busy="true">
+      <span class="skeleton" style="height: 20px; width: 60%"></span>
+      <span class="skeleton" style="height: 320px"></span>
+      <span class="visually-hidden" role="status">{{ 'Đang tải…' | tr }}</span>
+    </div>
+  } @else {
+    <div class="page-main">
+      <div class="status">
+        @if (status() !== 'pending') { <app-report-badge [status]="status()" /> }
+        <p class="meta">
+          @if (report(); as r) {
+            {{ 'Nộp lúc {time} ngày {date}, hạn {deadline}.' | tr: { time: timeOf(r.submitted_at), date: dateOf(r.submitted_at), deadline } }}
+            @if (edited()) { {{ 'Sửa lần cuối {time} ngày {date}.' | tr: { time: timeOf(r.updated_at), date: dateOf(r.updated_at) } }} }
+          } @else if (status() === 'pending') {
+            {{ 'Hạn nộp {time} tối nay. Bản nháp lấy từ các việc đã xong trong ngày.' | tr: { time: deadline } }}
+          } @else {
+            {{ 'Đã quá hạn {time}: nộp bây giờ sẽ tính là trễ.' | tr: { time: deadline } }}
+          }
+        </p>
+      </div>
+      @if (report() && locked()) {
+        <div class="warn" role="note"><app-icon name="warning" /><p>{{ 'Báo cáo này đã qua hạn {time} nên không xoá được nữa. Bạn vẫn sửa được, và thời điểm sửa sẽ được ghi lại.' | tr: { time: deadline } }}</p></div>
+      }
+      <app-rich-editor [initial]="initial()!" [minHeight]="320" [placeholder]="'Hôm nay bạn đã làm gì?' | tr" (changed)="setContent($event)" />
+      <div class="actions">
+        @if (report() && !locked()) { <button type="button" class="btn btn-danger" (click)="remove()"><app-icon name="trash" [size]="16" />{{ 'Xoá báo cáo' | tr }}</button> } @else { <span></span> }
+        <button type="button" class="btn btn-primary" (click)="save()" [disabled]="busy()" [attr.aria-busy]="busy()"><app-icon name="send" [size]="16" />{{ (report() ? 'Lưu thay đổi' : 'Nộp báo cáo') | tr }}</button>
+      </div>
+    </div>
+
+    <aside class="page-aside">
+      <section aria-labelledby="rd">
+        <div class="sheet-head"><h2 id="rd" class="section-title">{{ 'Trong ngày' | tr }}</h2></div>
+        <div class="info-line"><app-icon name="circle-check" />{{ 'Đã xong' | tr }}<span class="n" [class.success-text]="done().length">{{ done().length }}</span></div>
+        <div class="info-line"><app-icon name="alert" />{{ 'Chưa xong' | tr }}<span class="n" [class.danger-text]="missedPast()">{{ open().length }}</span></div>
+      </section>
+      <section aria-labelledby="rdone">
+        <div class="sheet-head"><h2 id="rdone" class="section-title">{{ 'Việc đã xong' | tr }}</h2></div>
+        @for (g of groups(); track g.id ?? 'inbox') {
+          <div class="grp"><p class="label">{{ g.name }}</p>
+            @for (t of g.items; track t.id) { <p class="item"><app-icon name="check" [size]="14" />{{ t.title }}</p> }
+          </div>
+        } @empty { <p class="meta">{{ 'Chưa có việc nào xong trong ngày.' | tr }}</p> }
+      </section>
+      @if (open().length) {
+        <section aria-labelledby="ropen">
+          <div class="sheet-head"><h2 id="ropen" class="section-title">{{ 'Chưa xong' | tr }}</h2></div>
+          @for (t of open(); track t.id) { <p class="item open"><app-icon name="circle" [size]="14" />{{ t.title }}</p> }
+        </section>
+      }
+    </aside>
+  }
+</div>

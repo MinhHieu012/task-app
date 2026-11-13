@@ -1,0 +1,44 @@
+@if (rows().length) { <p class="meta num">{{ 'Xong {done}/{n}' | tr: { done: done(), n: rows().length } }}</p> }
+<div class="list">
+  @for (r of rows(); track r.id) {
+    @if (editing() === r.id) {
+      <div class="editor">
+        <div class="field">
+          <span class="label">{{ 'Tên việc con' | tr }}</span>
+          <app-rich-editor [initial]="titleHtml(r)" [compact]="true" [minHeight]="24" [placeholder]="'Tên việc con' | tr" (changed)="setTitle($event)" />
+        </div>
+        <div class="pair">
+          <div class="field"><label [for]="'sd-' + r.id">{{ 'Ngày bắt đầu' | tr }}</label><input [id]="'sd-' + r.id" class="input" type="date" [value]="when().start_date" (input)="setWhen('start_date', sd.value)" #sd /></div>
+          <div class="field"><label [for]="'st-' + r.id">{{ 'Giờ bắt đầu' | tr }}</label><input [id]="'st-' + r.id" class="input" type="time" [value]="when().start_time" (input)="setWhen('start_time', st.value)" #st /></div>
+        </div>
+        <div class="pair">
+          <div class="field"><label [for]="'ed-' + r.id">{{ 'Ngày kết thúc' | tr }}</label><input [id]="'ed-' + r.id" class="input" type="date" [value]="when().end_date" (input)="setWhen('end_date', ed.value)" #ed /></div>
+          <div class="field"><label [for]="'et-' + r.id">{{ 'Giờ kết thúc' | tr }}</label><input [id]="'et-' + r.id" class="input" type="time" [value]="when().end_time" (input)="setWhen('end_time', et.value)" #et /></div>
+        </div>
+        @if (error()) { <p class="error-text" role="alert">{{ error() }}</p> }
+        @else { <p class="hint">{{ 'Ngày để trống = ngày của việc cha. Phải nằm trong thời gian của việc cha.' | tr }}</p> }
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" (click)="editing.set(null)">{{ 'Huỷ' | tr }}</button>
+          <button type="button" class="btn" (click)="save(r)" [attr.aria-busy]="busy()">{{ 'Lưu việc con' | tr }}</button>
+        </div>
+      </div>
+    } @else {
+      <div class="item">
+        <app-tick [checked]="r.done" [size]="22" [label]="r.title" (flip)="toggle(r)" />
+        <button type="button" class="open" (click)="edit(r)" [attr.aria-label]="'Sửa “{name}”' | tr: { name: r.title }">
+          <span class="t" [class.done]="r.done">{{ r.title }}</span>
+          <span class="meta num">{{ fmtSpan(r) || ('Chưa đặt thời gian' | tr) }}</span>
+        </button>
+        <button type="button" class="btn btn-icon btn-sm" (click)="remove(r)" [attr.aria-label]="'Xoá “{name}”' | tr: { name: r.title }"><app-icon name="x" [size]="16" /></button>
+      </div>
+    }
+  }
+</div>
+<!-- Not a <form>: this sits inside the drawer's form. -->
+<div class="add">
+  <div class="input-wrap">
+    <app-icon name="plus" />
+    <input class="input" type="text" name="subtask" autocomplete="off" [placeholder]="'Thêm việc con…' | tr" [attr.aria-label]="'Tên việc con mới' | tr" [ngModel]="draft()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="draft.set($event)" (keydown.enter)="$event.preventDefault(); add()" />
+    @if (draft().trim()) { <span class="trail"><button type="button" class="btn btn-sm" (click)="add()" [attr.aria-busy]="busy()">{{ 'Thêm' | tr }}</button></span> }
+  </div>
+</div>

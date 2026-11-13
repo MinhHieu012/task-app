@@ -1,0 +1,128 @@
+<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<dialog #dialog class="drawer" aria-labelledby="drawer-title" (close)="closed.emit()" (click)="$event.target === $event.currentTarget && close()">
+  <div class="frame">
+    <header class="head">
+      <div class="grow">
+        <p class="meta">{{ task() ? projectName() : '' }}</p>
+        <h2 id="drawer-title">{{ 'Sửa việc' | tr }}</h2>
+      </div>
+      <button type="button" class="btn btn-icon" (click)="close()" [attr.aria-label]="'Đóng' | tr"><app-icon name="x" /></button>
+    </header>
+
+    @if (!loaded() && !task()) {
+      <div class="body" aria-busy="true">
+        <span class="skeleton" style="height: 44px"></span>
+        <span class="skeleton" style="height: 140px"></span>
+        <span class="skeleton" style="height: 44px; width: 60%"></span>
+        <span class="visually-hidden" role="status">{{ 'Đang tải…' | tr }}</span>
+      </div>
+    } @else if (!task()) {
+      <div class="body empty">
+        <h3>{{ 'Việc đã bị xoá' | tr }}</h3>
+        <p>{{ 'Việc này không còn nữa, có thể đã bị xoá ở máy khác.' | tr }}</p>
+        <div class="actions"><button type="button" class="btn" (click)="close()">{{ 'Đóng' | tr }}</button></div>
+      </div>
+    } @else {
+      @let t = task()!;
+      <form class="body" [formGroup]="form" (submit)="$event.preventDefault(); save()" novalidate>
+        <div class="field">
+          <span class="label" id="f-title">{{ 'Tên việc' | tr }}</span>
+          <app-rich-editor [initial]="titleHtml(t)" [compact]="true" [minHeight]="24" [placeholder]="'Tên việc' | tr" [invalid]="!!errors()['title']" (changed)="setTitle($event)" />
+          @if (errors()['title']) { <p class="error-text" role="alert">{{ errors()['title'] }}</p> }
+        </div>
+        <div class="field">
+          <span class="label">{{ 'Ghi chú' | tr }}</span>
+          <app-rich-editor [initial]="t.note ?? ''" [minHeight]="110" [placeholder]="'Thêm ghi chú…' | tr" (changed)="setNote($event)" />
+        </div>
+
+        <fieldset class="group">
+          <legend class="section">{{ 'Thời gian' | tr }}</legend>
+          <div class="chips" role="group" [attr.aria-label]="'Chọn nhanh' | tr">
+            @for (q of quickDays; track q[0]) {
+              <button type="button" class="chip" [class.on]="values().date === q[0]" (click)="form.controls.date.setValue(q[0])">{{ q[1] | tr }}</button>
+            }
+            <button type="button" class="chip" (click)="clearDates()">{{ 'Không hẹn ngày' | tr }}</button>
+          </div>
+          <div class="pair">
+            <div class="field"><label for="f-date">{{ 'Ngày bắt đầu' | tr }}</label><input id="f-date" class="input" type="date" formControlName="date" [attr.aria-invalid]="!!errors()['date'] || null" /></div>
+            <div class="field"><label for="f-time">{{ 'Giờ bắt đầu' | tr }}</label><input id="f-time" class="input" type="time" formControlName="time" [attr.aria-invalid]="!!errors()['time'] || null" /></div>
+          </div>
+          <div class="pair">
+            <div class="field"><label for="f-edate">{{ 'Ngày kết thúc' | tr }}</label><input id="f-edate" class="input" type="date" formControlName="endDate" [min]="values().date" /></div>
+            <div class="field"><label for="f-etime">{{ 'Giờ kết thúc' | tr }}</label><input id="f-etime" class="input" type="time" formControlName="endTime" [attr.aria-invalid]="!!errors()['endTime'] || null" /></div>
+          </div>
+          @for (k of ['date', 'time', 'endTime']; track k) {
+            @if (errors()[k]) { <p class="error-text" role="alert">{{ errors()[k] }}</p> }
+          }
+          <p class="hint">{{ 'Ngày kết thúc để trống = cùng ngày bắt đầu' | tr }}</p>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend class="section">{{ 'Lặp lại' | tr }}</legend>
+          <div class="seg" role="radiogroup" [attr.aria-label]="'Lặp lại' | tr">
+            @for (k of kinds; track k[0]) {
+              <button type="button" role="radio" [attr.aria-checked]="values().kind === k[0]" (click)="form.controls.kind.setValue(k[0])">{{ k[1] | tr }}</button>
+            }
+          </div>
+          @if (values().kind === 'weekly') {
+            <div class="chips" role="group" [attr.aria-label]="'Các thứ trong tuần' | tr">
+              @for (d of days; track $index) {
+                <button type="button" class="chip" [attr.aria-pressed]="weekDays().includes($index)" (click)="toggleDay($index)">{{ d | tr }}</button>
+              }
+            </div>
+          }
+          @if (values().kind === 'monthly') { <p class="meta">{{ 'Lặp vào ngày {d} mỗi tháng (theo ngày ở trên).' | tr: { d: monthlyDay() } }}</p> }
+          @if (values().kind === 'every') {
+            <div class="field narrow-field"><label for="f-every">{{ 'Số ngày' | tr }}</label><input id="f-every" class="input" type="text" inputmode="numeric" formControlName="everyN" [placeholder]="'Số ngày, ví dụ 3' | tr" [attr.aria-invalid]="!!errors()['repeat'] || null" /></div>
+          }
+          @if (errors()['repeat']) { <p class="error-text" role="alert">{{ errors()['repeat'] }}</p> }
+        </fieldset>
+
+        <fieldset class="group">
+          <legend class="section">{{ 'Ưu tiên' | tr }}</legend>
+          <div class="chips" role="radiogroup" [attr.aria-label]="'Ưu tiên' | tr">
+            @for (p of [1, 2, 3, 4]; track p) {
+              <button type="button" role="radio" class="chip" [attr.aria-checked]="values().priority === p" (click)="form.controls.priority.setValue(p)">
+                <span class="dot" [style.background]="'var(--color-p' + p + ')'"></span>{{ p === 4 ? ('Thường' | tr) : ('Mức {n}' | tr: { n: p }) }}
+              </button>
+            }
+          </div>
+        </fieldset>
+
+        <div class="pair">
+          <div class="field">
+            <label for="f-project">Project</label>
+            <select id="f-project" class="input" formControlName="project">
+              <option value="">{{ 'Hộp thư' | tr }}</option>
+              @for (p of projects(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-tags">{{ 'Nhãn' | tr }}</label>
+            <input id="f-tags" class="input" type="text" formControlName="tags" placeholder="#nhà #gấp" autocapitalize="none" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+        @if (known().length) {
+          <div class="chips" role="group" [attr.aria-label]="'Nhãn có sẵn' | tr">
+            @for (k of known(); track k) { <button type="button" class="chip" [attr.aria-pressed]="picked().includes(k)" (click)="toggleTag(k)">#{{ k }}</button> }
+          </div>
+        }
+
+        <fieldset class="group">
+          <legend class="section">{{ 'Việc con' | tr }}</legend>
+          <app-subtasks [task]="t" />
+        </fieldset>
+      </form>
+
+      <footer class="foot">
+        <button type="button" class="btn btn-danger" (click)="remove()"><app-icon name="trash" [size]="16" />{{ 'Xoá việc' | tr }}</button>
+        <span class="grow"></span>
+        <button type="button" class="btn btn-ghost" (click)="close()">{{ 'Huỷ' | tr }}</button>
+        <button type="button" class="btn btn-primary save" (click)="save()" [attr.aria-busy]="busy()">
+          @if (busy()) { <span class="spinner"></span> } {{ 'Lưu' | tr }}
+        </button>
+      </footer>
+    }
+  </div>
+</dialog>

@@ -1,0 +1,76 @@
+<div class="page with-aside">
+  <header class="page-head">
+    <div>
+      <h1>{{ 'Thống kê' | tr }}</h1>
+      <p class="meta num" aria-live="polite">{{ periodName() }}</p>
+    </div>
+  </header>
+
+  <div class="page-main">
+    <div class="controls">
+      <div class="seg" role="radiogroup" [attr.aria-label]="'Kỳ' | tr">
+        <button type="button" role="radio" [attr.aria-checked]="kind() === 'week'" (click)="go('week', null)">{{ 'Tuần' | tr }}</button>
+        <button type="button" role="radio" [attr.aria-checked]="kind() === 'month'" (click)="go('month', null)">{{ 'Tháng' | tr }}</button>
+      </div>
+      <div class="nav">
+        @if (!current()) { <button type="button" class="link" (click)="go(kind(), null)">{{ 'Về hiện tại' | tr }}</button> }
+        <button type="button" class="btn btn-icon" (click)="step(-1)" [attr.aria-label]="'Kỳ trước' | tr"><app-icon name="chevron-left" /></button>
+        <!-- No future periods: nothing is done or missed there yet. -->
+        <button type="button" class="btn btn-icon" (click)="step(1)" [disabled]="current()" [attr.aria-label]="'Kỳ sau' | tr"><app-icon name="chevron-right" /></button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Đã xong' | tr }}</span>
+        <span class="stat-n">{{ loaded() ? st().done : '–' }}</span>
+        <span class="stat-foot">@if (diff() === 0) { {{ 'Bằng {unit}' | tr: { unit: unit() } }} } @else { <b class="num" [class.success-text]="diff() > 0" [class.danger-text]="diff() < 0">{{ diff() > 0 ? '+' : '' }}{{ diff() }}</b> {{ 'so với {unit}' | tr: { unit: unit() } }} }</span>
+      </div>
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Lỡ hạn' | tr }}</span>
+        <span class="stat-n" [class.warning-text]="st().missed">{{ st().missed }}</span>
+        <span class="stat-foot">{{ 'Việc đến hạn mà không xong trong ngày' | tr }}</span>
+      </div>
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Đúng hạn' | tr }}</span>
+        <span class="stat-n">{{ pct(st().rate) }}</span>
+        <span class="stat-foot">{{ 'Trên' | tr }} <b class="num">{{ st().due }}</b> {{ 'việc đã đến hạn' | tr }}@if (prev().rate !== null) {<span>, {{ unit() }} <b class="num">{{ pct(prev().rate) }}</b></span>}</span>
+      </div>
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Báo cáo đúng hạn' | tr }}</span>
+        <span class="stat-n">{{ rep().ontime }}</span>
+        <span class="stat-foot"><b class="num">{{ rep().late }}</b> {{ 'trễ' | tr }}, <b class="num" [class.danger-text]="rep().missing">{{ rep().missing }}</b> {{ 'thiếu' | tr }}</span>
+      </div>
+    </div>
+
+    <app-day-chart [counts]="counts()" [missed]="missed()" />
+
+    <div class="pair">
+      @for (b of [{ title: 'Theo project', items: byProject(), empty: 'Chưa có việc nào xong' }, { title: 'Theo nhãn', items: byTag(), empty: 'Việc xong trong kỳ này chưa có nhãn.' }]; track b.title) {
+        <section class="sheet sheet-pad" [attr.aria-label]="b.title | tr">
+          <div class="sheet-head"><h2 class="section-title">{{ b.title | tr }}</h2></div>
+          @for (i of b.items; track i.label) {
+            <div class="line"><span class="clamp-1">{{ i.label }}</span><span class="track"><span [style.transform]="'scaleX(' + i.n / max(b.items) + ')'"></span></span><span class="n num">{{ i.n }}</span></div>
+          } @empty { <p class="meta">{{ b.empty | tr }}</p> }
+        </section>
+      }
+    </div>
+  </div>
+
+  <aside class="page-aside">
+    <section aria-labelledby="hl">
+      <div class="sheet-head"><h2 id="hl" class="section-title">{{ 'Điểm nổi bật' | tr }}</h2></div>
+      <div class="info-line"><app-icon name="trend" />{{ 'Trung bình mỗi ngày' | tr }}<span class="n">{{ '{n} việc' | tr: { n: avg() } }}</span></div>
+      <div class="info-line"><app-icon name="trophy" />{{ best() ? ('Nhiều nhất ({date})' | tr: { date: fmtDay(best()!) }) : ('Nhiều nhất' | tr) }}<span class="n">{{ best() ? ('{n} việc' | tr: { n: counts()[best()!] }) : '–' }}</span></div>
+      <div class="info-line"><app-icon name="calendar" />{{ 'Ngày có làm việc' | tr }}<span class="n">{{ activeDays() }}/{{ elapsedN() }}</span></div>
+      <div class="info-line"><app-icon name="alert" />{{ 'Ngày có việc lỡ' | tr }}<span class="n" [class.warning-text]="missed().size">{{ missed().size }}</span></div>
+    </section>
+    <section aria-labelledby="rp">
+      <div class="sheet-head"><h2 id="rp" class="section-title">{{ 'Báo cáo ngày' | tr }}</h2></div>
+      <div class="info-line"><app-icon name="circle-check" />{{ 'Đúng hạn' | tr }}<span class="n" [class.success-text]="rep().ontime">{{ rep().ontime }}</span></div>
+      <div class="info-line"><app-icon name="clock" />{{ 'Nộp trễ' | tr }}<span class="n" [class.warning-text]="rep().late">{{ rep().late }}</span></div>
+      <div class="info-line"><app-icon name="alert" />{{ 'Thiếu báo cáo' | tr }}<span class="n" [class.danger-text]="rep().missing">{{ rep().missing }}</span></div>
+      <div class="info-line"><app-icon name="flame" />{{ 'Chuỗi đúng hạn' | tr }}<span class="n">{{ '{n} ngày' | tr: { n: streak() } }}</span></div>
+    </section>
+  </aside>
+</div>

@@ -11,7 +11,7 @@ The user asked for this, so run it end to end without re-asking. Reply in Vietna
 1. **Look first.** `git status --short` and `git diff HEAD --stat`. Nothing to commit and no unpushed commits → say so and stop.
    Never stage `.idea/`, `supabase/.temp/`, `.env*`, or `.claude/settings.local.json` — editor/CLI noise and secrets.
 
-2. **Verify.** `npm run lint && npm run typecheck && npm test` (CLAUDE.md's definition of done; there is no CI to catch it later).
+2. **Verify.** `npm run check` at the repo root (core checks, web lint/typecheck/unit tests, mobile lint/typecheck/tests; CLAUDE.md's definition of done; there is no CI to catch it later).
    On failure: fix it if the cause is in this change, otherwise stop and report the error. Never push red.
 
 3. **Branch.** On `main` → `git checkout -b <type>/<kebab-slug>` (types: `feat`, `fix`, `chore`, `docs`, `refactor`; see past branches like `feat/task-app-daily-journal`, `docs/claude-md`). On another branch → stay on it.

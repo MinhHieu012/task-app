@@ -1,0 +1,45 @@
+<form class="box" (submit)="$event.preventDefault(); add()">
+  <div class="input-wrap">
+    <app-icon name="plus" />
+    <input #box class="input" type="text" name="quick-add" autocomplete="off" enterkeyhint="done"
+      [attr.aria-label]="'Tên việc mới' | tr" [placeholder]="ui.placeholder()" [value]="text()" [attr.aria-invalid]="error() ? 'true' : null"
+      aria-describedby="qa-panel" (input)="change(box.value)" (keydown)="keydown($event)" (focus)="onFocus()" (blur)="onBlur()" />
+    <span class="trail">
+      @if (busy()) { <span class="spinner" role="status" [attr.aria-label]="'Đang lưu…' | tr"></span> }
+      @else if (sheetMode()) {
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="!parsed().title">{{ 'Thêm' | tr }}</button>
+      } @else { <kbd class="kbd">N</kbd> }
+    </span>
+  </div>
+  @if (error()) { <p class="error-text" role="alert">{{ error() }}</p> }
+</form>
+
+@if (focused() || sheetMode()) {
+  <div id="qa-panel" class="panel" (mousedown)="$event.preventDefault()">
+    @if (understood().length) {
+      <div class="line">
+        <span class="lead">{{ 'Sẽ lưu' | tr }}</span>
+        @for (u of understood(); track u.label) { <span class="got"><app-icon [name]="u.icon" [size]="13" />{{ u.label }}</span> }
+      </div>
+    } @else if (sheetMode() && count()) {
+      <p class="lead" role="status">{{ 'Đã thêm {n} việc. Gõ tiếp, hoặc đóng khi xong.' | tr: { n: count() } }}</p>
+    }
+    @if (suggestions().length) {
+      <div class="line">
+        <span class="lead">{{ 'Nhãn' | tr }}</span>
+        @for (tag of suggestions(); track tag; let first = $first) {
+          <button type="button" class="chip" (click)="pick(tag)" [attr.aria-label]="'Thêm nhãn {tag}' | tr: { tag }">#{{ tag }}@if (first) {<kbd class="kbd">Tab</kbd>}</button>
+        }
+      </div>
+    } @else {
+      <div class="line">
+        <span class="lead">{{ 'Gõ thêm' | tr }}</span>
+        @for (h of hints(); track h[0]) {
+          <button type="button" class="chip" (click)="insert(h[0])" [attr.aria-label]="'Chèn {token}: {means}' | tr: { token: h[0], means: h[1] }">
+            <b class="token">{{ h[0] }}</b>{{ h[1] }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+}
