@@ -1,0 +1,22 @@
+.re { background: var(--color-field); border: var(--rule-hair) solid var(--color-edge); border-radius: var(--radius-ctl); overflow: hidden; transition: border-color var(--dur-micro) var(--ease-out);
+  &:hover { border-color: var(--color-ink-2); }
+  &:focus-within { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+  &.invalid { border-color: var(--color-error); }
+}
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 6px; background: var(--color-sheet); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.tool { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-muted); cursor: pointer; padding: 0;
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+  &:hover { background: var(--color-hover); color: var(--color-ink); }
+  &:active { background: var(--color-paper-2); }
+  &.on { background: var(--color-accent-wash); color: var(--color-accent); }
+  &:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; transition: none; }
+}
+.sep { width: 1px; height: 20px; margin: 0 4px; background: var(--color-rule); }
+.style { height: 32px; padding: 0 8px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-ink); font-size: var(--text-sm); cursor: pointer;
+  &:hover { background: var(--color-hover); }
+  &:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+}
+.body { position: relative; padding: 14px 16px; outline: none; color: var(--color-ink);
+  &.compact { padding: 10px 14px; }
+  &.empty::before { content: attr(data-placeholder); position: absolute; color: var(--color-muted); pointer-events: none; }
+}

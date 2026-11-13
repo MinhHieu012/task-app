@@ -1,0 +1,69 @@
+<div class="page with-aside">
+  <header class="page-head">
+    <div>
+      <h1>Project</h1>
+      @if (list.loaded()) { <p class="meta">{{ '{p} project, {n} việc đang mở' | tr: { p: list.rows().length, n: open().length } }}</p> }
+    </div>
+  </header>
+
+  <div class="page-main">
+    <section class="sheet" aria-labelledby="pt">
+      <h2 id="pt" class="visually-hidden">{{ 'Danh sách project' | tr }}</h2>
+      @if (!list.loaded()) {
+        @for (i of [0, 1, 2]; track i) { <div class="skel"><span class="skeleton" style="width: 12px; height: 12px"></span><span class="skeleton" style="width: 40%; height: 16px"></span></div> }
+      } @else if (rows().length) {
+        <table class="table">
+          <thead><tr><th>Project</th><th class="num">{{ 'Đang mở' | tr }}</th><th class="num">{{ 'Quá hạn' | tr }}</th><th>{{ 'Xong tuần này' | tr }}</th><th>{{ 'Hạn gần nhất' | tr }}</th></tr></thead>
+          <tbody>
+            @for (r of rows(); track r.p.id) {
+              <tr (click)="go(r.p.id)">
+                <td>
+                  <span class="name"><span class="mark" [style.background]="r.color"></span>
+                    <a class="name-link" [routerLink]="['/project', r.p.id]" (click)="$event.stopPropagation()">{{ r.p.name }}</a>
+                  </span>
+                </td>
+                <td class="num" [attr.data-label]="'Đang mở' | tr">{{ r.open }}</td>
+                <td class="num" [attr.data-label]="'Quá hạn' | tr" [class.danger-text]="r.over">{{ r.over }}</td>
+                <td [attr.data-label]="'Xong tuần này' | tr"><span class="week"><span class="track"><span [style.background]="r.color" [style.transform]="'scaleX(' + r.frac + ')'"></span></span><span class="num">{{ r.done }}/{{ r.total }}</span></span></td>
+                <td class="num" [attr.data-label]="'Hạn gần nhất' | tr" [class.muted]="!r.next">{{ r.next ? fmtDay(r.next) : ('Chưa có hạn sắp tới' | tr) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <div class="empty">
+          <app-icon name="folder-open" [size]="28" />
+          <h3>{{ 'Chưa có project nào' | tr }}</h3>
+          <p>{{ 'Gom các việc cùng mục tiêu vào một project. Tạo project đầu tiên ở dòng bên dưới.' | tr }}</p>
+        </div>
+      }
+      <form class="new" (submit)="$event.preventDefault(); add()">
+        <label for="np" class="label">{{ 'Project mới' | tr }}</label>
+        <input id="np" class="input grow" type="text" name="project" autocomplete="off" [placeholder]="'Tên project' | tr" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+        <button type="submit" class="btn btn-primary" [disabled]="busy()" [attr.aria-busy]="busy()"><app-icon name="plus" [size]="16" />{{ 'Thêm project' | tr }}</button>
+      </form>
+    </section>
+
+    @for (g of byDue(); track g[0]) {
+      <app-task-group [title]="label[g[0]] | tr" [tasks]="g[1]" [projects]="list.rows()" [over]="g[0] === 'over'" [compact]="true" />
+    }
+  </div>
+
+  @if (list.rows().length) {
+    <aside class="page-aside">
+      <section aria-labelledby="wk">
+        <div class="sheet-head"><h2 id="wk" class="section-title">{{ 'Tiến độ tuần này' | tr }}</h2></div>
+        <p class="pct num">{{ pct() }}%</p>
+        <p class="meta">{{ '{done}/{total} việc đã xong' | tr: { done: doneN(), total: total() } }}</p>
+        <span class="track big"><span [style.transform]="'scaleX(' + pct() / 100 + ')'"></span></span>
+      </section>
+      <section aria-labelledby="bd">
+        <div class="sheet-head"><h2 id="bd" class="section-title">{{ 'Theo hạn' | tr }}</h2></div>
+        <div class="info-line"><app-icon name="alert" />{{ 'Quá hạn' | tr }}<span class="n" [class.danger-text]="count('over')">{{ count('over') }}</span></div>
+        <div class="info-line"><app-icon name="sun" />{{ 'Hôm nay' | tr }}<span class="n">{{ count('today') }}</span></div>
+        <div class="info-line"><app-icon name="calendar" />{{ 'Sắp tới' | tr }}<span class="n">{{ count('soon') }}</span></div>
+        <div class="info-line"><app-icon name="help" />{{ 'Chưa hẹn ngày' | tr }}<span class="n">{{ count('none') }}</span></div>
+      </section>
+    </aside>
+  }
+</div>

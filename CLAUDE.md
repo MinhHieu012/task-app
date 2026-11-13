@@ -1,51 +1,55 @@
-@AGENTS.md
-
 # task-app
 
-Personal task manager + daily journal. Expo SDK 58 (Expo Router, typed routes), React 19, TypeScript, Supabase (auth + Postgres). Runs on iOS, Android and web (web has a wide layout at >= 1024px). UI text is Vietnamese.
+Personal task manager + daily journal. One Supabase backend (auth + Postgres), two independent apps:
 
-## Commands
+- `apps/web/` — **Angular 21** (standalone, signals, zoneless, lazy routes, SCSS). The only web app; Vercel deploys it.
+- `apps/mobile/` — **Expo SDK 58** (Expo Router, React Native 0.88). iOS/Android development builds. Its own rules: `apps/mobile/AGENTS.md`.
+- `packages/core/` — framework-free TS rules (dates, recurrence, journal, reports, tags, quick add, i18n, row types), used by the web.
+- `supabase/` — migrations (source of truth), `schema.sql`, email templates. `scripts/supabase.mjs` runs the CLI.
+
+UI text is Vietnamese (English through `tr`). Docs: `docs/architecture/overview.md`, `docs/api/contracts.md`, `docs/development/setup.md`, `docs/development/mobile.md`, `docs/migration/angular-web.md`.
+
+## Commands (repo root)
 
 ```bash
-npm start              # dev server (npm run web / ios / android)
-npm run lint           # expo lint
-npm run typecheck      # tsc --noEmit
-npm test               # node src/lib/logic.check.ts — plain node:assert checks for dates/journal logic
-npm run db:push        # apply supabase/migrations to the hosted DB
+npm run web | web:build | web:check | web:e2e
+npm run mobile | mobile:android | mobile:check
+npm run core:test        # packages/core rules + the web translation scan
+npm run check            # everything above except e2e
+npm run db:push          # apply supabase/migrations to the hosted DB
 ```
 
-Before calling a task done: `npm run lint && npm run typecheck && npm test`.
+Before calling a task done: `npm run check`. No npm workspaces: each app has its own node_modules and lockfile.
 
-## Layout
+## Rules
 
-- `src/app/` — routes only. `_layout.tsx` gates `sign-in` vs `(tabs)` + `task/[id]` with `Stack.Protected` on the Supabase session. Tabs: `index` (Today), `inbox`, `upcoming`, `projects`, `project/[id]`, `journal`, `reports`, `report/…`, `settings`, and the hidden `search`, `stats` (reached from the rail and header buttons). `design-system.tsx` is a living style reference.
-- `src/components/ui.tsx` — the shared primitives (`Screen`, `Card`, `Button`, `Field`, `ListRow`, `Tick`, `Choices`, `ConfirmModal`, `useWide`, ...). Reuse these before writing new UI.
-- `src/constants/theme.ts` — all colors/tokens and the font. Change colors here only; never hardcode hex in screens.
-- `src/lib/` — `supabase.ts` (client, `Task`/`Project` types, `useSession`, `useRows`, `ok`), `dates.ts` (local-day ISO helpers, `nextDue`, `parseDate` dd/mm), `journal.ts`, `reminders.ts` (expo-notifications, native only), `notify.ts` (`showError`, `confirmAction`, `toast` with an optional undo action), `tags.ts` (`#tag` parsing, search, suggestions), `quick.ts` (quick add syntax: `mai 9h !1 #tag`).
-- `docs/plans/`, `docs/design/` — past plans and the design-system HTML.
-
-## Conventions
-
-- Font is **Be Vietnam Pro** (one family, faces picked by `fontWeight`). Do not switch to a font without full Vietnamese glyphs (DM Sans broke diacritics).
-- Dates are local-day ISO strings (`YYYY-MM-DD`) from `dates.ts`; never derive "today" from UTC (`toISOString`).
-- A task row with `completed_at` is a journal entry. `completed_day` is frozen at tick time. Recurring tick: open task moves to `nextDue`, a `recurring_copy` done row stays in the journal.
-- `repeat` format: `daily | weekly:<0-6,...> | monthly:<1-31> | every:<N>` (enforced by a DB check).
-- New pure logic in `src/lib` gets an assert in `logic.check.ts`.
-- UI strings go through `tr('Vietnamese text', { vars })` (`src/lib/i18n.ts`): the Vietnamese is the key, add its English to `en` (`npm test` fails on a missing one). Never call `tr` at module level.
-- Language and accent are device prefs (`src/lib/prefs.ts` / `.native.ts`), read synchronously at startup; changing one reloads the app, since StyleSheets are built once at module load.
-- Daily report (`daily_reports`, one per day, HTML): due 21:00 local, `late` frozen at first save (`src/lib/reports.ts`). The editor/viewer are Expo DOM components (`src/components/dom/`, `'use dom'`): they get labels and colours as props and always pass HTML through `sanitize`.
-- Quick add syntax words live only in `quick.ts` (Vietnamese in every language, excluded from the i18n scan); the panel shows them as hint chips, so add any new token to `EXAMPLES` too.
-- Moving tasks (snooze, move overdue, undo) goes through the `move_tasks` RPC, which shifts the end date and subtasks by the same days. Destructive or moving actions get an undo toast.
-- Auth: email/password plus Google via `google(link, path)` in `supabase.ts` (sign in, or link to the current user). Every path an auth flow returns to (`/`, `/settings`, `/reset-password`) must be in Supabase's Redirect URLs for web origins and `taskapp://`; an unlisted one silently lands on the Site URL. Errors come back in the URL (`error_code`), mapped in `AUTH_ERRORS`.
+- **Mobile is frozen** apart from mobile tasks: never redesign it or change its logic as a side effect of web work. Expo rules in `apps/mobile/AGENTS.md`.
+- Web never uses Expo or React Native Web. Web and mobile share no UI.
+- A business rule lives in `packages/core` (with an assert in `logic.check.ts`) and, until mobile imports core, in `apps/mobile/src/lib` too: change both.
+- Font is **Be Vietnam Pro** (full Vietnamese glyphs; DM Sans broke diacritics).
+- Dates are local-day ISO strings (`YYYY-MM-DD`) from `dates.ts`; never derive "today" from UTC.
+- A task row with `completed_at` is a journal entry; `completed_day` is frozen at tick time. Recurring tick: `complete_recurring` RPC. Moving tasks: `move_tasks` RPC. Destructive or moving actions get an undo toast.
+- `repeat` format: `daily | weekly:<0-6,...> | monthly:<1-31> | every:<N>` (DB check).
+- Daily report: due 21:00 local, `late` frozen at first save; rich HTML always through the sanitizer allow-list.
+- Quick add syntax words live only in `core/quick.ts` (Vietnamese in every language); add new tokens to `EXAMPLES`.
+- Auth: email/password + Google with PKCE. Every return path (`/`, `/settings`, `/reset-password`) must be in Supabase's Redirect URLs for each origin (`http://localhost:4200`, the Vercel domain, `taskapp://`).
 - Code style: small, direct, no speculative abstractions; comments explain *why*.
+
+### Web (apps/web)
+
+- Strings: `{{ 'Tiếng Việt' | tr }}` / `tr()`; the Vietnamese is the key, add English to `packages/core/src/i18n.ts` (`core:test` fails on a missing one). Never call `tr` at module level.
+- Colours only via tokens (`src/styles/tokens.css` + `core/theme/palette.ts`); never a hex in a component. Global system in `src/styles.scss` (Hallmark stamp first).
+- Data: `liveRows()` for reads, `TasksService` for writes (each refreshes its tables). Components standalone + OnPush, signal inputs.
+- Shareable state in the URL (`?task`, `?day`, `?q`, Upcoming/Stats params).
+- Env: `scripts/env.mjs` writes `src/environments/supabase.ts` (gitignored) from `SUPABASE_URL`/`SUPABASE_KEY` (or `EXPO_PUBLIC_*`); publishable key only.
 
 ## Deploy
 
-Web: Vercel auto-deploys `main` only (`vercel.json`: `expo export -p web` → `dist/`, SPA rewrite). Flow: branch → checks → `db:push` for new migrations before merge → PR → merge. Mobile: development builds only, not on the stores; a new native library means a rebuild.
+Web: Vercel auto-deploys `main` (`vercel.json` builds `apps/web` → `apps/web/dist/web/browser`, SPA rewrite). Flow: branch → `npm run check` → `db:push` for new migrations before merge → PR → merge. Mobile: development builds only; a new native library means a rebuild.
 
 ## Database (Supabase)
 
-- Schema changes = new file in `supabase/migrations/<timestamp>_<name>.sql`; also update `supabase/schema.sql` (full snapshot) and the `Task`/`Project` types in `src/lib/supabase.ts`.
-- RLS is per user (`user_id default auth.uid()`); keep it on every new table.
-- `npm run db:push` goes through the IPv4 session pooler (`scripts/supabase.mjs`, region eu-west-1) because the direct host is IPv6-only. Writes to the hosted DB are run by the user — prepare the migration and ask.
-- Env in `.env.local` (see `.env.example`). Only `EXPO_PUBLIC_*` reaches the app; `SUPABASE_DB_PASSWORD` must never get that prefix.
+- Schema change = new `supabase/migrations/<timestamp>_<name>.sql`; also update `supabase/schema.sql`, `packages/core/src/types.ts` and `apps/mobile/src/lib/supabase.ts`.
+- RLS per user (`user_id default auth.uid()`) on every table.
+- `npm run db:push` goes through the IPv4 session pooler (eu-west-1). Writes to the hosted DB are run by the user — prepare the migration and ask.
+- Env: root `.env.local` (`SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_DB_PASSWORD`); `apps/mobile/.env.local` (`EXPO_PUBLIC_*`). The DB password never gets a public prefix or goes into an app env.

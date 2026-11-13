@@ -1,0 +1,8 @@
+.wide-page { max-width: var(--container); }
+.cols { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 24px; align-items: start; }
+.cal { position: sticky; top: 88px; }
+.day-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding-bottom: 10px; border-bottom: 2px solid var(--color-rule-strong); }
+.end { justify-content: flex-end; }
+.empty > app-icon { color: var(--color-accent); }
+@media (max-width: 75rem) { .cols { grid-template-columns: 320px minmax(0, 1fr); } }
+@media (max-width: 60rem) { .cols { grid-template-columns: minmax(0, 1fr); } .cal { position: static; } }

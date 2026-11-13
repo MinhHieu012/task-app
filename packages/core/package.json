@@ -1,0 +1,9 @@
+{
+  "name": "@task-app/core",
+  "private": true,
+  "type": "module",
+  "description": "Framework-free domain rules shared by the apps: dates, recurrence, journal, reports, tags, quick add syntax, i18n.",
+  "scripts": {
+    "test": "node src/logic.check.ts"
+  }
+}

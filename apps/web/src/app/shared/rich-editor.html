@@ -1,0 +1,28 @@
+<div class="re" [class.invalid]="invalid()">
+  <div role="toolbar" class="bar" [attr.aria-label]="tr('Định dạng')">
+    @if (!compact()) {
+      <select class="style" [attr.aria-label]="tr('Kiểu đoạn')" [value]="block()" (change)="block.set(sel.value); run('formatBlock', sel.value)" #sel>
+        <option value="p">{{ tr('Đoạn văn') }}</option>
+        <option value="h2">{{ tr('Tiêu đề') }}</option>
+        <option value="h3">{{ tr('Tiêu đề nhỏ') }}</option>
+        <option value="blockquote">{{ tr('Trích dẫn') }}</option>
+      </select>
+      <span class="sep"></span>
+    }
+    @for (c of tools(compact()); track $index) {
+      @if (c) {
+        <!-- mousedown keeps the selection in the editor; click would move focus to the button first. -->
+        <button type="button" class="tool" [class.on]="on().has(c)" [attr.aria-label]="label(c)" [title]="label(c)"
+          [attr.aria-pressed]="c === 'undo' || c === 'redo' || c === 'removeFormat' ? null : on().has(c)"
+          (mousedown)="$event.preventDefault(); run(c)" (keydown.enter)="$event.preventDefault(); run(c)" (keydown.space)="$event.preventDefault(); run(c)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" [attr.stroke-width]="c === 'bold' ? 2.5 : 2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="icon[c]" /></svg>
+        </button>
+      } @else {
+        <span class="sep"></span>
+      }
+    }
+  </div>
+  <div #body class="body prose" [class.empty]="empty()" [class.compact]="compact()" contenteditable="true" spellcheck="false" role="textbox"
+    [attr.aria-multiline]="!compact()" [attr.aria-label]="placeholder()" [attr.data-placeholder]="placeholder()" [attr.aria-invalid]="invalid() || null"
+    [style.min-height.px]="minHeight()" (input)="emit()" (paste)="paste($event)" (keydown)="keydown($event)"></div>
+</div>

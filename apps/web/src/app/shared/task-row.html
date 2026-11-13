@@ -1,0 +1,105 @@
+@let t = task();
+<div class="line">
+  @if (timeCol()) {
+    <div class="when">
+      <app-tick [checked]="done()" [priority]="t.priority" [size]="28" [disabled]="busy()" [label]="(done() ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong') | tr" (flip)="tick()" />
+      <div class="when-text">
+        @if (over()) {
+          <span class="when-head num">{{ 'Hạn {date}' | tr: { date: fmtDay(last()!) } }}</span>
+          <span class="when-sub over">{{ late() }}</span>
+        } @else if (t.due_time) {
+          <span class="when-head num">{{ t.due_time.slice(0, 5) }}</span>
+          <span class="when-sub">{{ 'Bắt đầu' | tr }}</span>
+        } @else {
+          <span class="when-head">{{ 'Cả ngày' | tr }}</span>
+          <span class="when-sub">{{ 'Chưa hẹn giờ' | tr }}</span>
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="tick-col">
+      <app-tick [checked]="done()" [priority]="t.priority" [size]="24" [disabled]="busy()" [label]="(done() ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong') | tr" (flip)="tick()" />
+    </div>
+  }
+
+  <div class="body">
+    <button type="button" class="title" (click)="openTask()" [attr.aria-current]="selected() ? 'true' : null">{{ t.title }}</button>
+    <div class="meta">
+      @if (timeCol()) {
+        @if (over()) { <span class="m over only-narrow"><app-icon name="alert" [size]="14" />{{ late() }}</span> }
+        @else if (range()) { <span class="m num only-narrow"><app-icon name="clock" [size]="14" />{{ range() }}</span> }
+      }
+      @if (project() !== undefined) {
+        <span class="m"><app-icon [name]="project() ? 'folder' : 'inbox'" [size]="14" />{{ project() || ('Hộp thư' | tr) }}</span>
+      }
+      @if (!timeCol() && !hideDate() && !done()) {
+        @if (t.due_date) {
+          <span class="m num" [class.over]="over()"><app-icon name="calendar" [size]="14" />{{ due() }}</span>
+        } @else {
+          <span class="m">{{ 'Chưa có hạn' | tr }}</span>
+        }
+      }
+      @if ((hideDate() || timeCol()) && range() && range().includes('–')) {
+        <span class="m num"><app-icon name="clock" [size]="14" />{{ range() }}</span>
+      } @else if (hideDate() && range()) {
+        <span class="m num"><app-icon name="clock" [size]="14" />{{ range() }}</span>
+      }
+      @if (done()) {
+        <span class="m num"><app-icon name="circle-check" [size]="14" />{{ doneAt() }}</span>
+      }
+      @if (repeat()) {
+        <span class="m"><app-icon name="repeat" [size]="14" />{{ repeat() }}</span>
+      }
+      @if (subs().length) {
+        <button type="button" class="pill" (click)="open.set(!open())" [attr.aria-expanded]="open()" [attr.aria-label]="(open() ? 'Ẩn việc con' : 'Xem việc con') | tr">
+          <app-icon name="subtasks" [size]="14" /><span class="num">{{ subsDone() }}/{{ subs().length }}</span>
+          <app-icon [name]="open() ? 'chevron-up' : 'chevron-down'" [size]="14" />
+        </button>
+      }
+      @for (tag of t.tags; track tag) {
+        <a class="tag" [routerLink]="['/search']" [queryParams]="{ q: '#' + tag }" [attr.aria-label]="'Xem việc có nhãn {tag}' | tr: { tag }">#{{ tag }}</a>
+      }
+      @if (note()) {
+        <span class="m note"><app-icon name="file" [size]="14" /><span class="clamp-1">{{ note() }}</span></span>
+      }
+      @if (snooze()) {
+        <button type="button" class="pill" [disabled]="busy()" (click)="push('tomorrow')" [attr.aria-label]="'Dời sang {day}' | tr: { day: ('ngày mai' | tr) }">
+          <app-icon name="arrow-right" [size]="12" />{{ 'Mai' | tr }}
+        </button>
+        <button type="button" class="pill" [disabled]="busy()" (click)="push('monday')" [attr.aria-label]="'Dời sang {day}' | tr: { day: ('thứ Hai tuần sau' | tr) }">
+          <app-icon name="arrow-right" [size]="12" />{{ 'Tuần sau' | tr }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (!compact()) {
+    <div class="prio">
+      @if (t.priority < 4) {
+        <span class="prio-tag" [style.--p]="'var(--color-p' + t.priority + ')'"><app-icon name="flag" [size]="13" />{{ priorityName() }}</span>
+      }
+    </div>
+  }
+</div>
+
+@if (open()) {
+  <div class="subs">
+    <div class="subs-head">
+      <span class="subs-title">{{ 'Việc con' | tr }}</span>
+      <span class="meta num">{{ 'Xong {done}/{n}' | tr: { done: subsDone(), n: subs().length } }}</span>
+      <span class="track"><span [style.transform]="'scaleX(' + subsDone() / subs().length + ')'"></span></span>
+    </div>
+    @for (s of subs(); track s.id) {
+      @let state = subState(s);
+      <div class="sub">
+        <app-tick [checked]="subDone(s)" [size]="20" [label]="s.title" (flip)="tickSub(s)" />
+        <span class="grow" [class.struck]="subDone(s)">{{ s.title }}</span>
+        <span class="meta num" [class.over]="state === 'late'">{{ subSpan(s) || ('Chưa đặt thời gian' | tr) }}</span>
+        @if (subLength(s)) { <span class="len num">{{ subLength(s) }}</span> }
+        @if (subDone(s)) { <span class="badge success">{{ 'Xong' | tr }}</span> }
+        @else if (state === 'late') { <span class="badge error">{{ 'Trễ hạn' | tr }}</span> }
+        @else if (state === 'now') { <span class="badge warning">{{ 'Đang diễn ra' | tr }}</span> }
+      </div>
+    }
+  </div>
+}

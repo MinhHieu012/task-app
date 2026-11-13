@@ -1,0 +1,100 @@
+<div class="page with-aside">
+  <header class="page-head">
+    <div>
+      <h1>{{ 'Hôm nay' | tr }}</h1>
+      <p class="meta num">{{ title }}@if (loaded()) {<span>{{ ', {n} việc' | tr: { n: over().length + due().length } }}</span>}</p>
+    </div>
+    <button type="button" class="btn btn-primary hide-narrow" (click)="ui.focusQuickAdd()"><app-icon name="plus" [size]="16" />{{ 'Thêm việc' | tr }}</button>
+  </header>
+
+  <div class="page-main">
+    <div class="stats">
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Còn lại' | tr }}</span>
+        <span class="stat-n">{{ loaded() ? due().length : '–' }}</span>
+        <span class="stat-foot">{{ 'Trên' | tr }} <b class="num">{{ due().length + done().length }}</b> {{ 'việc hôm nay' | tr }}</span>
+      </div>
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Quá hạn' | tr }}</span>
+        <span class="stat-n" [class.danger-text]="over().length">{{ loaded() ? over().length : '–' }}</span>
+        <span class="stat-foot">
+          @if (oldest()) { {{ 'Cũ nhất' | tr }} <b class="num danger-text">{{ '{n} ngày' | tr: { n: oldest() } }}</b> }
+          @else { {{ 'Không có việc trễ' | tr }} }
+        </span>
+      </div>
+      <div class="sheet stat">
+        <span class="stat-label">{{ 'Đã xong' | tr }}</span>
+        <span class="stat-n">{{ done().length }}</span>
+        <div class="row bars-row">
+          <span class="stat-foot grow">
+            @if (vsYesterday() === 0) { {{ 'Bằng hôm qua' | tr }} }
+            @else { <b class="num" [class.success-text]="vsYesterday() > 0" [class.danger-text]="vsYesterday() < 0">{{ vsYesterday() > 0 ? '+' : '' }}{{ vsYesterday() }}</b> {{ 'so với hôm qua' | tr }} }
+          </span>
+          <span class="bars" role="img" [attr.aria-label]="('Việc xong 7 ngày qua' | tr) + ': ' + perDay().join(', ')">
+            @for (n of perDay(); track $index) { <span [style.transform]="'scaleY(' + (n ? 0.15 + (n / maxBar()) * 0.85 : 0.08) + ')'" [class.on]="$last"></span> }
+          </span>
+        </div>
+      </div>
+    </div>
+
+    @if (reportLoaded()) { <app-report-nudge [day]="day" [report]="report()" [status]="status()" [streak]="streak()" /> }
+
+    @if (!loaded()) {
+      <app-task-group [title]="'Hôm nay' | tr" [loading]="true" />
+    } @else if (!over().length && !due().length) {
+      <div class="sheet empty">
+        <app-icon name="sun" [size]="28" />
+        <h2>{{ 'Xong hết việc hôm nay' | tr }}</h2>
+        <p>{{ 'Việc có hạn hôm nay sẽ hiện ở đây. Thêm một việc, hoặc xem các ngày tới.' | tr }}</p>
+        <div class="actions">
+          <button type="button" class="btn" (click)="ui.focusQuickAdd()"><app-icon name="plus" [size]="16" />{{ 'Thêm việc' | tr }}</button>
+          <a class="btn" routerLink="/upcoming">{{ 'Xem Sắp tới' | tr }}</a>
+        </div>
+      </div>
+    } @else {
+      @if (over().length) {
+        <app-task-group [title]="'Quá hạn' | tr" [over]="true" [tasks]="over()" [projects]="projects()" [timeCol]="true">
+          <button type="button" class="btn btn-sm" (click)="moveOverdue()" [disabled]="moving()" [attr.aria-busy]="moving()">
+            @if (moving()) { <span class="spinner"></span> } @else { <app-icon name="arrow-right" [size]="16" /> }
+            {{ 'Dời hết sang hôm nay' | tr }}
+          </button>
+        </app-task-group>
+      }
+      <app-task-group [title]="'Hôm nay' | tr" [tasks]="due()" [projects]="projects()" [timeCol]="true" [empty]="'Không còn việc nào có hạn hôm nay.' | tr" />
+    }
+  </div>
+
+  <aside class="page-aside">
+    <section aria-labelledby="week-title">
+      <div class="sheet-head"><h2 id="week-title" class="section-title">{{ '7 ngày tới' | tr }}</h2><a class="link" routerLink="/upcoming">{{ 'Xem tất cả' | tr }}</a></div>
+      <ol class="week">
+        @for (w of week; track w; let first = $first) {
+          <li>
+            <a class="wd" [class.on]="first" routerLink="/upcoming" [queryParams]="{ day: w }" [attr.aria-label]="'{day} {date}: {n} việc' | tr: { day: short(w), date: fmtDay(w), n: countOn(w) }">
+              <span class="wd-day">{{ short(w) }}</span>
+              <span class="wd-num num">{{ w.slice(8) }}</span>
+              <span class="wd-count num">{{ countOn(w) || '' }}</span>
+            </a>
+          </li>
+        }
+      </ol>
+      @if (next(); as n) {
+        <button type="button" class="next" (click)="ui.openTask(n.id)">
+          <span class="row meta"><span class="grow">{{ 'Việc kế tiếp' | tr }}</span><span class="num">{{ weekday(n.due_date!) }} {{ fmtDay(n.due_date!) }}</span></span>
+          <span class="next-title clamp-2">{{ n.title }}</span>
+          <span class="row meta"><app-icon name="clock" [size]="14" />{{ nextMeta(n) }}</span>
+        </button>
+      }
+    </section>
+    <section aria-labelledby="done-title">
+      <div class="sheet-head"><h2 id="done-title" class="section-title">{{ 'Đã xong hôm nay' | tr }}</h2><a class="link" routerLink="/journal">{{ 'Nhật ký' | tr }}</a></div>
+      <ul class="mini">
+        @for (t of done(); track t.id) {
+          <li><app-icon name="check" [size]="16" /><span class="grow clamp-1">{{ t.title }}</span><span class="meta num">{{ doneAt(t) }}</span></li>
+        } @empty {
+          <li class="meta">{{ 'Chưa xong việc nào.' | tr }}</li>
+        }
+      </ul>
+    </section>
+  </aside>
+</div>

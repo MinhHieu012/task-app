@@ -1,0 +1,59 @@
+<app-auth-shell [title]="title()" [sub]="sub()">
+  @if (mode() !== 'forgot') {
+    <div class="seg" role="tablist" [attr.aria-label]="'Đăng nhập hoặc đăng ký' | tr">
+      <button type="button" role="tab" [attr.aria-checked]="mode() === 'in'" [attr.aria-selected]="mode() === 'in'" (click)="switchTo('in')">{{ 'Đăng nhập' | tr }}</button>
+      <button type="button" role="tab" [attr.aria-checked]="mode() === 'up'" [attr.aria-selected]="mode() === 'up'" (click)="switchTo('up')">{{ 'Đăng ký' | tr }}</button>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" class="input" type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="none" formControlName="email"
+        [placeholder]="'ten@vidu.com' | tr" [attr.aria-invalid]="!!err('email') || null" aria-describedby="email-err" />
+      <p id="email-err" class="error-text">{{ err('email') }}</p>
+    </div>
+    @if (mode() !== 'forgot') {
+      <div class="field">
+        <label for="password">{{ 'Mật khẩu' | tr }}</label>
+        <div class="input-wrap">
+          <input id="password" class="input" [type]="show() ? 'text' : 'password'" name="password" formControlName="password"
+            [autocomplete]="mode() === 'up' ? 'new-password' : 'current-password'" [placeholder]="(mode() === 'up' ? 'Ít nhất 6 ký tự' : 'Mật khẩu của bạn') | tr"
+            [attr.aria-invalid]="!!err('password') || null" aria-describedby="password-err" />
+          <span class="trail">
+            <button type="button" class="btn btn-icon btn-sm" (click)="show.set(!show())" [attr.aria-label]="(show() ? 'Ẩn mật khẩu' : 'Hiện mật khẩu') | tr" [attr.aria-pressed]="show()">
+              <app-icon [name]="show() ? 'eye-off' : 'eye'" [size]="18" />
+            </button>
+          </span>
+        </div>
+        <p id="password-err" class="error-text">{{ err('password') }}</p>
+      </div>
+    }
+    @if (mode() === 'in') { <button type="button" class="link forgot" (click)="switchTo('forgot')">{{ 'Quên mật khẩu?' | tr }}</button> }
+    @if (mode() === 'up') {
+      <div class="field">
+        <label for="confirm">{{ 'Nhập lại mật khẩu' | tr }}</label>
+        <input id="confirm" class="input" [type]="show() ? 'text' : 'password'" name="confirm" autocomplete="new-password" formControlName="confirm"
+          [placeholder]="'Gõ lại mật khẩu ở trên' | tr" [attr.aria-invalid]="!!err('confirm') || null" aria-describedby="confirm-err" />
+        <p id="confirm-err" class="error-text">{{ err('confirm') }}</p>
+      </div>
+    }
+    <button type="submit" class="btn btn-primary btn-block" [disabled]="busy()" [attr.aria-busy]="busy()">
+      @if (busy()) { <span class="spinner"></span> }
+      {{ (mode() === 'forgot' ? 'Gửi link đặt lại' : mode() === 'up' ? 'Tạo tài khoản' : 'Đăng nhập') | tr }}
+    </button>
+  </form>
+
+  @if (mode() !== 'forgot') {
+    <p class="or">{{ 'hoặc' | tr }}</p>
+    <!-- Signs in, or makes the account on first use: one button for both tabs. -->
+    <button type="button" class="btn btn-block" (click)="google()">
+      <img class="g" src="google.png" alt="" width="18" height="18" />{{ 'Tiếp tục với Google' | tr }}
+    </button>
+  }
+
+  <p class="switch">
+    {{ (mode() === 'forgot' ? 'Nhớ ra rồi? ' : mode() === 'up' ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? ') | tr }}
+    <button type="button" class="link" (click)="switchTo(mode() === 'in' ? 'up' : 'in')">{{ (mode() === 'in' ? 'Tạo tài khoản' : 'Đăng nhập') | tr }}</button>
+  </p>
+</app-auth-shell>

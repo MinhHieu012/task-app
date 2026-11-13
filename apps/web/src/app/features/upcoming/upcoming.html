@@ -1,0 +1,84 @@
+<div class="page wide-page">
+  <header class="page-head">
+    <div>
+      <h1>{{ 'Sắp tới' | tr }}</h1>
+      @if (days().length) { <p class="meta num">{{ fmtDay(range()[0]) }} – {{ fmtDay(range()[1]) }}</p> }
+    </div>
+    @if (lanes() && shown().length > 1) {
+      <div class="row arrows only-wide">
+        <button type="button" class="btn btn-icon" [disabled]="edges().start" (click)="slide(-1)" [attr.aria-label]="'Ngày trước' | tr"><app-icon name="chevron-left" /></button>
+        <button type="button" class="btn btn-icon" [disabled]="edges().end" (click)="slide(1)" [attr.aria-label]="'Ngày sau' | tr"><app-icon name="chevron-right" /></button>
+      </div>
+    }
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="radiogroup" [attr.aria-label]="'Khoảng thời gian' | tr">
+      @for (s of spans; track s[0]) {
+        <button type="button" role="radio" [attr.aria-checked]="pick() === s[0]" (click)="choose(s[0])">{{ s[1] | tr }}</button>
+      }
+    </div>
+    @if (period()) {
+      <div class="stepper">
+        <button type="button" class="btn btn-icon btn-sm" [disabled]="step() === 0" (click)="set({ n: step() - 1 || null })" [attr.aria-label]="'Kỳ trước' | tr"><app-icon name="chevron-left" /></button>
+        <span class="num period" aria-live="polite">{{ period() }}</span>
+        <button type="button" class="btn btn-icon btn-sm" (click)="set({ n: step() + 1 })" [attr.aria-label]="'Kỳ sau' | tr"><app-icon name="chevron-right" /></button>
+      </div>
+    }
+    @if (pick() === 'custom') {
+      <div class="custom">
+        <div class="field"><label for="u-from">{{ 'Từ ngày' | tr }}</label><input id="u-from" class="input" type="date" [min]="today" [value]="from() ?? ''" (change)="set({ from: f.value || null })" #f [attr.aria-invalid]="!!customErr() || null" /></div>
+        <div class="field"><label for="u-to">{{ 'Đến ngày' | tr }}</label><input id="u-to" class="input" type="date" [min]="from() || today" [value]="to() ?? ''" (change)="set({ to: t.value || null })" #t /></div>
+        @if (customErr()) { <p class="error-text" role="alert">{{ customErr() }}</p> }
+        @else if (!from() || !to()) { <p class="hint">{{ 'Chọn ngày bắt đầu và ngày kết thúc.' | tr }}</p> }
+      </div>
+    }
+  </div>
+
+  @if (!days().length) {
+    <p class="sheet empty-line">{{ 'Không có việc nào trong khoảng này.' | tr }}</p>
+  } @else if (lanes()) {
+    <div class="lanes" #strip (scroll)="measure()" tabindex="0" [attr.aria-label]="'Các ngày' | tr" role="region">
+      @for (d of shown(); track d) {
+        <div class="lane" [id]="'lane-' + d" [class.picked]="d === day()">
+          <app-task-group [title]="label(d)" [tasks]="tasksOn(d)" [projects]="projects()" [hideDate]="true" [compact]="true" [loading]="!loaded()" [empty]="'Trống' | tr" />
+        </div>
+      }
+    </div>
+  } @else if (!loaded()) {
+    <app-task-group [title]="'Sắp tới' | tr" [loading]="true" />
+  } @else {
+    <div class="only-wide months">
+      @for (m of months(); track m) {
+        <section [attr.aria-label]="monthTitle(m)">
+          <h2 class="section-title month-title">{{ monthTitle(m) }}</h2>
+          <div class="sheet month" role="table">
+            <div class="week head" role="row">@for (w of wd; track w) { <span role="columnheader">{{ w | tr }}</span> }</div>
+            @for (week of weeks(m); track $index) {
+              <div class="week" role="row">
+                @for (d of week; track $index) {
+                  <div class="cell" role="cell" [class.out]="outside(d)">
+                    @if (d) { <span class="n num">{{ +d.slice(8) }}</span> }
+                    @if (d && !outside(d)) {
+                      @for (t of tasksOn(d).slice(0, more); track t.id) {
+                        <button type="button" class="chip-task" [class.on]="openId() === t.id" (click)="ui.openTask(t.id)">
+                          <span class="dot" [style.background]="'var(--color-p' + t.priority + ')'"></span><span class="clamp-1">{{ t.title }}</span>
+                        </button>
+                      }
+                      @if (tasksOn(d).length > more) { <span class="more">{{ '+{n} việc' | tr: { n: tasksOn(d).length - more } }}</span> }
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+    <div class="only-narrow stack-lg">
+      @for (d of shown(); track d) {
+        <app-task-group [title]="label(d)" [tasks]="tasksOn(d)" [projects]="projects()" [hideDate]="true" [compact]="true" />
+      } @empty { <p class="sheet empty-line">{{ 'Không có việc nào trong khoảng này.' | tr }}</p> }
+    </div>
+  }
+</div>

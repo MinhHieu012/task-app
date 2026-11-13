@@ -18,7 +18,7 @@ decide() {
 case "$rel" in
   supabase/migrations/*.sql)
     if git -C "$root" ls-files --error-unmatch -- "$rel" >/dev/null 2>&1; then
-      decide deny "$rel is committed and already applied to the hosted DB. Don't edit it: add a new supabase/migrations/<timestamp>_<name>.sql, then update supabase/schema.sql and the types in src/lib/supabase.ts."
+      decide deny "$rel is committed and already applied to the hosted DB. Don't edit it: add a new supabase/migrations/<timestamp>_<name>.sql, then update supabase/schema.sql and the row types in packages/core/src/types.ts and apps/mobile/src/lib/supabase.ts."
     fi ;;
 esac
 

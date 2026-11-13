@@ -2,100 +2,74 @@
 
 Tiếng Việt · [English](README.en.md)
 
-Ứng dụng quản lý công việc cá nhân kèm nhật ký hằng ngày. Chạy trên iOS, Android và web (web có bố cục rộng từ 1024px). Giao diện tiếng Việt, có bản tiếng Anh.
+Ứng dụng quản lý công việc cá nhân kèm nhật ký hằng ngày. Một backend Supabase, hai ứng dụng độc lập:
+
+| | Công nghệ | Thư mục |
+|---|---|---|
+| **Web** | Angular 21 (standalone components, signals, lazy routes), SCSS | [`apps/web`](apps/web/README.md) |
+| **Mobile** (iOS/Android) | Expo SDK 58, React Native 0.88, Expo Router | [`apps/mobile`](apps/mobile/README.md) |
+| **Backend** | Supabase: Postgres + RLS, Auth (email/mật khẩu, Google), Realtime, 2 RPC | [`supabase/`](supabase) |
+| **Logic dùng chung** | TypeScript thuần, không phụ thuộc framework | [`packages/core`](packages/core) |
+
+Web không còn dùng Expo hay React Native Web. Hai app không chia sẻ UI; chỉ chia sẻ backend, hợp đồng dữ liệu và quy tắc nghiệp vụ.
 
 ## Tính năng
 
-- **Hôm nay / Hộp thư / Sắp tới**: xem việc theo ngày, việc chưa lên lịch và việc sắp đến hạn.
-- **Dự án**: gom việc theo dự án.
-- **Việc con** (subtask) có ngày và giờ riêng.
-- **Việc lặp lại**: hằng ngày, theo thứ trong tuần, theo ngày trong tháng, hoặc mỗi N ngày.
-- **Nhật ký**: mỗi việc đã xong được ghi lại theo ngày hoàn thành.
-- **Báo cáo ngày**: mỗi ngày một báo cáo (soạn thảo rich text), hạn 21:00, nộp muộn sẽ bị đánh dấu.
-- **Chuỗi đúng hạn**: đếm số ngày liên tiếp nộp báo cáo trước 21:00.
-- **Nhãn** (`#nhãn`): gắn nhãn cho việc, chọn lại nhãn đã dùng thay vì gõ lại, lọc theo nhãn.
-- **Tìm kiếm**: tìm theo tên và ghi chú (không phân biệt dấu), lọc theo `#nhãn`.
-- **Gõ nhanh có cú pháp**: `Họp nhóm mai 9h !1 #công-việc` tự đặt ngày, giờ, ưu tiên và nhãn. Khi gõ có gợi ý cú pháp và hiện trước những gì sẽ được lưu.
-- **Dời việc**: "Mai" / "Tuần sau" ngay trên từng việc, "Dời sang hôm nay" cho cả nhóm quá hạn.
-- **Hoàn tác** trên thông báo (10 giây, có đếm ngược) sau khi dời hoặc xoá việc.
-- **Thống kê tuần/tháng**: số việc xong so với kỳ trước, việc lỡ hạn, tỉ lệ đúng hạn, theo dự án và theo nhãn.
-- **Ghi chú tự do** cho từng ngày trong nhật ký.
-- **Nhắc việc** qua thông báo (chỉ trên iOS/Android).
-- **Đăng nhập** bằng email/mật khẩu hoặc Google; liên kết và gỡ liên kết tài khoản Google trong Cài đặt; quên mật khẩu qua email.
-- Chế độ sáng/tối, đổi ngôn ngữ và màu nhấn trong Cài đặt.
+- **Hôm nay / Hộp thư / Sắp tới**: việc theo ngày, việc chưa vào project, việc sắp đến hạn (khoảng 3 ngày tới cả năm, hoặc tự chọn).
+- **Project**, **việc con** có giờ riêng, **việc lặp lại** (hằng ngày, theo thứ, theo ngày trong tháng, mỗi N ngày).
+- **Nhật ký**: việc đã xong theo ngày, lịch tháng, biểu đồ, ghi chú tự do cho từng ngày.
+- **Báo cáo ngày**: soạn rich text, hạn 21:00, nộp trễ bị đánh dấu, chuỗi ngày đúng hạn.
+- **Nhãn** `#nhãn`, **tìm kiếm** không phân biệt dấu, **thống kê** tuần/tháng.
+- **Gõ nhanh có cú pháp**: `Họp nhóm mai 9h !1 #công-việc` tự đặt ngày, giờ, ưu tiên, nhãn.
+- **Dời việc** (Mai / Tuần sau / dời cả nhóm quá hạn) và **hoàn tác** 10 giây sau khi dời hoặc xoá.
+- Đăng nhập email/mật khẩu hoặc Google, liên kết Google, quên mật khẩu. Sáng/tối, màu nhấn, tiếng Việt/English.
+- Mobile thêm: nhắc việc bằng thông báo, vuốt để xong/dời, haptics.
 
-## Công nghệ
+## Bắt đầu
 
-Expo SDK 58 (Expo Router, typed routes), React 19, React Native 0.88, TypeScript, Supabase (auth + Postgres). Font Be Vietnam Pro.
-
-## Cài đặt
-
-Yêu cầu Node.js 22.18+ (`npm test` chạy file `.ts` trực tiếp bằng node) và một project Supabase.
+Yêu cầu: Node.js 22.18+ (khuyến nghị 22 LTS hoặc 24), một project Supabase.
 
 ```bash
-npm install
-cp .env.example .env.local   # điền URL, key và mật khẩu DB của Supabase
-npm run db:push              # tạo bảng trên DB Supabase
-npm start                    # rồi bấm w (web), i (iOS) hoặc a (Android)
+cp .env.example .env.local        # URL, publishable key, mật khẩu DB (chỉ cho db:push)
+npm run install:all               # cài riêng apps/web và apps/mobile
+npm run db:push                   # áp migration lên DB (người dùng tự chạy với DB thật)
+
+npm run web                       # Angular: http://localhost:4200
+npm run mobile                    # Expo dev server (cần apps/mobile/.env.local)
 ```
 
-Biến môi trường (`.env.local`):
+## Lệnh ở thư mục gốc
 
-| Biến | Dùng cho |
-|------|----------|
-| `EXPO_PUBLIC_SUPABASE_URL` | URL project Supabase |
-| `EXPO_PUBLIC_SUPABASE_KEY` | anon / publishable key |
-| `SUPABASE_DB_PASSWORD` | chỉ dùng cho `npm run db:push`, **không** thêm tiền tố `EXPO_PUBLIC_` |
+| Lệnh | Việc |
+|---|---|
+| `npm run web` / `web:build` / `web:check` / `web:e2e` | chạy, build production, lint+typecheck+unit test, E2E Playwright cho web |
+| `npm run mobile` / `mobile:android` / `mobile:check` | Expo dev server, build Android, lint+typecheck+test cho mobile |
+| `npm run core:test` | kiểm tra quy tắc nghiệp vụ và bản dịch (`packages/core`) |
+| `npm run check` | tất cả các kiểm tra trên, trước khi commit |
+| `npm run db:push` | áp `supabase/migrations` lên DB qua IPv4 pooler |
 
-Mẫu email xác nhận đăng ký và đặt lại mật khẩu nằm ở `supabase/templates/`, dán vào Supabase Dashboard > Authentication > Email Templates.
-
-> Thông báo nhắc việc và đăng nhập Google trên điện thoại cần development build (`npx expo run:ios|android` hoặc `eas build --profile development`), Expo Go không đủ.
-
-## Lệnh
-
-```bash
-npm start           # dev server (npm run web / ios / android)
-npm run lint        # expo lint
-npm run typecheck   # tsc --noEmit
-npm test            # kiểm tra logic ngày, nhật ký, i18n
-npm run db:push     # áp các migration trong supabase/migrations lên DB
-```
-
-Trước khi commit: `npm run lint && npm run typecheck && npm test`.
+Build web không phụ thuộc Expo; build mobile không phụ thuộc Angular. Mỗi app có `node_modules` và lockfile riêng.
 
 ## Cấu trúc
 
 ```
-src/app/          các màn hình (Expo Router)
-src/components/   UI dùng chung (ui.tsx) và các component; dom/ là Expo DOM components
-src/constants/    theme: màu, token, font
-src/lib/          supabase client, xử lý ngày, nhật ký, báo cáo, nhắc việc, i18n
-supabase/         migrations, schema.sql (bản đầy đủ), mẫu email
-docs/             kế hoạch và tài liệu design system
+apps/web/          Angular app (xem apps/web/README.md)
+apps/mobile/       Expo app, giữ nguyên như trước khi tách
+packages/core/     ngày, lặp lại, nhật ký, báo cáo, nhãn, cú pháp gõ nhanh, i18n, kiểu dữ liệu
+supabase/          migrations, schema.sql (bản đầy đủ), mẫu email
+scripts/           supabase.mjs (CLI qua IPv4 pooler)
+docs/              architecture/, api/, development/, migration/, design/, plans/
 ```
 
-Dữ liệu gồm 5 bảng: `projects`, `tasks`, `subtasks`, `daily_reports`, `journal_notes`, đều bật RLS theo từng người dùng.
+Tài liệu: [kiến trúc](docs/architecture/overview.md) · [cài đặt & triển khai](docs/development/setup.md) · [API contracts](docs/api/contracts.md) · [hướng dẫn Flutter](docs/api/flutter-guide.md) · [ghi chú migration](docs/migration/angular-web.md).
 
 ## Triển khai
 
-Quy trình hiện tại:
+- **Web**: Vercel tự deploy khi `main` thay đổi (`vercel.json`: `npm ci --prefix apps/web` → `npm run build --prefix apps/web` → `apps/web/dist/web/browser`, rewrite SPA). Biến môi trường trên Vercel: `SUPABASE_URL`, `SUPABASE_KEY` (tên cũ `EXPO_PUBLIC_SUPABASE_*` vẫn được đọc).
+- **Mobile**: development build, chưa lên store. Xem [apps/mobile/README.md](apps/mobile/README.md).
+- **DB**: có migration mới thì `npm run db:push` trước khi merge.
 
-1. Làm trên một nhánh riêng, chạy `npm run lint && npm run typecheck && npm test`.
-2. Có migration mới thì chạy `npm run db:push` **trước khi merge**, để DB có sẵn cột/bảng khi bản web mới lên.
-3. Mở PR vào `main` trên GitHub rồi merge.
-4. **Vercel** tự build và deploy khi `main` thay đổi (các nhánh khác không deploy, xem `vercel.json`): build bằng `npx expo export -p web`, xuất ra `dist/`, mọi đường dẫn trả về `index.html`. Đặt hai biến `EXPO_PUBLIC_SUPABASE_*` trong project Vercel.
-
-### Cấu hình Supabase Auth (làm một lần trên Dashboard)
-
-- **URL Configuration**: *Site URL* là domain web chính. *Redirect URLs* liệt kê đúng các URL app quay về, cho từng nơi chạy (domain Vercel, `http://localhost:8081`, `taskapp://`):
-  - `/` (đăng nhập Google), `/settings` (liên kết Google), `/reset-password` (quên mật khẩu).
-  - Ví dụ: `https://<domain>/settings`, `taskapp://settings`. URL không có trong danh sách sẽ bị đưa về Site URL.
-- **Google**: tạo OAuth client loại *Web application* trên Google Cloud, redirect URI `https://<project>.supabase.co/auth/v1/callback`; dán Client ID/Secret vào *Sign In / Providers → Google*; bật *Allow manual linking* để liên kết được Gmail khác email tài khoản. Khi app Google còn ở chế độ *Testing*, chỉ các Gmail trong *Test users* đăng nhập được.
-- **Email Templates**: dán mẫu từ `supabase/templates/`.
-
-### Điện thoại
-
-Chưa phát hành lên store. Chạy bằng development build (`npx expo run:ios|android`); cần build lại mỗi khi thêm thư viện có code native (vd. `expo-web-browser`, `expo-notifications`).
+Cấu hình Supabase Auth (Redirect URLs, Google, mẫu email): [docs/development/setup.md](docs/development/setup.md#supabase-auth).
 
 ## Giấy phép
 
