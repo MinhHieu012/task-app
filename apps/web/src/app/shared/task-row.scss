@@ -10,6 +10,8 @@
 .when-text { display: flex; flex-direction: column; min-width: 0; }
 .when-head { font-size: var(--text-sm); font-weight: 600; color: var(--color-ink); }
 .when-sub { font-size: var(--text-xs); color: var(--color-muted); &.over { color: var(--color-danger); font-weight: 500; } }
+// The tick sits above the title's stretched ::after, or a tap on it opens the task instead of ticking.
+app-tick { position: relative; z-index: 1; }
 .tick-col { display: flex; align-items: flex-start; padding: 16px 0 16px 20px; }
 .body { flex: 1; min-width: 0; padding: 13px 20px 13px 16px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 
