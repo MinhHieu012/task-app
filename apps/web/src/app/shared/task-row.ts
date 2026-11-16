@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { addDays, fmtDay, localDay, nextMonday, today } from '@core/dates';
 import { htmlToText } from '@core/html';
@@ -38,7 +38,8 @@ export class TaskRow {
   private ui = inject(UiService);
   readonly busy = signal(false);
   readonly open = signal(false);
-  readonly optimistic = signal<Record<string, boolean>>({});
+  /** Cleared when fresh rows arrive: a task tick can change them (all ticked, or a recurring restart). */
+  readonly optimistic = linkedSignal<Subtask[], Record<string, boolean>>({ source: this.subs, computation: () => ({}) });
 
   readonly day = today();
   readonly done = computed(() => !!this.task().completed_at);
@@ -91,7 +92,7 @@ export class TaskRow {
   async tickSub(s: Subtask) {
     const next = !this.subDone(s);
     this.optimistic.update((o) => ({ ...o, [s.id]: next }));
-    const ok = await this.tasks.updateSubtask(s.id, { done: next });
+    const ok = await this.tasks.setSubtaskDone(this.task().id, s.id, next);
     // On success the refetched row agrees with the optimistic value, so it can stay; on failure it goes.
     if (!ok) this.optimistic.update(({ [s.id]: _, ...rest }) => rest);
   }
