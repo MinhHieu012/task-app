@@ -38,9 +38,31 @@ export async function toggleDone(t: Task) {
           p_task_id: t.id, p_completed_at: done.completed_at, p_completed_day: done.completed_day, p_next_due: nextDue(t.repeat, t.due_date),
         })
       : await tasks.update(done).eq('id', t.id);
+  if (!ok(res)) return false;
+  // The checklist follows the task: ticked with it, unticked with it. A recurring tick needs nothing (the RPC
+  // restarts the checklist unticked) and a recurring done copy has no checklist.
+  if (!t.repeat && !t.recurring_copy) ok(await supabase.from('subtasks').update({ done: !t.completed_at }).eq('task_id', t.id));
   // Realtime can arrive late: a row swiped away must not come back as a gap while it waits.
-  if (ok(res)) refresh('tasks');
-  return !res.error;
+  refresh('tasks');
+  refresh('subtasks');
+  return true;
+}
+
+/** Ticks or unticks a subtask, keeping the task in step: ticking the last open one ticks the task, unticking
+ *  one reopens a done task (the other subtasks stay ticked). Reads the task fresh, since the caller's copy can
+ *  be stale and toggleDone on it would flip the wrong way. Same rule as the web. */
+export async function setSubtaskDone(taskId: string, id: string, done: boolean) {
+  if (!ok(await supabase.from('subtasks').update({ done }).eq('id', id))) return false;
+  if (done) {
+    const open = await supabase.from('subtasks').select('id', { count: 'exact', head: true }).eq('task_id', taskId).eq('done', false);
+    const task = open.count === 0 ? await supabase.from('tasks').select('*').eq('id', taskId).single() : null;
+    if (task?.data && !task.data.completed_at) return toggleDone(task.data as Task).then(() => true);
+  } else {
+    ok(await supabase.from('tasks').update({ completed_at: null, completed_day: null }).eq('id', taskId).not('completed_at', 'is', null));
+  }
+  refresh('tasks');
+  refresh('subtasks');
+  return true;
 }
 
 /** Asks, deletes the task (subtasks go with it), then offers an undo that puts both back with the same ids.
@@ -502,8 +524,7 @@ function SubLine({ sub, now, wide, last }: { sub: Subtask; now: string; wide: bo
         size={20}
         onPress={async () => {
           setDone(!done);
-          if (ok(await supabase.from('subtasks').update({ done: !done }).eq('id', sub.id))) refresh('subtasks');
-          else setDone(done);
+          if (!(await setSubtaskDone(sub.task_id, sub.id, !done))) setDone(done);
         }}
       />
       <View style={s.subBody}>

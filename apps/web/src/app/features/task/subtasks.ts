@@ -50,7 +50,9 @@ export class Subtasks {
 
   constructor() {
     effect(() => {
-      const id = this.task().id;
+      // A tick of the task changes the checklist too (all ticked, or restarted for a recurring one): refetch.
+      const { id, completed_at, due_date } = this.task();
+      void completed_at; void due_date;
       this.tasks.subtasksOf(id).then((r) => r && this.rows.set(r));
     });
   }
@@ -78,7 +80,7 @@ export class Subtasks {
   async toggle(row: Subtask) {
     const set = (done: boolean) => this.rows.update((r) => r.map((x) => (x.id === row.id ? { ...x, done } : x)));
     set(!row.done);
-    if (!(await this.tasks.updateSubtask(row.id, { done: !row.done }))) set(row.done);
+    if (!(await this.tasks.setSubtaskDone(this.task().id, row.id, !row.done))) set(row.done);
   }
 
   async remove(row: Subtask) {

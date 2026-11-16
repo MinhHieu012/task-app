@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DateField, TimeField } from '@/components/DateTime';
 import { Editor as RichText } from '@/components/Rich';
+import { setSubtaskDone } from '@/components/TaskRow';
 import { editorLabels, palette } from '@/components/Report';
 import { active, Button, Field, IconButton, Tick } from '@/components/ui';
 import { color, radius, text } from '@/constants/theme';
@@ -49,8 +50,7 @@ export function Subtasks({ task, draft: title, setDraft: setTitle }: { task: Tas
   const toggle = async (row: Subtask) => {
     const set = (done: boolean) => setRows((r) => r.map((x) => (x.id === row.id ? { ...x, done } : x)));
     set(!row.done);
-    if (!ok(await table().update({ done: !row.done }).eq('id', row.id))) set(row.done);
-    else refresh('subtasks');
+    if (!(await setSubtaskDone(taskId, row.id, !row.done))) set(row.done);
   };
 
   const remove = async (row: Subtask) => {
