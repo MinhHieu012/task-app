@@ -74,9 +74,9 @@
   </button>
 </nav>
 
-<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. -->
+<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. A ternary, not &&: a handler returning false makes Angular preventDefault every click inside (form submit, checkboxes). -->
 <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-<dialog #addSheet class="bottom-sheet" aria-labelledby="add-title" (click)="$event.target === $event.currentTarget && closeAdd()" (close)="adding.set(false)">
+<dialog #addSheet class="bottom-sheet" aria-labelledby="add-title" (click)="$event.target === $event.currentTarget ? closeAdd() : null" (close)="adding.set(false)">
   <div class="sheet-inner">
     <div class="sheet-bar">
       <h2 id="add-title">{{ ui.quick().label ?? ('Thêm việc' | tr) }}</h2>
@@ -86,9 +86,9 @@
   </div>
 </dialog>
 
-<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. -->
+<!-- A click on the backdrop closes it; the keyboard path is the native Esc of a modal dialog. A ternary, not &&: a handler returning false makes Angular preventDefault every click inside (form submit, checkboxes). -->
 <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-<dialog #moreSheet class="bottom-sheet" aria-labelledby="more-title" (click)="$event.target === $event.currentTarget && closeMore()">
+<dialog #moreSheet class="bottom-sheet" aria-labelledby="more-title" (click)="$event.target === $event.currentTarget ? closeMore() : null">
   <div class="sheet-inner">
     <div class="sheet-bar">
       <h2 id="more-title">{{ 'Duyệt' | tr }}</h2>
